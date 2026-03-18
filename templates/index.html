@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HARBOUR IAT FIA — Portfolio Tracker</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="app-header">
+  <div class="header-left">
+    <h1 id="fund-name">HARBOUR IAT FIF AÇÕES RL</h1>
+    <span class="header-date" id="header-date"></span>
+  </div>
+  <div class="header-stats">
+    <div class="stat-card">
+      <span class="stat-label">Patrimônio Total</span>
+      <span class="stat-value" id="total-value">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Upside Médio Pond.</span>
+      <span class="stat-value" id="weighted-upside">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Beta da Carteira</span>
+      <span class="stat-value" id="weighted-beta">—</span>
+    </div>
+    <div class="stat-card compact">
+      <span class="stat-label">Preços atualizados</span>
+      <span class="stat-value small" id="last-update">—</span>
+      <span class="stat-value small" id="next-refresh"></span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" id="btn-refresh" title="Atualizar preços agora">&#8635; Refresh</button>
+    <div class="export-group">
+      <button class="btn btn-ghost" id="btn-export-csv">&#8595; CSV</button>
+      <button class="btn btn-ghost" id="btn-export-excel">&#8595; Excel</button>
+    </div>
+    <button class="btn btn-primary" id="btn-add-stock">+ Ativo</button>
+  </div>
+</header>
+
+<!-- ===== LOADING ===== -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <p>Carregando dados do Yahoo Finance...</p>
+</div>
+
+<!-- ===== TABS ===== -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="tab-table">Tabela</button>
+  <button class="tab-btn" data-tab="tab-charts">Gráficos</button>
+</div>
+
+<!-- ===== TAB: TABELA ===== -->
+<div id="tab-table" class="tab-content active">
+  <div class="table-wrapper">
+    <table id="portfolio-table">
+      <thead>
+        <tr>
+          <th data-col="ticker">Ativo</th>
+          <th data-col="categoria">Categ.</th>
+          <th data-col="sector">Setor</th>
+          <th data-col="pct_total" class="num">% Total</th>
+          <th data-col="valor_liquido" class="num">Valor Líquido</th>
+          <th data-col="preco" class="num">Preço</th>
+          <th data-col="var_dia_pct" class="num">Var. Dia %</th>
+          <th data-col="quantidade" class="num">Qtde</th>
+          <th data-col="liq_diaria_mm" class="num">Liq. Diária</th>
+          <th data-col="trailing_pe" class="num">P/L Trail.</th>
+          <th data-col="forward_pe" class="num">P/L Fwd.</th>
+          <th data-col="enterprise_to_ebitda" class="num">EV/EBITDA</th>
+          <th data-col="return_on_equity" class="num">ROE %</th>
+          <th data-col="beta" class="num">Beta</th>
+          <th data-col="price_to_book" class="num">P/VPA</th>
+          <th data-col="dividend_yield" class="num">Div. Yield</th>
+          <th data-col="market_cap_bi" class="num">Mkt Cap</th>
+          <th data-col="lucro_mi_25" class="num">Lucro mi 25</th>
+          <th data-col="pl_alvo_25" class="num">P/L Alvo 25</th>
+          <th data-col="preco_alvo" class="num">P. Alvo</th>
+          <th data-col="upside_pct" class="num">Upside %</th>
+          <th class="actions-col"></th>
+        </tr>
+      </thead>
+      <tbody id="portfolio-body">
+        <tr><td colspan="22" class="empty-state">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== TAB: GRÁFICOS ===== -->
+<div id="tab-charts" class="tab-content">
+  <div class="charts-grid">
+
+    <!-- History chart -->
+    <div class="chart-card wide">
+      <div class="chart-card-header">
+        <h3>Performance vs IBOV (normalizado base 100)</h3>
+        <div class="range-selector">
+          <button class="range-btn" data-days="30">30d</button>
+          <button class="range-btn" data-days="60">60d</button>
+          <button class="range-btn active" data-days="90">90d</button>
+          <button class="range-btn" data-days="180">180d</button>
+          <button class="range-btn" data-days="365">1 ano</button>
+        </div>
+      </div>
+      <div class="chart-loading" id="history-loading">Carregando histórico...</div>
+      <canvas id="history-chart" height="90"></canvas>
+    </div>
+
+    <!-- Sector pie -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>Concentração por Setor</h3>
+      </div>
+      <div class="chart-loading hidden" id="sector-loading">Carregando...</div>
+      <canvas id="sector-chart"></canvas>
+      <div id="sector-legend" class="sector-legend"></div>
+    </div>
+
+    <!-- Top upside -->
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <h3>Upside por Ativo (%)</h3>
+      </div>
+      <canvas id="upside-chart"></canvas>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== EDIT MODAL ===== -->
+<div id="edit-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Editar <span id="edit-modal-ticker"></span></h2>
+      <button class="modal-close" id="edit-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label>Quantidade
+          <input type="number" id="edit-quantidade" min="0" step="1" />
+        </label>
+        <label>Liq. Diária (mm)
+          <input type="number" id="edit-liq" step="1" />
+        </label>
+        <label>Lucro mi 25
+          <input type="number" id="edit-lucro" step="1" min="0" />
+        </label>
+        <label>P/L Alvo 25
+          <input type="number" id="edit-pl-alvo" step="0.1" min="0" />
+        </label>
+        <label>Preço Alvo (R$)
+          <input type="number" id="edit-preco-alvo" step="0.01" min="0" />
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="edit-modal-cancel">Cancelar</button>
+      <button class="btn btn-danger" id="edit-modal-delete">Remover</button>
+      <button class="btn btn-primary" id="edit-modal-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD MODAL ===== -->
+<div id="add-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Adicionar Ativo</h2>
+      <button class="modal-close" id="add-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">O ticker será validado no Yahoo Finance com sufixo <strong>.SA</strong></p>
+      <div id="add-error" class="error-msg hidden"></div>
+      <div class="form-grid">
+        <label>Ticker *
+          <input type="text" id="add-ticker" placeholder="ex: PETR4" style="text-transform:uppercase" />
+        </label>
+        <label>Categoria
+          <select id="add-categoria">
+            <option value="Acao">Ação</option>
+            <option value="BDR">BDR</option>
+            <option value="FII">FII</option>
+          </select>
+        </label>
+        <label>Quantidade *
+          <input type="number" id="add-quantidade" min="0" step="1" />
+        </label>
+        <label>Liq. Diária (mm)
+          <input type="number" id="add-liq" step="1" />
+        </label>
+        <label>Lucro mi 25
+          <input type="number" id="add-lucro" step="1" min="0" />
+        </label>
+        <label>P/L Alvo 25
+          <input type="number" id="add-pl-alvo" step="0.1" min="0" />
+        </label>
+        <label>Preço Alvo (R$)
+          <input type="number" id="add-preco-alvo" step="0.01" min="0" />
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="add-modal-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="add-modal-save">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
