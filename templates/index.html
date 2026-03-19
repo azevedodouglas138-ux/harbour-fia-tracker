@@ -143,17 +143,20 @@
   <div class="charts-grid">
     <div class="chart-card wide">
       <div class="chart-card-header">
-        <span class="chart-title">PERFORMANCE VS IBOV (BASE 100)</span>
+        <span class="chart-title">RENTABILIDADE ACUMULADA — HARBOUR IAT vs IBOV</span>
         <div class="range-selector">
           <button class="range-btn" data-days="30">30D</button>
-          <button class="range-btn" data-days="60">60D</button>
-          <button class="range-btn active" data-days="90">90D</button>
-          <button class="range-btn" data-days="180">180D</button>
+          <button class="range-btn" data-days="90">90D</button>
+          <button class="range-btn" data-days="180">6M</button>
           <button class="range-btn" data-days="365">1A</button>
+          <button class="range-btn" data-days="1095">3A</button>
+          <button class="range-btn" data-days="1825">5A</button>
+          <button class="range-btn active" data-days="0">INÍCIO</button>
         </div>
       </div>
-      <div class="chart-loading" id="history-loading">CARREGANDO HISTÓRICO...</div>
-      <canvas id="history-chart" height="80"></canvas>
+      <div class="chart-loading" id="history-loading">CARREGANDO HISTÓRICO DE COTAS...</div>
+      <canvas id="history-chart" height="75"></canvas>
+      <div id="perf-summary" class="perf-summary hidden"></div>
     </div>
     <div class="chart-card">
       <div class="chart-card-header">

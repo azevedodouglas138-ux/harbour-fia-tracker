@@ -274,51 +274,206 @@ function renderChartsIfVisible() {
   if (document.getElementById('tab-charts')?.classList.contains('active')) loadCharts(currentDays);
 }
 
-// ── Chart: History ───────────────────────────────────────────────
+// ── Chart: Performance (cota history vs IBOV) ────────────────────
+let _perfCache = null;
+
 async function loadHistoryChart(days) {
   const canvas  = document.getElementById('history-chart');
   const loading = document.getElementById('history-loading');
-  canvas.style.display = 'none'; loading.classList.remove('hidden');
+  const summary = document.getElementById('perf-summary');
+  canvas.style.display = 'none';
+  loading.classList.remove('hidden');
+  loading.textContent  = 'CARREGANDO HISTÓRICO DE COTAS...';
+  summary.classList.add('hidden');
+
   try {
-    const res  = await fetch(`/api/history?days=${days}`);
-    const data = await res.json();
-    loading.classList.add('hidden'); canvas.style.display = '';
-    if (!data.series?.length) {
-      loading.textContent = 'SEM DADOS HISTÓRICOS DISPONÍVEIS.';
-      loading.classList.remove('hidden'); canvas.style.display = 'none'; return;
+    if (!_perfCache) {
+      const res  = await fetch('/api/performance-chart');
+      _perfCache = await res.json();
     }
-    const labels   = data.series.map(d => d.date);
-    const portData = data.series.map(d => d.portfolio);
-    const ibovData = data.series.map(d => d.ibov);
-    const lp = portData[portData.length-1], li = ibovData[ibovData.length-1];
+    const allSeries = _perfCache.series || [];
+    if (!allSeries.length) {
+      loading.textContent = 'SEM DADOS DE HISTÓRICO.';
+      loading.classList.remove('hidden'); return;
+    }
+
+    // ── Filter by range ──
+    const series = days > 0 ? allSeries.slice(-days) : allSeries;
+
+    // ── Rebase to filtered window start ──
+    const baseFund = series[0].fund;
+    const baseIbov = series.find(s => s.ibov != null)?.ibov ?? null;
+
+    const labels   = series.map(s => s.date);
+    const fundData = series.map(s => s.fund  != null ? +((s.fund  / baseFund - 1) * 100).toFixed(2) : null);
+    const ibovData = series.map(s => s.ibov  != null && baseIbov ? +((s.ibov  / baseIbov - 1) * 100).toFixed(2) : null);
+
+    // ── Summary stats ──
+    const lastFund = fundData[fundData.length - 1];
+    const lastIbov = ibovData.filter(v => v != null).at(-1);
+    const alpha    = lastFund != null && lastIbov != null ? +(lastFund - lastIbov).toFixed(2) : null;
+
+    const maxDD = (() => {
+      let peak = -Infinity, dd = 0;
+      fundData.forEach(v => { if (v == null) return; if (v > peak) peak = v; dd = Math.min(dd, v - peak); });
+      return dd.toFixed(2);
+    })();
+
+    const votlDays = fundData.filter(v => v != null).length;
+    const dailyRets = [];
+    for (let i = 1; i < series.length; i++) {
+      if (series[i].fund && series[i-1].fund)
+        dailyRets.push((series[i].fund / series[i-1].fund - 1) * 100);
+    }
+    const vol = dailyRets.length > 1
+      ? +(Math.sqrt(dailyRets.reduce((s,r) => s + Math.pow(r - dailyRets.reduce((a,b)=>a+b,0)/dailyRets.length, 2), 0) / dailyRets.length) * Math.sqrt(252)).toFixed(2)
+      : null;
+
+    // ── Render summary bar ──
+    const pc = v => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v, 2) + '%';
+    const cls = v => v == null ? 'neutral' : v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
+    summary.innerHTML = [
+      ['HARBOUR IAT', pc(lastFund), cls(lastFund)],
+      ['IBOV', pc(lastIbov), cls(lastIbov)],
+      ['ALPHA', pc(alpha), cls(alpha)],
+      ['MAX DRAWDOWN', pc(+maxDD), 'negative'],
+      ['VOLATILIDADE A.A.', vol != null ? fmt(vol, 2) + '%' : '—', 'neutral'],
+      ['PERÍODO', labels[0] + ' → ' + labels[labels.length-1], 'neutral'],
+    ].map(([lbl, val, c]) =>
+      `<div class="perf-item"><span class="perf-item-lbl">${lbl}</span><span class="perf-item-val ${c}">${val}</span></div>`
+    ).join('');
+    summary.classList.remove('hidden');
+
+    // ── Build gradient fill ──
+    loading.classList.add('hidden'); canvas.style.display = '';
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 300);
+    grad.addColorStop(0,   'rgba(255,140,0,0.18)');
+    grad.addColorStop(0.6, 'rgba(255,140,0,0.04)');
+    grad.addColorStop(1,   'rgba(255,140,0,0)');
+
     if (historyChart) historyChart.destroy();
+
+    const lf = lastFund != null ? (lastFund >= 0 ? '+' : '') + fmt(lastFund, 2) + '%' : '';
+    const li = lastIbov != null ? (lastIbov >= 0 ? '+' : '') + fmt(lastIbov, 2) + '%' : '';
+
+    // ── Smart x-axis ticks ──
+    const n = labels.length;
+    const tickStep = n <= 60 ? 7 : n <= 180 ? 20 : n <= 400 ? 45 : n <= 800 ? 90 : 180;
+
     historyChart = new Chart(canvas, {
       type: 'line',
-      data: { labels, datasets: [
-        { label: `HARBOUR IAT ${lp!=null?(lp>=100?'+':'')+(lp-100).toFixed(2)+'%':''}`,
-          data: portData, borderColor: '#ff8c00', backgroundColor: 'rgba(255,140,0,0.05)',
-          borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, fill: true, tension: 0.2 },
-        { label: `IBOV ${li!=null?(li>=100?'+':'')+(li-100).toFixed(2)+'%':''}`,
-          data: ibovData, borderColor: '#00aacc', backgroundColor: 'transparent',
-          borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, fill: false, tension: 0.2,
-          borderDash: [4,3] },
-      ]},
+      data: {
+        labels,
+        datasets: [
+          {
+            label: `HARBOUR IAT  ${lf}`,
+            data: fundData,
+            borderColor: '#ff8c00',
+            backgroundColor: grad,
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: '#ff8c00',
+            pointHoverBorderColor: '#000',
+            pointHoverBorderWidth: 2,
+            fill: true,
+            tension: 0.15,
+            order: 1,
+          },
+          {
+            label: `IBOV  ${li}`,
+            data: ibovData,
+            borderColor: '#00aacc',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#00aacc',
+            pointHoverBorderColor: '#000',
+            pointHoverBorderWidth: 2,
+            fill: false,
+            tension: 0.15,
+            borderDash: [5, 4],
+            order: 2,
+          },
+        ],
+      },
       options: {
         responsive: true,
+        animation: { duration: 350 },
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { labels: { color: '#888', usePointStyle: true, pointStyleWidth: 8 } },
-          tooltip: { backgroundColor: '#0d0d0d', borderColor: '#2a2a2a', borderWidth: 1,
-            callbacks: { label: ctx => ` ${ctx.dataset.label.split(' ')[0]}: ${fmt(ctx.parsed.y,2)}` } },
+          legend: {
+            position: 'top',
+            align: 'end',
+            labels: {
+              color: '#aaa',
+              usePointStyle: true,
+              pointStyleWidth: 12,
+              padding: 20,
+              font: { size: 10, family: "'Cascadia Code','Courier New',monospace", weight: '700' },
+            },
+          },
+          tooltip: {
+            backgroundColor: 'rgba(10,10,10,0.95)',
+            borderColor: '#333',
+            borderWidth: 1,
+            titleColor: '#ff8c00',
+            titleFont: { size: 10, weight: '700', family: "'Cascadia Code','Courier New',monospace" },
+            bodyFont:  { size: 11, family: "'Cascadia Code','Courier New',monospace" },
+            padding: 10,
+            callbacks: {
+              title: items => items[0]?.label ?? '',
+              label: ctx => {
+                const v = ctx.parsed.y;
+                const sign = v >= 0 ? '+' : '';
+                const name = ctx.datasetIndex === 0 ? 'HARBOUR IAT' : 'IBOV      ';
+                return `  ${name}  ${sign}${fmt(v, 2)}%`;
+              },
+              afterBody: items => {
+                const f = items.find(i => i.datasetIndex === 0)?.parsed.y;
+                const ib = items.find(i => i.datasetIndex === 1)?.parsed.y;
+                if (f != null && ib != null) {
+                  const a = +(f - ib).toFixed(2);
+                  return [`  ALPHA        ${a >= 0 ? '+' : ''}${fmt(a, 2)}%`];
+                }
+                return [];
+              },
+            },
+          },
         },
         scales: {
-          x: { grid: { color: '#1c1c1c' }, ticks: { maxTicksLimit: 8, callback: (_,i) => labels[i]?.slice(5)||'' } },
-          y: { grid: { color: '#1c1c1c' }, ticks: { callback: v => v.toFixed(0) } },
+          x: {
+            grid: { color: '#161616', drawBorder: false },
+            ticks: {
+              color: '#555',
+              maxRotation: 0,
+              font: { size: 9, family: "'Cascadia Code','Courier New',monospace" },
+              callback: (_, i) => {
+                if (i % tickStep !== 0) return '';
+                const d = labels[i];
+                return d ? d.slice(0, 7) : '';
+              },
+            },
+            border: { color: '#2a2a2a' },
+          },
+          y: {
+            position: 'right',
+            grid: { color: '#161616', drawBorder: false },
+            ticks: {
+              color: '#555',
+              font: { size: 9, family: "'Cascadia Code','Courier New',monospace" },
+              callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%',
+            },
+            border: { color: '#2a2a2a', dash: [3, 3] },
+          },
         },
       },
     });
-  } catch(e) {
-    loading.textContent = 'ERRO: ' + e.message; loading.classList.remove('hidden'); canvas.style.display = 'none';
+  } catch (e) {
+    loading.textContent = 'ERRO: ' + e.message;
+    loading.classList.remove('hidden'); canvas.style.display = 'none';
   }
 }
 
@@ -390,6 +545,8 @@ document.querySelectorAll('.range-btn').forEach(btn => {
     loadHistoryChart(parseInt(btn.dataset.days));
   });
 });
+
+function invalidatePerfCache() { _perfCache = null; }
 
 // ── Export ───────────────────────────────────────────────────────
 document.getElementById('btn-export-csv').addEventListener('click',   () => { window.location.href = '/api/export/csv'; });

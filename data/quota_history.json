@@ -1,4 +1,8070 @@
 [
-  {"data": "2026-03-17", "cota_fechamento": 2.71660881},
-  {"data": "2026-03-18", "cota_fechamento": 2.79504258}
+  {
+    "data": "2018-02-27",
+    "cota_fechamento": 1.0
+  },
+  {
+    "data": "2018-02-28",
+    "cota_fechamento": 1.0
+  },
+  {
+    "data": "2018-03-01",
+    "cota_fechamento": 0.97363333
+  },
+  {
+    "data": "2018-03-02",
+    "cota_fechamento": 0.97376667
+  },
+  {
+    "data": "2018-03-05",
+    "cota_fechamento": 0.978
+  },
+  {
+    "data": "2018-03-06",
+    "cota_fechamento": 0.97743333
+  },
+  {
+    "data": "2018-03-07",
+    "cota_fechamento": 0.97526667
+  },
+  {
+    "data": "2018-03-08",
+    "cota_fechamento": 0.97727819
+  },
+  {
+    "data": "2018-03-09",
+    "cota_fechamento": 0.97385703
+  },
+  {
+    "data": "2018-03-12",
+    "cota_fechamento": 0.97359927
+  },
+  {
+    "data": "2018-03-13",
+    "cota_fechamento": 0.98246776
+  },
+  {
+    "data": "2018-03-14",
+    "cota_fechamento": 0.97928247
+  },
+  {
+    "data": "2018-03-15",
+    "cota_fechamento": 0.98034825
+  },
+  {
+    "data": "2018-03-16",
+    "cota_fechamento": 0.97132561
+  },
+  {
+    "data": "2018-03-19",
+    "cota_fechamento": 0.97321545
+  },
+  {
+    "data": "2018-03-20",
+    "cota_fechamento": 0.96086362
+  },
+  {
+    "data": "2018-03-21",
+    "cota_fechamento": 0.95980847
+  },
+  {
+    "data": "2018-03-22",
+    "cota_fechamento": 0.97809202
+  },
+  {
+    "data": "2018-03-23",
+    "cota_fechamento": 0.97302779
+  },
+  {
+    "data": "2018-03-26",
+    "cota_fechamento": 0.96633661
+  },
+  {
+    "data": "2018-03-27",
+    "cota_fechamento": 0.96287139
+  },
+  {
+    "data": "2018-03-28",
+    "cota_fechamento": 0.95955454
+  },
+  {
+    "data": "2018-03-29",
+    "cota_fechamento": 0.95720751
+  },
+  {
+    "data": "2018-04-02",
+    "cota_fechamento": 0.96549482
+  },
+  {
+    "data": "2018-04-03",
+    "cota_fechamento": 0.95722007
+  },
+  {
+    "data": "2018-04-04",
+    "cota_fechamento": 0.95622395
+  },
+  {
+    "data": "2018-04-05",
+    "cota_fechamento": 0.95183223
+  },
+  {
+    "data": "2018-04-06",
+    "cota_fechamento": 0.97019709
+  },
+  {
+    "data": "2018-04-09",
+    "cota_fechamento": 0.97054256
+  },
+  {
+    "data": "2018-04-10",
+    "cota_fechamento": 0.96107801
+  },
+  {
+    "data": "2018-04-11",
+    "cota_fechamento": 0.96134511
+  },
+  {
+    "data": "2018-04-12",
+    "cota_fechamento": 0.96013154
+  },
+  {
+    "data": "2018-04-13",
+    "cota_fechamento": 0.96084459
+  },
+  {
+    "data": "2018-04-16",
+    "cota_fechamento": 0.95455916
+  },
+  {
+    "data": "2018-04-17",
+    "cota_fechamento": 0.94780081
+  },
+  {
+    "data": "2018-04-18",
+    "cota_fechamento": 0.95348416
+  },
+  {
+    "data": "2018-04-19",
+    "cota_fechamento": 0.96373049
+  },
+  {
+    "data": "2018-04-20",
+    "cota_fechamento": 0.96511095
+  },
+  {
+    "data": "2018-04-23",
+    "cota_fechamento": 0.96809607
+  },
+  {
+    "data": "2018-04-24",
+    "cota_fechamento": 0.96397119
+  },
+  {
+    "data": "2018-04-25",
+    "cota_fechamento": 0.95903437
+  },
+  {
+    "data": "2018-04-26",
+    "cota_fechamento": 0.96328573
+  },
+  {
+    "data": "2018-04-27",
+    "cota_fechamento": 0.966296
+  },
+  {
+    "data": "2018-04-30",
+    "cota_fechamento": 0.965517
+  },
+  {
+    "data": "2018-05-02",
+    "cota_fechamento": 0.96403906
+  },
+  {
+    "data": "2018-05-03",
+    "cota_fechamento": 0.95651516
+  },
+  {
+    "data": "2018-05-04",
+    "cota_fechamento": 0.94276077
+  },
+  {
+    "data": "2018-05-07",
+    "cota_fechamento": 0.94081333
+  },
+  {
+    "data": "2018-05-08",
+    "cota_fechamento": 0.94163838
+  },
+  {
+    "data": "2018-05-09",
+    "cota_fechamento": 0.93693499
+  },
+  {
+    "data": "2018-05-10",
+    "cota_fechamento": 0.94184198
+  },
+  {
+    "data": "2018-05-11",
+    "cota_fechamento": 0.93784339
+  },
+  {
+    "data": "2018-05-14",
+    "cota_fechamento": 0.9361137
+  },
+  {
+    "data": "2018-05-15",
+    "cota_fechamento": 0.91993044
+  },
+  {
+    "data": "2018-05-16",
+    "cota_fechamento": 0.90766538
+  },
+  {
+    "data": "2018-05-17",
+    "cota_fechamento": 0.92248846
+  },
+  {
+    "data": "2018-05-18",
+    "cota_fechamento": 0.90791966
+  },
+  {
+    "data": "2018-05-21",
+    "cota_fechamento": 0.90439075
+  },
+  {
+    "data": "2018-05-22",
+    "cota_fechamento": 0.90521554
+  },
+  {
+    "data": "2018-05-23",
+    "cota_fechamento": 0.91980998
+  },
+  {
+    "data": "2018-05-24",
+    "cota_fechamento": 0.91323337
+  },
+  {
+    "data": "2018-05-25",
+    "cota_fechamento": 0.90653785
+  },
+  {
+    "data": "2018-05-28",
+    "cota_fechamento": 0.89295396
+  },
+  {
+    "data": "2018-05-29",
+    "cota_fechamento": 0.86221974
+  },
+  {
+    "data": "2018-05-30",
+    "cota_fechamento": 0.86204377
+  },
+  {
+    "data": "2018-06-01",
+    "cota_fechamento": 0.87214802
+  },
+  {
+    "data": "2018-06-04",
+    "cota_fechamento": 0.88359004
+  },
+  {
+    "data": "2018-06-05",
+    "cota_fechamento": 0.89539367
+  },
+  {
+    "data": "2018-06-06",
+    "cota_fechamento": 0.88034283
+  },
+  {
+    "data": "2018-06-07",
+    "cota_fechamento": 0.86115583
+  },
+  {
+    "data": "2018-06-08",
+    "cota_fechamento": 0.82846029
+  },
+  {
+    "data": "2018-06-11",
+    "cota_fechamento": 0.84173608
+  },
+  {
+    "data": "2018-06-12",
+    "cota_fechamento": 0.83830254
+  },
+  {
+    "data": "2018-06-13",
+    "cota_fechamento": 0.8451571
+  },
+  {
+    "data": "2018-06-14",
+    "cota_fechamento": 0.84834148
+  },
+  {
+    "data": "2018-06-15",
+    "cota_fechamento": 0.84235367
+  },
+  {
+    "data": "2018-06-18",
+    "cota_fechamento": 0.83013862
+  },
+  {
+    "data": "2018-06-19",
+    "cota_fechamento": 0.81965529
+  },
+  {
+    "data": "2018-06-20",
+    "cota_fechamento": 0.83114777
+  },
+  {
+    "data": "2018-06-21",
+    "cota_fechamento": 0.83419156
+  },
+  {
+    "data": "2018-06-22",
+    "cota_fechamento": 0.82766096
+  },
+  {
+    "data": "2018-06-25",
+    "cota_fechamento": 0.83348849
+  },
+  {
+    "data": "2018-06-26",
+    "cota_fechamento": 0.83700506
+  },
+  {
+    "data": "2018-06-27",
+    "cota_fechamento": 0.83385906
+  },
+  {
+    "data": "2018-06-28",
+    "cota_fechamento": 0.83031923
+  },
+  {
+    "data": "2018-06-29",
+    "cota_fechamento": 0.83533125
+  },
+  {
+    "data": "2018-07-02",
+    "cota_fechamento": 0.84149522
+  },
+  {
+    "data": "2018-07-03",
+    "cota_fechamento": 0.84809964
+  },
+  {
+    "data": "2018-07-04",
+    "cota_fechamento": 0.85263632
+  },
+  {
+    "data": "2018-07-05",
+    "cota_fechamento": 0.8645781
+  },
+  {
+    "data": "2018-07-06",
+    "cota_fechamento": 0.86228607
+  },
+  {
+    "data": "2018-07-10",
+    "cota_fechamento": 0.87159036
+  },
+  {
+    "data": "2018-07-11",
+    "cota_fechamento": 0.87317355
+  },
+  {
+    "data": "2018-07-12",
+    "cota_fechamento": 0.8609591
+  },
+  {
+    "data": "2018-07-13",
+    "cota_fechamento": 0.87103893
+  },
+  {
+    "data": "2018-07-16",
+    "cota_fechamento": 0.88184143
+  },
+  {
+    "data": "2018-07-17",
+    "cota_fechamento": 0.8883112
+  },
+  {
+    "data": "2018-07-18",
+    "cota_fechamento": 0.89951912
+  },
+  {
+    "data": "2018-07-19",
+    "cota_fechamento": 0.88677659
+  },
+  {
+    "data": "2018-07-20",
+    "cota_fechamento": 0.88449403
+  },
+  {
+    "data": "2018-07-23",
+    "cota_fechamento": 0.90578375
+  },
+  {
+    "data": "2018-07-24",
+    "cota_fechamento": 0.89668502
+  },
+  {
+    "data": "2018-07-25",
+    "cota_fechamento": 0.90738787
+  },
+  {
+    "data": "2018-07-26",
+    "cota_fechamento": 0.90788187
+  },
+  {
+    "data": "2018-07-27",
+    "cota_fechamento": 0.8961309
+  },
+  {
+    "data": "2018-07-30",
+    "cota_fechamento": 0.89127159
+  },
+  {
+    "data": "2018-07-31",
+    "cota_fechamento": 0.89043164
+  },
+  {
+    "data": "2018-08-01",
+    "cota_fechamento": 0.88181101
+  },
+  {
+    "data": "2018-08-02",
+    "cota_fechamento": 0.89471699
+  },
+  {
+    "data": "2018-08-03",
+    "cota_fechamento": 0.89844086
+  },
+  {
+    "data": "2018-08-06",
+    "cota_fechamento": 0.906841
+  },
+  {
+    "data": "2018-08-07",
+    "cota_fechamento": 0.90547823
+  },
+  {
+    "data": "2018-08-08",
+    "cota_fechamento": 0.90292281
+  },
+  {
+    "data": "2018-08-09",
+    "cota_fechamento": 0.90047706
+  },
+  {
+    "data": "2018-08-10",
+    "cota_fechamento": 0.89559242
+  },
+  {
+    "data": "2018-08-13",
+    "cota_fechamento": 0.88245269
+  },
+  {
+    "data": "2018-08-14",
+    "cota_fechamento": 0.89738493
+  },
+  {
+    "data": "2018-08-15",
+    "cota_fechamento": 0.90923364
+  },
+  {
+    "data": "2018-08-16",
+    "cota_fechamento": 0.8964687
+  },
+  {
+    "data": "2018-08-17",
+    "cota_fechamento": 0.89397307
+  },
+  {
+    "data": "2018-08-20",
+    "cota_fechamento": 0.88490646
+  },
+  {
+    "data": "2018-08-21",
+    "cota_fechamento": 0.88766762
+  },
+  {
+    "data": "2018-08-22",
+    "cota_fechamento": 0.87337022
+  },
+  {
+    "data": "2018-08-23",
+    "cota_fechamento": 0.88203222
+  },
+  {
+    "data": "2018-08-24",
+    "cota_fechamento": 0.86506098
+  },
+  {
+    "data": "2018-08-27",
+    "cota_fechamento": 0.87039848
+  },
+  {
+    "data": "2018-08-28",
+    "cota_fechamento": 0.88720316
+  },
+  {
+    "data": "2018-08-29",
+    "cota_fechamento": 0.88284576
+  },
+  {
+    "data": "2018-08-30",
+    "cota_fechamento": 0.88973024
+  },
+  {
+    "data": "2018-08-31",
+    "cota_fechamento": 0.87876031
+  },
+  {
+    "data": "2018-09-03",
+    "cota_fechamento": 0.88314754
+  },
+  {
+    "data": "2018-09-04",
+    "cota_fechamento": 0.88568123
+  },
+  {
+    "data": "2018-09-05",
+    "cota_fechamento": 0.87023438
+  },
+  {
+    "data": "2018-09-06",
+    "cota_fechamento": 0.86190431
+  },
+  {
+    "data": "2018-09-10",
+    "cota_fechamento": 0.87313077
+  },
+  {
+    "data": "2018-09-11",
+    "cota_fechamento": 0.8719893
+  },
+  {
+    "data": "2018-09-12",
+    "cota_fechamento": 0.8457579
+  },
+  {
+    "data": "2018-09-13",
+    "cota_fechamento": 0.84078632
+  },
+  {
+    "data": "2018-09-14",
+    "cota_fechamento": 0.82712487
+  },
+  {
+    "data": "2018-09-17",
+    "cota_fechamento": 0.830687
+  },
+  {
+    "data": "2018-09-18",
+    "cota_fechamento": 0.85130685
+  },
+  {
+    "data": "2018-09-19",
+    "cota_fechamento": 0.86378155
+  },
+  {
+    "data": "2018-09-20",
+    "cota_fechamento": 0.85264154
+  },
+  {
+    "data": "2018-09-21",
+    "cota_fechamento": 0.84910146
+  },
+  {
+    "data": "2018-09-24",
+    "cota_fechamento": 0.86348913
+  },
+  {
+    "data": "2018-09-25",
+    "cota_fechamento": 0.85450056
+  },
+  {
+    "data": "2018-09-26",
+    "cota_fechamento": 0.85697831
+  },
+  {
+    "data": "2018-09-27",
+    "cota_fechamento": 0.85619965
+  },
+  {
+    "data": "2018-09-28",
+    "cota_fechamento": 0.87100294
+  },
+  {
+    "data": "2018-10-01",
+    "cota_fechamento": 0.86536422
+  },
+  {
+    "data": "2018-10-02",
+    "cota_fechamento": 0.85621659
+  },
+  {
+    "data": "2018-10-03",
+    "cota_fechamento": 0.89331544
+  },
+  {
+    "data": "2018-10-04",
+    "cota_fechamento": 0.91730619
+  },
+  {
+    "data": "2018-10-05",
+    "cota_fechamento": 0.92412344
+  },
+  {
+    "data": "2018-10-08",
+    "cota_fechamento": 0.92458696
+  },
+  {
+    "data": "2018-10-09",
+    "cota_fechamento": 0.96808962
+  },
+  {
+    "data": "2018-10-10",
+    "cota_fechamento": 0.9723758
+  },
+  {
+    "data": "2018-10-11",
+    "cota_fechamento": 0.9462742
+  },
+  {
+    "data": "2018-10-15",
+    "cota_fechamento": 0.93565228
+  },
+  {
+    "data": "2018-10-16",
+    "cota_fechamento": 0.87681552
+  },
+  {
+    "data": "2018-10-17",
+    "cota_fechamento": 0.90091292
+  },
+  {
+    "data": "2018-10-18",
+    "cota_fechamento": 0.9041112
+  },
+  {
+    "data": "2018-10-19",
+    "cota_fechamento": 0.89512569
+  },
+  {
+    "data": "2018-10-22",
+    "cota_fechamento": 0.89774197
+  },
+  {
+    "data": "2018-10-23",
+    "cota_fechamento": 0.91633103
+  },
+  {
+    "data": "2018-10-24",
+    "cota_fechamento": 0.91539283
+  },
+  {
+    "data": "2018-10-25",
+    "cota_fechamento": 0.90035454
+  },
+  {
+    "data": "2018-10-26",
+    "cota_fechamento": 0.91191787
+  },
+  {
+    "data": "2018-10-29",
+    "cota_fechamento": 0.93640448
+  },
+  {
+    "data": "2018-10-30",
+    "cota_fechamento": 0.91879022
+  },
+  {
+    "data": "2018-10-31",
+    "cota_fechamento": 0.94552387
+  },
+  {
+    "data": "2018-11-01",
+    "cota_fechamento": 0.9472604
+  },
+  {
+    "data": "2018-11-05",
+    "cota_fechamento": 0.95149921
+  },
+  {
+    "data": "2018-11-06",
+    "cota_fechamento": 0.9540378
+  },
+  {
+    "data": "2018-11-07",
+    "cota_fechamento": 0.94918131
+  },
+  {
+    "data": "2018-11-08",
+    "cota_fechamento": 0.94099517
+  },
+  {
+    "data": "2018-11-09",
+    "cota_fechamento": 0.92430339
+  },
+  {
+    "data": "2018-11-12",
+    "cota_fechamento": 0.93001005
+  },
+  {
+    "data": "2018-11-13",
+    "cota_fechamento": 0.92830605
+  },
+  {
+    "data": "2018-11-14",
+    "cota_fechamento": 0.91164828
+  },
+  {
+    "data": "2018-11-16",
+    "cota_fechamento": 0.91905823
+  },
+  {
+    "data": "2018-11-19",
+    "cota_fechamento": 0.93855395
+  },
+  {
+    "data": "2018-11-21",
+    "cota_fechamento": 0.93142592
+  },
+  {
+    "data": "2018-11-22",
+    "cota_fechamento": 0.91679245
+  },
+  {
+    "data": "2018-11-23",
+    "cota_fechamento": 0.91884713
+  },
+  {
+    "data": "2018-11-26",
+    "cota_fechamento": 0.90568448
+  },
+  {
+    "data": "2018-11-27",
+    "cota_fechamento": 0.90005861
+  },
+  {
+    "data": "2018-11-28",
+    "cota_fechamento": 0.92355516
+  },
+  {
+    "data": "2018-11-29",
+    "cota_fechamento": 0.93253318
+  },
+  {
+    "data": "2018-11-30",
+    "cota_fechamento": 0.93477235
+  },
+  {
+    "data": "2018-12-03",
+    "cota_fechamento": 0.93721647
+  },
+  {
+    "data": "2018-12-04",
+    "cota_fechamento": 0.94716348
+  },
+  {
+    "data": "2018-12-05",
+    "cota_fechamento": 0.93238558
+  },
+  {
+    "data": "2018-12-06",
+    "cota_fechamento": 0.94144341
+  },
+  {
+    "data": "2018-12-07",
+    "cota_fechamento": 0.93446113
+  },
+  {
+    "data": "2018-12-10",
+    "cota_fechamento": 0.93496674
+  },
+  {
+    "data": "2018-12-11",
+    "cota_fechamento": 0.91909656
+  },
+  {
+    "data": "2018-12-12",
+    "cota_fechamento": 0.92477256
+  },
+  {
+    "data": "2018-12-13",
+    "cota_fechamento": 0.93122879
+  },
+  {
+    "data": "2018-12-14",
+    "cota_fechamento": 0.93779186
+  },
+  {
+    "data": "2018-12-17",
+    "cota_fechamento": 0.93515127
+  },
+  {
+    "data": "2018-12-18",
+    "cota_fechamento": 0.92288768
+  },
+  {
+    "data": "2018-12-19",
+    "cota_fechamento": 0.92324513
+  },
+  {
+    "data": "2018-12-20",
+    "cota_fechamento": 0.92633076
+  },
+  {
+    "data": "2018-12-21",
+    "cota_fechamento": 0.92065421
+  },
+  {
+    "data": "2018-12-26",
+    "cota_fechamento": 0.92840043
+  },
+  {
+    "data": "2018-12-27",
+    "cota_fechamento": 0.92835118
+  },
+  {
+    "data": "2018-12-28",
+    "cota_fechamento": 0.93742648
+  },
+  {
+    "data": "2019-01-02",
+    "cota_fechamento": 0.95469259
+  },
+  {
+    "data": "2019-01-03",
+    "cota_fechamento": 0.9869909
+  },
+  {
+    "data": "2019-01-04",
+    "cota_fechamento": 0.98415001
+  },
+  {
+    "data": "2019-01-07",
+    "cota_fechamento": 0.98140661
+  },
+  {
+    "data": "2019-01-08",
+    "cota_fechamento": 0.98225952
+  },
+  {
+    "data": "2019-01-09",
+    "cota_fechamento": 0.99245392
+  },
+  {
+    "data": "2019-01-10",
+    "cota_fechamento": 1.00425154
+  },
+  {
+    "data": "2019-01-11",
+    "cota_fechamento": 1.00603358
+  },
+  {
+    "data": "2019-01-14",
+    "cota_fechamento": 1.00349466
+  },
+  {
+    "data": "2019-01-15",
+    "cota_fechamento": 1.00795594
+  },
+  {
+    "data": "2019-01-16",
+    "cota_fechamento": 0.9987532
+  },
+  {
+    "data": "2019-01-17",
+    "cota_fechamento": 1.00383566
+  },
+  {
+    "data": "2019-01-18",
+    "cota_fechamento": 1.0204803
+  },
+  {
+    "data": "2019-01-21",
+    "cota_fechamento": 1.02941245
+  },
+  {
+    "data": "2019-01-22",
+    "cota_fechamento": 1.03516191
+  },
+  {
+    "data": "2019-01-23",
+    "cota_fechamento": 1.0263713
+  },
+  {
+    "data": "2019-01-24",
+    "cota_fechamento": 1.03999535
+  },
+  {
+    "data": "2019-01-28",
+    "cota_fechamento": 1.04474738
+  },
+  {
+    "data": "2019-01-29",
+    "cota_fechamento": 1.02412558
+  },
+  {
+    "data": "2019-01-30",
+    "cota_fechamento": 1.03516306
+  },
+  {
+    "data": "2019-01-31",
+    "cota_fechamento": 1.04783877
+  },
+  {
+    "data": "2019-02-01",
+    "cota_fechamento": 1.05316438
+  },
+  {
+    "data": "2019-02-04",
+    "cota_fechamento": 1.05007354
+  },
+  {
+    "data": "2019-02-05",
+    "cota_fechamento": 1.05541153
+  },
+  {
+    "data": "2019-02-06",
+    "cota_fechamento": 1.06178525
+  },
+  {
+    "data": "2019-02-07",
+    "cota_fechamento": 1.03236217
+  },
+  {
+    "data": "2019-02-08",
+    "cota_fechamento": 1.01996247
+  },
+  {
+    "data": "2019-02-11",
+    "cota_fechamento": 1.01893418
+  },
+  {
+    "data": "2019-02-12",
+    "cota_fechamento": 1.00699614
+  },
+  {
+    "data": "2019-02-13",
+    "cota_fechamento": 1.02015228
+  },
+  {
+    "data": "2019-02-14",
+    "cota_fechamento": 1.0183627
+  },
+  {
+    "data": "2019-02-15",
+    "cota_fechamento": 1.03515211
+  },
+  {
+    "data": "2019-02-18",
+    "cota_fechamento": 1.03089533
+  },
+  {
+    "data": "2019-02-19",
+    "cota_fechamento": 1.03634997
+  },
+  {
+    "data": "2019-02-20",
+    "cota_fechamento": 1.03304186
+  },
+  {
+    "data": "2019-02-21",
+    "cota_fechamento": 1.01369917
+  },
+  {
+    "data": "2019-02-22",
+    "cota_fechamento": 1.01779482
+  },
+  {
+    "data": "2019-02-25",
+    "cota_fechamento": 1.02028496
+  },
+  {
+    "data": "2019-02-26",
+    "cota_fechamento": 1.01813473
+  },
+  {
+    "data": "2019-02-27",
+    "cota_fechamento": 1.01727911
+  },
+  {
+    "data": "2019-02-28",
+    "cota_fechamento": 1.01739049
+  },
+  {
+    "data": "2019-03-01",
+    "cota_fechamento": 1.01151017
+  },
+  {
+    "data": "2019-03-06",
+    "cota_fechamento": 1.0124934
+  },
+  {
+    "data": "2019-03-07",
+    "cota_fechamento": 1.01332887
+  },
+  {
+    "data": "2019-03-08",
+    "cota_fechamento": 1.00831085
+  },
+  {
+    "data": "2019-03-11",
+    "cota_fechamento": 1.03037324
+  },
+  {
+    "data": "2019-03-12",
+    "cota_fechamento": 1.05826673
+  },
+  {
+    "data": "2019-03-13",
+    "cota_fechamento": 1.05574895
+  },
+  {
+    "data": "2019-03-14",
+    "cota_fechamento": 1.06050221
+  },
+  {
+    "data": "2019-03-15",
+    "cota_fechamento": 1.05579313
+  },
+  {
+    "data": "2019-03-18",
+    "cota_fechamento": 1.05731897
+  },
+  {
+    "data": "2019-03-19",
+    "cota_fechamento": 1.06216287
+  },
+  {
+    "data": "2019-03-20",
+    "cota_fechamento": 1.07580842
+  },
+  {
+    "data": "2019-03-21",
+    "cota_fechamento": 1.07360534
+  },
+  {
+    "data": "2019-03-22",
+    "cota_fechamento": 1.05682016
+  },
+  {
+    "data": "2019-03-25",
+    "cota_fechamento": 1.02569452
+  },
+  {
+    "data": "2019-03-26",
+    "cota_fechamento": 1.03330822
+  },
+  {
+    "data": "2019-03-27",
+    "cota_fechamento": 1.06147179
+  },
+  {
+    "data": "2019-03-28",
+    "cota_fechamento": 1.02927329
+  },
+  {
+    "data": "2019-03-29",
+    "cota_fechamento": 1.04334527
+  },
+  {
+    "data": "2019-04-01",
+    "cota_fechamento": 1.05614512
+  },
+  {
+    "data": "2019-04-02",
+    "cota_fechamento": 1.0701592
+  },
+  {
+    "data": "2019-04-03",
+    "cota_fechamento": 1.07059909
+  },
+  {
+    "data": "2019-04-04",
+    "cota_fechamento": 1.0610809
+  },
+  {
+    "data": "2019-04-05",
+    "cota_fechamento": 1.07344064
+  },
+  {
+    "data": "2019-04-08",
+    "cota_fechamento": 1.08065337
+  },
+  {
+    "data": "2019-04-09",
+    "cota_fechamento": 1.07508827
+  },
+  {
+    "data": "2019-04-10",
+    "cota_fechamento": 1.06601617
+  },
+  {
+    "data": "2019-04-11",
+    "cota_fechamento": 1.06856301
+  },
+  {
+    "data": "2019-04-12",
+    "cota_fechamento": 1.05107393
+  },
+  {
+    "data": "2019-04-15",
+    "cota_fechamento": 1.03013953
+  },
+  {
+    "data": "2019-04-16",
+    "cota_fechamento": 1.03385031
+  },
+  {
+    "data": "2019-04-17",
+    "cota_fechamento": 1.03975421
+  },
+  {
+    "data": "2019-04-18",
+    "cota_fechamento": 1.0398105
+  },
+  {
+    "data": "2019-04-22",
+    "cota_fechamento": 1.0612081
+  },
+  {
+    "data": "2019-04-23",
+    "cota_fechamento": 1.07747167
+  },
+  {
+    "data": "2019-04-24",
+    "cota_fechamento": 1.08465616
+  },
+  {
+    "data": "2019-04-25",
+    "cota_fechamento": 1.07796052
+  },
+  {
+    "data": "2019-04-26",
+    "cota_fechamento": 1.08779757
+  },
+  {
+    "data": "2019-04-29",
+    "cota_fechamento": 1.08407048
+  },
+  {
+    "data": "2019-04-30",
+    "cota_fechamento": 1.07995994
+  },
+  {
+    "data": "2019-05-02",
+    "cota_fechamento": 1.08648116
+  },
+  {
+    "data": "2019-05-03",
+    "cota_fechamento": 1.07206988
+  },
+  {
+    "data": "2019-05-06",
+    "cota_fechamento": 1.07462375
+  },
+  {
+    "data": "2019-05-07",
+    "cota_fechamento": 1.06503648
+  },
+  {
+    "data": "2019-05-08",
+    "cota_fechamento": 1.05986472
+  },
+  {
+    "data": "2019-05-09",
+    "cota_fechamento": 1.07027784
+  },
+  {
+    "data": "2019-05-10",
+    "cota_fechamento": 1.06132184
+  },
+  {
+    "data": "2019-05-13",
+    "cota_fechamento": 1.05654594
+  },
+  {
+    "data": "2019-05-14",
+    "cota_fechamento": 1.02704781
+  },
+  {
+    "data": "2019-05-15",
+    "cota_fechamento": 1.02191473
+  },
+  {
+    "data": "2019-05-16",
+    "cota_fechamento": 1.01946884
+  },
+  {
+    "data": "2019-05-17",
+    "cota_fechamento": 1.01775145
+  },
+  {
+    "data": "2019-05-20",
+    "cota_fechamento": 1.00774152
+  },
+  {
+    "data": "2019-05-21",
+    "cota_fechamento": 1.03729001
+  },
+  {
+    "data": "2019-05-22",
+    "cota_fechamento": 1.06915781
+  },
+  {
+    "data": "2019-05-23",
+    "cota_fechamento": 1.06448184
+  },
+  {
+    "data": "2019-05-24",
+    "cota_fechamento": 1.06368713
+  },
+  {
+    "data": "2019-05-27",
+    "cota_fechamento": 1.05835711
+  },
+  {
+    "data": "2019-05-28",
+    "cota_fechamento": 1.07236215
+  },
+  {
+    "data": "2019-05-29",
+    "cota_fechamento": 1.09186039
+  },
+  {
+    "data": "2019-05-30",
+    "cota_fechamento": 1.09147109
+  },
+  {
+    "data": "2019-05-31",
+    "cota_fechamento": 1.09551338
+  },
+  {
+    "data": "2019-06-03",
+    "cota_fechamento": 1.08371176
+  },
+  {
+    "data": "2019-06-04",
+    "cota_fechamento": 1.08099505
+  },
+  {
+    "data": "2019-06-05",
+    "cota_fechamento": 1.07459467
+  },
+  {
+    "data": "2019-06-06",
+    "cota_fechamento": 1.05318464
+  },
+  {
+    "data": "2019-06-07",
+    "cota_fechamento": 1.0686365
+  },
+  {
+    "data": "2019-06-10",
+    "cota_fechamento": 1.08557172
+  },
+  {
+    "data": "2019-06-11",
+    "cota_fechamento": 1.08406315
+  },
+  {
+    "data": "2019-06-12",
+    "cota_fechamento": 1.09125152
+  },
+  {
+    "data": "2019-06-13",
+    "cota_fechamento": 1.08057042
+  },
+  {
+    "data": "2019-06-14",
+    "cota_fechamento": 1.08568122
+  },
+  {
+    "data": "2019-06-17",
+    "cota_fechamento": 1.08457843
+  },
+  {
+    "data": "2019-06-18",
+    "cota_fechamento": 1.07770564
+  },
+  {
+    "data": "2019-06-19",
+    "cota_fechamento": 1.09113822
+  },
+  {
+    "data": "2019-06-21",
+    "cota_fechamento": 1.09824196
+  },
+  {
+    "data": "2019-06-24",
+    "cota_fechamento": 1.10655889
+  },
+  {
+    "data": "2019-06-25",
+    "cota_fechamento": 1.10983499
+  },
+  {
+    "data": "2019-06-26",
+    "cota_fechamento": 1.09520722
+  },
+  {
+    "data": "2019-06-27",
+    "cota_fechamento": 1.09566723
+  },
+  {
+    "data": "2019-06-28",
+    "cota_fechamento": 1.09891378
+  },
+  {
+    "data": "2019-07-01",
+    "cota_fechamento": 1.11313513
+  },
+  {
+    "data": "2019-07-02",
+    "cota_fechamento": 1.10935285
+  },
+  {
+    "data": "2019-07-03",
+    "cota_fechamento": 1.10382921
+  },
+  {
+    "data": "2019-07-04",
+    "cota_fechamento": 1.12406006
+  },
+  {
+    "data": "2019-07-05",
+    "cota_fechamento": 1.15708504
+  },
+  {
+    "data": "2019-07-08",
+    "cota_fechamento": 1.19457881
+  },
+  {
+    "data": "2019-07-10",
+    "cota_fechamento": 1.2377604
+  },
+  {
+    "data": "2019-07-11",
+    "cota_fechamento": 1.23182546
+  },
+  {
+    "data": "2019-07-12",
+    "cota_fechamento": 1.22980542
+  },
+  {
+    "data": "2019-07-15",
+    "cota_fechamento": 1.2240503
+  },
+  {
+    "data": "2019-07-16",
+    "cota_fechamento": 1.21724943
+  },
+  {
+    "data": "2019-07-17",
+    "cota_fechamento": 1.21957219
+  },
+  {
+    "data": "2019-07-18",
+    "cota_fechamento": 1.21885101
+  },
+  {
+    "data": "2019-07-19",
+    "cota_fechamento": 1.22647702
+  },
+  {
+    "data": "2019-07-22",
+    "cota_fechamento": 1.22203701
+  },
+  {
+    "data": "2019-07-23",
+    "cota_fechamento": 1.2195819
+  },
+  {
+    "data": "2019-07-24",
+    "cota_fechamento": 1.21489939
+  },
+  {
+    "data": "2019-07-25",
+    "cota_fechamento": 1.21851511
+  },
+  {
+    "data": "2019-07-26",
+    "cota_fechamento": 1.20005587
+  },
+  {
+    "data": "2019-07-29",
+    "cota_fechamento": 1.20613549
+  },
+  {
+    "data": "2019-07-30",
+    "cota_fechamento": 1.19664725
+  },
+  {
+    "data": "2019-07-31",
+    "cota_fechamento": 1.22863478
+  },
+  {
+    "data": "2019-08-01",
+    "cota_fechamento": 1.23100879
+  },
+  {
+    "data": "2019-08-02",
+    "cota_fechamento": 1.24556215
+  },
+  {
+    "data": "2019-08-05",
+    "cota_fechamento": 1.25154062
+  },
+  {
+    "data": "2019-08-06",
+    "cota_fechamento": 1.22767627
+  },
+  {
+    "data": "2019-08-07",
+    "cota_fechamento": 1.25486361
+  },
+  {
+    "data": "2019-08-08",
+    "cota_fechamento": 1.25579944
+  },
+  {
+    "data": "2019-08-09",
+    "cota_fechamento": 1.27395018
+  },
+  {
+    "data": "2019-08-12",
+    "cota_fechamento": 1.28622247
+  },
+  {
+    "data": "2019-08-13",
+    "cota_fechamento": 1.27844261
+  },
+  {
+    "data": "2019-08-14",
+    "cota_fechamento": 1.31974937
+  },
+  {
+    "data": "2019-08-15",
+    "cota_fechamento": 1.3000381
+  },
+  {
+    "data": "2019-08-16",
+    "cota_fechamento": 1.23300628
+  },
+  {
+    "data": "2019-08-19",
+    "cota_fechamento": 1.22371561
+  },
+  {
+    "data": "2019-08-20",
+    "cota_fechamento": 1.19656372
+  },
+  {
+    "data": "2019-08-21",
+    "cota_fechamento": 1.19442878
+  },
+  {
+    "data": "2019-08-22",
+    "cota_fechamento": 1.23037668
+  },
+  {
+    "data": "2019-08-23",
+    "cota_fechamento": 1.22000945
+  },
+  {
+    "data": "2019-08-26",
+    "cota_fechamento": 1.17679161
+  },
+  {
+    "data": "2019-08-27",
+    "cota_fechamento": 1.15115391
+  },
+  {
+    "data": "2019-08-28",
+    "cota_fechamento": 1.16784329
+  },
+  {
+    "data": "2019-08-29",
+    "cota_fechamento": 1.20272546
+  },
+  {
+    "data": "2019-08-30",
+    "cota_fechamento": 1.22979576
+  },
+  {
+    "data": "2019-09-02",
+    "cota_fechamento": 1.25240429
+  },
+  {
+    "data": "2019-09-03",
+    "cota_fechamento": 1.25479588
+  },
+  {
+    "data": "2019-09-04",
+    "cota_fechamento": 1.24658816
+  },
+  {
+    "data": "2019-09-05",
+    "cota_fechamento": 1.26012569
+  },
+  {
+    "data": "2019-09-06",
+    "cota_fechamento": 1.26140728
+  },
+  {
+    "data": "2019-09-09",
+    "cota_fechamento": 1.26322975
+  },
+  {
+    "data": "2019-09-10",
+    "cota_fechamento": 1.2405433
+  },
+  {
+    "data": "2019-09-11",
+    "cota_fechamento": 1.23716969
+  },
+  {
+    "data": "2019-09-12",
+    "cota_fechamento": 1.25940027
+  },
+  {
+    "data": "2019-09-13",
+    "cota_fechamento": 1.26484389
+  },
+  {
+    "data": "2019-09-16",
+    "cota_fechamento": 1.25497695
+  },
+  {
+    "data": "2019-09-17",
+    "cota_fechamento": 1.26391989
+  },
+  {
+    "data": "2019-09-18",
+    "cota_fechamento": 1.26529751
+  },
+  {
+    "data": "2019-09-19",
+    "cota_fechamento": 1.28030762
+  },
+  {
+    "data": "2019-09-20",
+    "cota_fechamento": 1.28436517
+  },
+  {
+    "data": "2019-09-23",
+    "cota_fechamento": 1.27881706
+  },
+  {
+    "data": "2019-09-24",
+    "cota_fechamento": 1.28193534
+  },
+  {
+    "data": "2019-09-25",
+    "cota_fechamento": 1.26727311
+  },
+  {
+    "data": "2019-09-26",
+    "cota_fechamento": 1.26561843
+  },
+  {
+    "data": "2019-09-27",
+    "cota_fechamento": 1.26409746
+  },
+  {
+    "data": "2019-09-30",
+    "cota_fechamento": 1.25263042
+  },
+  {
+    "data": "2019-10-01",
+    "cota_fechamento": 1.25110421
+  },
+  {
+    "data": "2019-10-02",
+    "cota_fechamento": 1.23222642
+  },
+  {
+    "data": "2019-10-03",
+    "cota_fechamento": 1.19580493
+  },
+  {
+    "data": "2019-10-04",
+    "cota_fechamento": 1.19225594
+  },
+  {
+    "data": "2019-10-07",
+    "cota_fechamento": 1.19041818
+  },
+  {
+    "data": "2019-10-08",
+    "cota_fechamento": 1.15827137
+  },
+  {
+    "data": "2019-10-09",
+    "cota_fechamento": 1.14362188
+  },
+  {
+    "data": "2019-10-10",
+    "cota_fechamento": 1.16828604
+  },
+  {
+    "data": "2019-10-11",
+    "cota_fechamento": 1.16620302
+  },
+  {
+    "data": "2019-10-14",
+    "cota_fechamento": 1.21133228
+  },
+  {
+    "data": "2019-10-15",
+    "cota_fechamento": 1.22308793
+  },
+  {
+    "data": "2019-10-16",
+    "cota_fechamento": 1.21908673
+  },
+  {
+    "data": "2019-10-17",
+    "cota_fechamento": 1.22359031
+  },
+  {
+    "data": "2019-10-18",
+    "cota_fechamento": 1.2309621
+  },
+  {
+    "data": "2019-10-21",
+    "cota_fechamento": 1.23223422
+  },
+  {
+    "data": "2019-10-22",
+    "cota_fechamento": 1.23925343
+  },
+  {
+    "data": "2019-10-23",
+    "cota_fechamento": 1.25198348
+  },
+  {
+    "data": "2019-10-24",
+    "cota_fechamento": 1.25303995
+  },
+  {
+    "data": "2019-10-25",
+    "cota_fechamento": 1.23951045
+  },
+  {
+    "data": "2019-10-28",
+    "cota_fechamento": 1.25009831
+  },
+  {
+    "data": "2019-10-29",
+    "cota_fechamento": 1.25986174
+  },
+  {
+    "data": "2019-10-30",
+    "cota_fechamento": 1.26894316
+  },
+  {
+    "data": "2019-10-31",
+    "cota_fechamento": 1.27670932
+  },
+  {
+    "data": "2019-11-01",
+    "cota_fechamento": 1.27170623
+  },
+  {
+    "data": "2019-11-04",
+    "cota_fechamento": 1.29710144
+  },
+  {
+    "data": "2019-11-05",
+    "cota_fechamento": 1.30946297
+  },
+  {
+    "data": "2019-11-06",
+    "cota_fechamento": 1.30143687
+  },
+  {
+    "data": "2019-11-07",
+    "cota_fechamento": 1.30214363
+  },
+  {
+    "data": "2019-11-08",
+    "cota_fechamento": 1.32167115
+  },
+  {
+    "data": "2019-11-11",
+    "cota_fechamento": 1.30207375
+  },
+  {
+    "data": "2019-11-12",
+    "cota_fechamento": 1.30647597
+  },
+  {
+    "data": "2019-11-13",
+    "cota_fechamento": 1.27887076
+  },
+  {
+    "data": "2019-11-14",
+    "cota_fechamento": 1.26636684
+  },
+  {
+    "data": "2019-11-18",
+    "cota_fechamento": 1.29307777
+  },
+  {
+    "data": "2019-11-19",
+    "cota_fechamento": 1.29046494
+  },
+  {
+    "data": "2019-11-21",
+    "cota_fechamento": 1.28881418
+  },
+  {
+    "data": "2019-11-22",
+    "cota_fechamento": 1.31156781
+  },
+  {
+    "data": "2019-11-25",
+    "cota_fechamento": 1.31824377
+  },
+  {
+    "data": "2019-11-26",
+    "cota_fechamento": 1.30061269
+  },
+  {
+    "data": "2019-11-27",
+    "cota_fechamento": 1.30510889
+  },
+  {
+    "data": "2019-11-28",
+    "cota_fechamento": 1.30062002
+  },
+  {
+    "data": "2019-11-29",
+    "cota_fechamento": 1.32471437
+  },
+  {
+    "data": "2019-12-02",
+    "cota_fechamento": 1.34009707
+  },
+  {
+    "data": "2019-12-03",
+    "cota_fechamento": 1.34761707
+  },
+  {
+    "data": "2019-12-04",
+    "cota_fechamento": 1.3724678
+  },
+  {
+    "data": "2019-12-05",
+    "cota_fechamento": 1.40152269
+  },
+  {
+    "data": "2019-12-06",
+    "cota_fechamento": 1.40206102
+  },
+  {
+    "data": "2019-12-09",
+    "cota_fechamento": 1.43142451
+  },
+  {
+    "data": "2019-12-10",
+    "cota_fechamento": 1.42473269
+  },
+  {
+    "data": "2019-12-11",
+    "cota_fechamento": 1.43194322
+  },
+  {
+    "data": "2019-12-12",
+    "cota_fechamento": 1.4384454
+  },
+  {
+    "data": "2019-12-13",
+    "cota_fechamento": 1.44127325
+  },
+  {
+    "data": "2019-12-16",
+    "cota_fechamento": 1.4719165
+  },
+  {
+    "data": "2019-12-17",
+    "cota_fechamento": 1.47434586
+  },
+  {
+    "data": "2019-12-18",
+    "cota_fechamento": 1.47582842
+  },
+  {
+    "data": "2019-12-19",
+    "cota_fechamento": 1.48459373
+  },
+  {
+    "data": "2019-12-20",
+    "cota_fechamento": 1.48394295
+  },
+  {
+    "data": "2019-12-23",
+    "cota_fechamento": 1.49308546
+  },
+  {
+    "data": "2019-12-24",
+    "cota_fechamento": 1.54025498
+  },
+  {
+    "data": "2019-12-26",
+    "cota_fechamento": 1.54013274
+  },
+  {
+    "data": "2019-12-27",
+    "cota_fechamento": 1.58406548
+  },
+  {
+    "data": "2019-12-30",
+    "cota_fechamento": 1.58960638
+  },
+  {
+    "data": "2019-12-31",
+    "cota_fechamento": 1.5862563
+  },
+  {
+    "data": "2020-01-02",
+    "cota_fechamento": 1.58613041
+  },
+  {
+    "data": "2020-01-03",
+    "cota_fechamento": 1.65858788
+  },
+  {
+    "data": "2020-01-06",
+    "cota_fechamento": 1.71064265
+  },
+  {
+    "data": "2020-01-07",
+    "cota_fechamento": 1.7474206
+  },
+  {
+    "data": "2020-01-08",
+    "cota_fechamento": 1.75652861
+  },
+  {
+    "data": "2020-01-09",
+    "cota_fechamento": 1.74912959
+  },
+  {
+    "data": "2020-01-10",
+    "cota_fechamento": 1.73860782
+  },
+  {
+    "data": "2020-01-13",
+    "cota_fechamento": 1.76911654
+  },
+  {
+    "data": "2020-01-14",
+    "cota_fechamento": 1.79965868
+  },
+  {
+    "data": "2020-01-15",
+    "cota_fechamento": 1.82226059
+  },
+  {
+    "data": "2020-01-16",
+    "cota_fechamento": 1.82601799
+  },
+  {
+    "data": "2020-01-17",
+    "cota_fechamento": 1.83731012
+  },
+  {
+    "data": "2020-01-20",
+    "cota_fechamento": 1.83225101
+  },
+  {
+    "data": "2020-01-21",
+    "cota_fechamento": 1.87968755
+  },
+  {
+    "data": "2020-01-22",
+    "cota_fechamento": 1.89287445
+  },
+  {
+    "data": "2020-01-23",
+    "cota_fechamento": 1.91026408
+  },
+  {
+    "data": "2020-01-24",
+    "cota_fechamento": 1.95483634
+  },
+  {
+    "data": "2020-01-27",
+    "cota_fechamento": 1.93265295
+  },
+  {
+    "data": "2020-01-28",
+    "cota_fechamento": 1.86126642
+  },
+  {
+    "data": "2020-01-29",
+    "cota_fechamento": 1.89466356
+  },
+  {
+    "data": "2020-01-30",
+    "cota_fechamento": 1.85313098
+  },
+  {
+    "data": "2020-01-31",
+    "cota_fechamento": 1.83751776
+  },
+  {
+    "data": "2020-02-03",
+    "cota_fechamento": 1.80622651
+  },
+  {
+    "data": "2020-02-04",
+    "cota_fechamento": 1.83453195
+  },
+  {
+    "data": "2020-02-05",
+    "cota_fechamento": 1.87765526
+  },
+  {
+    "data": "2020-02-06",
+    "cota_fechamento": 1.886572
+  },
+  {
+    "data": "2020-02-07",
+    "cota_fechamento": 1.83933818
+  },
+  {
+    "data": "2020-02-10",
+    "cota_fechamento": 1.82104549
+  },
+  {
+    "data": "2020-02-11",
+    "cota_fechamento": 1.73782911
+  },
+  {
+    "data": "2020-02-12",
+    "cota_fechamento": 1.79966459
+  },
+  {
+    "data": "2020-02-13",
+    "cota_fechamento": 1.80964274
+  },
+  {
+    "data": "2020-02-14",
+    "cota_fechamento": 1.79356001
+  },
+  {
+    "data": "2020-02-17",
+    "cota_fechamento": 1.78537295
+  },
+  {
+    "data": "2020-02-18",
+    "cota_fechamento": 1.79159396
+  },
+  {
+    "data": "2020-02-19",
+    "cota_fechamento": 1.80457944
+  },
+  {
+    "data": "2020-02-20",
+    "cota_fechamento": 1.82128916
+  },
+  {
+    "data": "2020-02-21",
+    "cota_fechamento": 1.82246773
+  },
+  {
+    "data": "2020-02-26",
+    "cota_fechamento": 1.81406256
+  },
+  {
+    "data": "2020-02-27",
+    "cota_fechamento": 1.65866357
+  },
+  {
+    "data": "2020-02-28",
+    "cota_fechamento": 1.60734546
+  },
+  {
+    "data": "2020-03-02",
+    "cota_fechamento": 1.61510912
+  },
+  {
+    "data": "2020-03-03",
+    "cota_fechamento": 1.66356277
+  },
+  {
+    "data": "2020-03-04",
+    "cota_fechamento": 1.65113476
+  },
+  {
+    "data": "2020-03-05",
+    "cota_fechamento": 1.65673335
+  },
+  {
+    "data": "2020-03-06",
+    "cota_fechamento": 1.55689457
+  },
+  {
+    "data": "2020-03-09",
+    "cota_fechamento": 1.47911903
+  },
+  {
+    "data": "2020-03-10",
+    "cota_fechamento": 1.18419226
+  },
+  {
+    "data": "2020-03-11",
+    "cota_fechamento": 1.30528288
+  },
+  {
+    "data": "2020-03-12",
+    "cota_fechamento": 1.20831184
+  },
+  {
+    "data": "2020-03-13",
+    "cota_fechamento": 0.92870282
+  },
+  {
+    "data": "2020-03-16",
+    "cota_fechamento": 1.08830788
+  },
+  {
+    "data": "2020-03-17",
+    "cota_fechamento": 0.89238102
+  },
+  {
+    "data": "2020-03-18",
+    "cota_fechamento": 0.88407605
+  },
+  {
+    "data": "2020-03-19",
+    "cota_fechamento": 0.70214746
+  },
+  {
+    "data": "2020-03-20",
+    "cota_fechamento": 0.73980923
+  },
+  {
+    "data": "2020-03-23",
+    "cota_fechamento": 0.75478097
+  },
+  {
+    "data": "2020-03-24",
+    "cota_fechamento": 0.70007421
+  },
+  {
+    "data": "2020-03-25",
+    "cota_fechamento": 0.75942052
+  },
+  {
+    "data": "2020-03-26",
+    "cota_fechamento": 0.87940965
+  },
+  {
+    "data": "2020-03-27",
+    "cota_fechamento": 0.97729763
+  },
+  {
+    "data": "2020-03-30",
+    "cota_fechamento": 0.94347864
+  },
+  {
+    "data": "2020-03-31",
+    "cota_fechamento": 0.91490221
+  },
+  {
+    "data": "2020-04-01",
+    "cota_fechamento": 0.85657339
+  },
+  {
+    "data": "2020-04-02",
+    "cota_fechamento": 0.81490221
+  },
+  {
+    "data": "2020-04-03",
+    "cota_fechamento": 0.85584748
+  },
+  {
+    "data": "2020-04-06",
+    "cota_fechamento": 0.83945128
+  },
+  {
+    "data": "2020-04-07",
+    "cota_fechamento": 0.9204594
+  },
+  {
+    "data": "2020-04-08",
+    "cota_fechamento": 0.9554689
+  },
+  {
+    "data": "2020-04-09",
+    "cota_fechamento": 0.99008722
+  },
+  {
+    "data": "2020-04-13",
+    "cota_fechamento": 0.98651186
+  },
+  {
+    "data": "2020-04-14",
+    "cota_fechamento": 0.9806697
+  },
+  {
+    "data": "2020-04-15",
+    "cota_fechamento": 1.0377323
+  },
+  {
+    "data": "2020-04-16",
+    "cota_fechamento": 1.04225615
+  },
+  {
+    "data": "2020-04-17",
+    "cota_fechamento": 1.02340232
+  },
+  {
+    "data": "2020-04-20",
+    "cota_fechamento": 1.02056462
+  },
+  {
+    "data": "2020-04-22",
+    "cota_fechamento": 1.01338428
+  },
+  {
+    "data": "2020-04-23",
+    "cota_fechamento": 1.0284347
+  },
+  {
+    "data": "2020-04-24",
+    "cota_fechamento": 1.01506777
+  },
+  {
+    "data": "2020-04-27",
+    "cota_fechamento": 0.94009609
+  },
+  {
+    "data": "2020-04-28",
+    "cota_fechamento": 0.96937059
+  },
+  {
+    "data": "2020-04-29",
+    "cota_fechamento": 1.05425162
+  },
+  {
+    "data": "2020-04-30",
+    "cota_fechamento": 1.08111873
+  },
+  {
+    "data": "2020-05-04",
+    "cota_fechamento": 1.02996353
+  },
+  {
+    "data": "2020-05-05",
+    "cota_fechamento": 1.00213673
+  },
+  {
+    "data": "2020-05-06",
+    "cota_fechamento": 1.00432238
+  },
+  {
+    "data": "2020-05-07",
+    "cota_fechamento": 0.98097778
+  },
+  {
+    "data": "2020-05-08",
+    "cota_fechamento": 0.95025505
+  },
+  {
+    "data": "2020-05-11",
+    "cota_fechamento": 0.95034086
+  },
+  {
+    "data": "2020-05-12",
+    "cota_fechamento": 0.94882515
+  },
+  {
+    "data": "2020-05-13",
+    "cota_fechamento": 0.9267871
+  },
+  {
+    "data": "2020-05-14",
+    "cota_fechamento": 0.90287273
+  },
+  {
+    "data": "2020-05-15",
+    "cota_fechamento": 0.93951518
+  },
+  {
+    "data": "2020-05-18",
+    "cota_fechamento": 0.92756038
+  },
+  {
+    "data": "2020-05-19",
+    "cota_fechamento": 1.04663279
+  },
+  {
+    "data": "2020-05-20",
+    "cota_fechamento": 1.05633028
+  },
+  {
+    "data": "2020-05-21",
+    "cota_fechamento": 1.04933735
+  },
+  {
+    "data": "2020-05-22",
+    "cota_fechamento": 1.10163531
+  },
+  {
+    "data": "2020-05-25",
+    "cota_fechamento": 1.0742058
+  },
+  {
+    "data": "2020-05-26",
+    "cota_fechamento": 1.1669275
+  },
+  {
+    "data": "2020-05-27",
+    "cota_fechamento": 1.14611785
+  },
+  {
+    "data": "2020-05-28",
+    "cota_fechamento": 1.21104024
+  },
+  {
+    "data": "2020-05-29",
+    "cota_fechamento": 1.18679158
+  },
+  {
+    "data": "2020-06-01",
+    "cota_fechamento": 1.19042573
+  },
+  {
+    "data": "2020-06-02",
+    "cota_fechamento": 1.24590037
+  },
+  {
+    "data": "2020-06-03",
+    "cota_fechamento": 1.35024331
+  },
+  {
+    "data": "2020-06-04",
+    "cota_fechamento": 1.39693937
+  },
+  {
+    "data": "2020-06-05",
+    "cota_fechamento": 1.42019079
+  },
+  {
+    "data": "2020-06-08",
+    "cota_fechamento": 1.47596933
+  },
+  {
+    "data": "2020-06-09",
+    "cota_fechamento": 1.50164412
+  },
+  {
+    "data": "2020-06-10",
+    "cota_fechamento": 1.47025396
+  },
+  {
+    "data": "2020-06-12",
+    "cota_fechamento": 1.40619555
+  },
+  {
+    "data": "2020-06-15",
+    "cota_fechamento": 1.36764503
+  },
+  {
+    "data": "2020-06-16",
+    "cota_fechamento": 1.40423572
+  },
+  {
+    "data": "2020-06-17",
+    "cota_fechamento": 1.38439227
+  },
+  {
+    "data": "2020-06-18",
+    "cota_fechamento": 1.40441989
+  },
+  {
+    "data": "2020-06-19",
+    "cota_fechamento": 1.42900752
+  },
+  {
+    "data": "2020-06-22",
+    "cota_fechamento": 1.42993762
+  },
+  {
+    "data": "2020-06-23",
+    "cota_fechamento": 1.41635471
+  },
+  {
+    "data": "2020-06-24",
+    "cota_fechamento": 1.45087915
+  },
+  {
+    "data": "2020-06-25",
+    "cota_fechamento": 1.38774881
+  },
+  {
+    "data": "2020-06-26",
+    "cota_fechamento": 1.415331
+  },
+  {
+    "data": "2020-06-29",
+    "cota_fechamento": 1.3567346
+  },
+  {
+    "data": "2020-06-30",
+    "cota_fechamento": 1.39447062
+  },
+  {
+    "data": "2020-07-01",
+    "cota_fechamento": 1.38557145
+  },
+  {
+    "data": "2020-07-02",
+    "cota_fechamento": 1.42753094
+  },
+  {
+    "data": "2020-07-03",
+    "cota_fechamento": 1.43779659
+  },
+  {
+    "data": "2020-07-06",
+    "cota_fechamento": 1.44507329
+  },
+  {
+    "data": "2020-07-07",
+    "cota_fechamento": 1.5158795
+  },
+  {
+    "data": "2020-07-08",
+    "cota_fechamento": 1.49700043
+  },
+  {
+    "data": "2020-07-09",
+    "cota_fechamento": 1.5081991
+  },
+  {
+    "data": "2020-07-10",
+    "cota_fechamento": 1.49513027
+  },
+  {
+    "data": "2020-07-13",
+    "cota_fechamento": 1.50501798
+  },
+  {
+    "data": "2020-07-14",
+    "cota_fechamento": 1.53618585
+  },
+  {
+    "data": "2020-07-15",
+    "cota_fechamento": 1.55922848
+  },
+  {
+    "data": "2020-07-16",
+    "cota_fechamento": 1.56810309
+  },
+  {
+    "data": "2020-07-17",
+    "cota_fechamento": 1.56031019
+  },
+  {
+    "data": "2020-07-20",
+    "cota_fechamento": 1.57094848
+  },
+  {
+    "data": "2020-07-21",
+    "cota_fechamento": 1.60167826
+  },
+  {
+    "data": "2020-07-22",
+    "cota_fechamento": 1.61612509
+  },
+  {
+    "data": "2020-07-23",
+    "cota_fechamento": 1.59776368
+  },
+  {
+    "data": "2020-07-24",
+    "cota_fechamento": 1.5694788
+  },
+  {
+    "data": "2020-07-27",
+    "cota_fechamento": 1.53829758
+  },
+  {
+    "data": "2020-07-28",
+    "cota_fechamento": 1.57891432
+  },
+  {
+    "data": "2020-07-29",
+    "cota_fechamento": 1.59685138
+  },
+  {
+    "data": "2020-07-30",
+    "cota_fechamento": 1.6192504
+  },
+  {
+    "data": "2020-07-31",
+    "cota_fechamento": 1.63294851
+  },
+  {
+    "data": "2020-08-03",
+    "cota_fechamento": 1.56586275
+  },
+  {
+    "data": "2020-08-04",
+    "cota_fechamento": 1.54416848
+  },
+  {
+    "data": "2020-08-05",
+    "cota_fechamento": 1.48918968
+  },
+  {
+    "data": "2020-08-06",
+    "cota_fechamento": 1.57173999
+  },
+  {
+    "data": "2020-08-07",
+    "cota_fechamento": 1.56452165
+  },
+  {
+    "data": "2020-08-10",
+    "cota_fechamento": 1.57398504
+  },
+  {
+    "data": "2020-08-11",
+    "cota_fechamento": 1.60601555
+  },
+  {
+    "data": "2020-08-12",
+    "cota_fechamento": 1.58110032
+  },
+  {
+    "data": "2020-08-13",
+    "cota_fechamento": 1.56880715
+  },
+  {
+    "data": "2020-08-14",
+    "cota_fechamento": 1.55054395
+  },
+  {
+    "data": "2020-08-17",
+    "cota_fechamento": 1.54296021
+  },
+  {
+    "data": "2020-08-18",
+    "cota_fechamento": 1.48462735
+  },
+  {
+    "data": "2020-08-19",
+    "cota_fechamento": 1.55984072
+  },
+  {
+    "data": "2020-08-20",
+    "cota_fechamento": 1.57013363
+  },
+  {
+    "data": "2020-08-21",
+    "cota_fechamento": 1.58862931
+  },
+  {
+    "data": "2020-08-24",
+    "cota_fechamento": 1.59257114
+  },
+  {
+    "data": "2020-08-25",
+    "cota_fechamento": 1.58378172
+  },
+  {
+    "data": "2020-08-26",
+    "cota_fechamento": 1.5585833
+  },
+  {
+    "data": "2020-08-27",
+    "cota_fechamento": 1.53464963
+  },
+  {
+    "data": "2020-08-28",
+    "cota_fechamento": 1.51808867
+  },
+  {
+    "data": "2020-08-31",
+    "cota_fechamento": 1.53255355
+  },
+  {
+    "data": "2020-09-01",
+    "cota_fechamento": 1.49420046
+  },
+  {
+    "data": "2020-09-02",
+    "cota_fechamento": 1.53870328
+  },
+  {
+    "data": "2020-09-03",
+    "cota_fechamento": 1.55042306
+  },
+  {
+    "data": "2020-09-04",
+    "cota_fechamento": 1.53063396
+  },
+  {
+    "data": "2020-09-08",
+    "cota_fechamento": 1.5424416
+  },
+  {
+    "data": "2020-09-09",
+    "cota_fechamento": 1.51895909
+  },
+  {
+    "data": "2020-09-10",
+    "cota_fechamento": 1.51163616
+  },
+  {
+    "data": "2020-09-11",
+    "cota_fechamento": 1.4712572
+  },
+  {
+    "data": "2020-09-14",
+    "cota_fechamento": 1.44754381
+  },
+  {
+    "data": "2020-09-15",
+    "cota_fechamento": 1.48435064
+  },
+  {
+    "data": "2020-09-16",
+    "cota_fechamento": 1.47143896
+  },
+  {
+    "data": "2020-09-17",
+    "cota_fechamento": 1.46377231
+  },
+  {
+    "data": "2020-09-18",
+    "cota_fechamento": 1.46079608
+  },
+  {
+    "data": "2020-09-21",
+    "cota_fechamento": 1.41678445
+  },
+  {
+    "data": "2020-09-22",
+    "cota_fechamento": 1.38679357
+  },
+  {
+    "data": "2020-09-23",
+    "cota_fechamento": 1.39051808
+  },
+  {
+    "data": "2020-09-24",
+    "cota_fechamento": 1.36092895
+  },
+  {
+    "data": "2020-09-25",
+    "cota_fechamento": 1.38155883
+  },
+  {
+    "data": "2020-09-28",
+    "cota_fechamento": 1.36913389
+  },
+  {
+    "data": "2020-09-29",
+    "cota_fechamento": 1.31518615
+  },
+  {
+    "data": "2020-09-30",
+    "cota_fechamento": 1.29286251
+  },
+  {
+    "data": "2020-10-01",
+    "cota_fechamento": 1.31352167
+  },
+  {
+    "data": "2020-10-02",
+    "cota_fechamento": 1.35177353
+  },
+  {
+    "data": "2020-10-05",
+    "cota_fechamento": 1.31360465
+  },
+  {
+    "data": "2020-10-06",
+    "cota_fechamento": 1.34033223
+  },
+  {
+    "data": "2020-10-07",
+    "cota_fechamento": 1.33101062
+  },
+  {
+    "data": "2020-10-08",
+    "cota_fechamento": 1.33331104
+  },
+  {
+    "data": "2020-10-09",
+    "cota_fechamento": 1.35180755
+  },
+  {
+    "data": "2020-10-13",
+    "cota_fechamento": 1.35989338
+  },
+  {
+    "data": "2020-10-14",
+    "cota_fechamento": 1.35048589
+  },
+  {
+    "data": "2020-10-15",
+    "cota_fechamento": 1.38330583
+  },
+  {
+    "data": "2020-10-16",
+    "cota_fechamento": 1.35859542
+  },
+  {
+    "data": "2020-10-19",
+    "cota_fechamento": 1.35142999
+  },
+  {
+    "data": "2020-10-20",
+    "cota_fechamento": 1.35897233
+  },
+  {
+    "data": "2020-10-21",
+    "cota_fechamento": 1.39633407
+  },
+  {
+    "data": "2020-10-22",
+    "cota_fechamento": 1.40597131
+  },
+  {
+    "data": "2020-10-23",
+    "cota_fechamento": 1.42218225
+  },
+  {
+    "data": "2020-10-26",
+    "cota_fechamento": 1.4011431
+  },
+  {
+    "data": "2020-10-27",
+    "cota_fechamento": 1.36878058
+  },
+  {
+    "data": "2020-10-28",
+    "cota_fechamento": 1.34535582
+  },
+  {
+    "data": "2020-10-29",
+    "cota_fechamento": 1.25497216
+  },
+  {
+    "data": "2020-10-30",
+    "cota_fechamento": 1.28089181
+  },
+  {
+    "data": "2020-11-03",
+    "cota_fechamento": 1.23141703
+  },
+  {
+    "data": "2020-11-04",
+    "cota_fechamento": 1.24513516
+  },
+  {
+    "data": "2020-11-05",
+    "cota_fechamento": 1.2862322
+  },
+  {
+    "data": "2020-11-06",
+    "cota_fechamento": 1.30732895
+  },
+  {
+    "data": "2020-11-09",
+    "cota_fechamento": 1.35364898
+  },
+  {
+    "data": "2020-11-10",
+    "cota_fechamento": 1.37742186
+  },
+  {
+    "data": "2020-11-11",
+    "cota_fechamento": 1.37026874
+  },
+  {
+    "data": "2020-11-12",
+    "cota_fechamento": 1.35132867
+  },
+  {
+    "data": "2020-11-13",
+    "cota_fechamento": 1.32471161
+  },
+  {
+    "data": "2020-11-16",
+    "cota_fechamento": 1.38239858
+  },
+  {
+    "data": "2020-11-17",
+    "cota_fechamento": 1.39937164
+  },
+  {
+    "data": "2020-11-18",
+    "cota_fechamento": 1.41089346
+  },
+  {
+    "data": "2020-11-19",
+    "cota_fechamento": 1.41150137
+  },
+  {
+    "data": "2020-11-20",
+    "cota_fechamento": 1.52035178
+  },
+  {
+    "data": "2020-11-23",
+    "cota_fechamento": 1.49727262
+  },
+  {
+    "data": "2020-11-24",
+    "cota_fechamento": 1.53604029
+  },
+  {
+    "data": "2020-11-25",
+    "cota_fechamento": 1.53257361
+  },
+  {
+    "data": "2020-11-26",
+    "cota_fechamento": 1.58010511
+  },
+  {
+    "data": "2020-11-27",
+    "cota_fechamento": 1.60794156
+  },
+  {
+    "data": "2020-11-30",
+    "cota_fechamento": 1.62068264
+  },
+  {
+    "data": "2020-12-01",
+    "cota_fechamento": 1.59372486
+  },
+  {
+    "data": "2020-12-02",
+    "cota_fechamento": 1.65452538
+  },
+  {
+    "data": "2020-12-03",
+    "cota_fechamento": 1.63953967
+  },
+  {
+    "data": "2020-12-04",
+    "cota_fechamento": 1.67428219
+  },
+  {
+    "data": "2020-12-07",
+    "cota_fechamento": 1.70129005
+  },
+  {
+    "data": "2020-12-08",
+    "cota_fechamento": 1.69725987
+  },
+  {
+    "data": "2020-12-09",
+    "cota_fechamento": 1.70071545
+  },
+  {
+    "data": "2020-12-10",
+    "cota_fechamento": 1.71117099
+  },
+  {
+    "data": "2020-12-11",
+    "cota_fechamento": 1.74652307
+  },
+  {
+    "data": "2020-12-14",
+    "cota_fechamento": 1.73063468
+  },
+  {
+    "data": "2020-12-15",
+    "cota_fechamento": 1.72474923
+  },
+  {
+    "data": "2020-12-16",
+    "cota_fechamento": 1.74549604
+  },
+  {
+    "data": "2020-12-17",
+    "cota_fechamento": 1.75485543
+  },
+  {
+    "data": "2020-12-18",
+    "cota_fechamento": 1.76285789
+  },
+  {
+    "data": "2020-12-21",
+    "cota_fechamento": 1.74042261
+  },
+  {
+    "data": "2020-12-22",
+    "cota_fechamento": 1.71888703
+  },
+  {
+    "data": "2020-12-23",
+    "cota_fechamento": 1.74667717
+  },
+  {
+    "data": "2020-12-24",
+    "cota_fechamento": 1.81183369
+  },
+  {
+    "data": "2020-12-28",
+    "cota_fechamento": 1.8116899
+  },
+  {
+    "data": "2020-12-29",
+    "cota_fechamento": 1.84144365
+  },
+  {
+    "data": "2020-12-30",
+    "cota_fechamento": 1.85443303
+  },
+  {
+    "data": "2020-12-31",
+    "cota_fechamento": 1.87334738
+  },
+  {
+    "data": "2021-01-04",
+    "cota_fechamento": 1.8731987
+  },
+  {
+    "data": "2021-01-05",
+    "cota_fechamento": 1.89742091
+  },
+  {
+    "data": "2021-01-06",
+    "cota_fechamento": 1.88813015
+  },
+  {
+    "data": "2021-01-07",
+    "cota_fechamento": 1.85011922
+  },
+  {
+    "data": "2021-01-08",
+    "cota_fechamento": 1.85983432
+  },
+  {
+    "data": "2021-01-11",
+    "cota_fechamento": 1.91973115
+  },
+  {
+    "data": "2021-01-12",
+    "cota_fechamento": 1.94092449
+  },
+  {
+    "data": "2021-01-13",
+    "cota_fechamento": 1.952702
+  },
+  {
+    "data": "2021-01-14",
+    "cota_fechamento": 1.96780172
+  },
+  {
+    "data": "2021-01-15",
+    "cota_fechamento": 1.98973958
+  },
+  {
+    "data": "2021-01-18",
+    "cota_fechamento": 1.94614527
+  },
+  {
+    "data": "2021-01-19",
+    "cota_fechamento": 1.94763544
+  },
+  {
+    "data": "2021-01-20",
+    "cota_fechamento": 1.95694683
+  },
+  {
+    "data": "2021-01-21",
+    "cota_fechamento": 1.92877628
+  },
+  {
+    "data": "2021-01-22",
+    "cota_fechamento": 1.90942764
+  },
+  {
+    "data": "2021-01-25",
+    "cota_fechamento": 1.89003435
+  },
+  {
+    "data": "2021-01-26",
+    "cota_fechamento": 1.88988434
+  },
+  {
+    "data": "2021-01-27",
+    "cota_fechamento": 1.852514
+  },
+  {
+    "data": "2021-01-28",
+    "cota_fechamento": 1.83397026
+  },
+  {
+    "data": "2021-01-29",
+    "cota_fechamento": 1.89705667
+  },
+  {
+    "data": "2021-02-01",
+    "cota_fechamento": 1.87758148
+  },
+  {
+    "data": "2021-02-02",
+    "cota_fechamento": 1.95143875
+  },
+  {
+    "data": "2021-02-03",
+    "cota_fechamento": 2.01314884
+  },
+  {
+    "data": "2021-02-04",
+    "cota_fechamento": 2.06499527
+  },
+  {
+    "data": "2021-02-05",
+    "cota_fechamento": 2.06038308
+  },
+  {
+    "data": "2021-02-08",
+    "cota_fechamento": 2.08695139
+  },
+  {
+    "data": "2021-02-09",
+    "cota_fechamento": 2.13732719
+  },
+  {
+    "data": "2021-02-10",
+    "cota_fechamento": 2.10364453
+  },
+  {
+    "data": "2021-02-11",
+    "cota_fechamento": 2.05917859
+  },
+  {
+    "data": "2021-02-12",
+    "cota_fechamento": 2.04483529
+  },
+  {
+    "data": "2021-02-17",
+    "cota_fechamento": 2.06462856
+  },
+  {
+    "data": "2021-02-18",
+    "cota_fechamento": 2.13314665
+  },
+  {
+    "data": "2021-02-19",
+    "cota_fechamento": 2.1128947
+  },
+  {
+    "data": "2021-02-22",
+    "cota_fechamento": 2.13425005
+  },
+  {
+    "data": "2021-02-23",
+    "cota_fechamento": 2.09744976
+  },
+  {
+    "data": "2021-02-24",
+    "cota_fechamento": 2.10427931
+  },
+  {
+    "data": "2021-02-25",
+    "cota_fechamento": 2.09653849
+  },
+  {
+    "data": "2021-02-26",
+    "cota_fechamento": 2.02578005
+  },
+  {
+    "data": "2021-03-01",
+    "cota_fechamento": 1.99277629
+  },
+  {
+    "data": "2021-03-02",
+    "cota_fechamento": 2.02248988
+  },
+  {
+    "data": "2021-03-03",
+    "cota_fechamento": 2.00401171
+  },
+  {
+    "data": "2021-03-04",
+    "cota_fechamento": 2.01945753
+  },
+  {
+    "data": "2021-03-05",
+    "cota_fechamento": 2.0529342
+  },
+  {
+    "data": "2021-03-08",
+    "cota_fechamento": 2.12802486
+  },
+  {
+    "data": "2021-03-09",
+    "cota_fechamento": 2.00809944
+  },
+  {
+    "data": "2021-03-10",
+    "cota_fechamento": 2.04635853
+  },
+  {
+    "data": "2021-03-11",
+    "cota_fechamento": 2.01563543
+  },
+  {
+    "data": "2021-03-12",
+    "cota_fechamento": 2.06391286
+  },
+  {
+    "data": "2021-03-15",
+    "cota_fechamento": 2.09641326
+  },
+  {
+    "data": "2021-03-16",
+    "cota_fechamento": 2.13846395
+  },
+  {
+    "data": "2021-03-17",
+    "cota_fechamento": 2.12985995
+  },
+  {
+    "data": "2021-03-18",
+    "cota_fechamento": 2.19474047
+  },
+  {
+    "data": "2021-03-19",
+    "cota_fechamento": 2.12918353
+  },
+  {
+    "data": "2021-03-22",
+    "cota_fechamento": 2.14157162
+  },
+  {
+    "data": "2021-03-23",
+    "cota_fechamento": 2.09741344
+  },
+  {
+    "data": "2021-03-24",
+    "cota_fechamento": 2.09217404
+  },
+  {
+    "data": "2021-03-25",
+    "cota_fechamento": 2.04981132
+  },
+  {
+    "data": "2021-03-26",
+    "cota_fechamento": 2.06830568
+  },
+  {
+    "data": "2021-03-29",
+    "cota_fechamento": 2.06941054
+  },
+  {
+    "data": "2021-03-30",
+    "cota_fechamento": 2.07227697
+  },
+  {
+    "data": "2021-03-31",
+    "cota_fechamento": 2.09463236
+  },
+  {
+    "data": "2021-04-01",
+    "cota_fechamento": 2.10238922
+  },
+  {
+    "data": "2021-04-05",
+    "cota_fechamento": 2.07427539
+  },
+  {
+    "data": "2021-04-06",
+    "cota_fechamento": 2.1088003
+  },
+  {
+    "data": "2021-04-07",
+    "cota_fechamento": 2.13544646
+  },
+  {
+    "data": "2021-04-08",
+    "cota_fechamento": 2.12988565
+  },
+  {
+    "data": "2021-04-09",
+    "cota_fechamento": 2.16921689
+  },
+  {
+    "data": "2021-04-12",
+    "cota_fechamento": 2.19389058
+  },
+  {
+    "data": "2021-04-13",
+    "cota_fechamento": 2.19231026
+  },
+  {
+    "data": "2021-04-14",
+    "cota_fechamento": 2.19762527
+  },
+  {
+    "data": "2021-04-15",
+    "cota_fechamento": 2.19447307
+  },
+  {
+    "data": "2021-04-16",
+    "cota_fechamento": 2.18473099
+  },
+  {
+    "data": "2021-04-19",
+    "cota_fechamento": 2.1811396
+  },
+  {
+    "data": "2021-04-20",
+    "cota_fechamento": 2.16617526
+  },
+  {
+    "data": "2021-04-22",
+    "cota_fechamento": 2.15639413
+  },
+  {
+    "data": "2021-04-23",
+    "cota_fechamento": 2.18419508
+  },
+  {
+    "data": "2021-04-26",
+    "cota_fechamento": 2.21859388
+  },
+  {
+    "data": "2021-04-27",
+    "cota_fechamento": 2.21781844
+  },
+  {
+    "data": "2021-04-28",
+    "cota_fechamento": 2.21657996
+  },
+  {
+    "data": "2021-04-29",
+    "cota_fechamento": 2.23877965
+  },
+  {
+    "data": "2021-04-30",
+    "cota_fechamento": 2.29835854
+  },
+  {
+    "data": "2021-05-03",
+    "cota_fechamento": 2.28381285
+  },
+  {
+    "data": "2021-05-04",
+    "cota_fechamento": 2.29898674
+  },
+  {
+    "data": "2021-05-05",
+    "cota_fechamento": 2.28186586
+  },
+  {
+    "data": "2021-05-06",
+    "cota_fechamento": 2.30029602
+  },
+  {
+    "data": "2021-05-07",
+    "cota_fechamento": 2.31723636
+  },
+  {
+    "data": "2021-05-10",
+    "cota_fechamento": 2.32885003
+  },
+  {
+    "data": "2021-05-11",
+    "cota_fechamento": 2.26045751
+  },
+  {
+    "data": "2021-05-12",
+    "cota_fechamento": 2.23381023
+  },
+  {
+    "data": "2021-05-13",
+    "cota_fechamento": 2.15648939
+  },
+  {
+    "data": "2021-05-14",
+    "cota_fechamento": 2.13570248
+  },
+  {
+    "data": "2021-05-17",
+    "cota_fechamento": 2.16525895
+  },
+  {
+    "data": "2021-05-18",
+    "cota_fechamento": 2.20303477
+  },
+  {
+    "data": "2021-05-19",
+    "cota_fechamento": 2.21059161
+  },
+  {
+    "data": "2021-05-20",
+    "cota_fechamento": 2.21648287
+  },
+  {
+    "data": "2021-05-21",
+    "cota_fechamento": 2.21290378
+  },
+  {
+    "data": "2021-05-24",
+    "cota_fechamento": 2.21506534
+  },
+  {
+    "data": "2021-05-25",
+    "cota_fechamento": 2.30481299
+  },
+  {
+    "data": "2021-05-26",
+    "cota_fechamento": 2.27586072
+  },
+  {
+    "data": "2021-05-27",
+    "cota_fechamento": 2.26674632
+  },
+  {
+    "data": "2021-05-28",
+    "cota_fechamento": 2.2930401
+  },
+  {
+    "data": "2021-05-31",
+    "cota_fechamento": 2.31641046
+  },
+  {
+    "data": "2021-06-01",
+    "cota_fechamento": 2.34379022
+  },
+  {
+    "data": "2021-06-02",
+    "cota_fechamento": 2.3333621
+  },
+  {
+    "data": "2021-06-04",
+    "cota_fechamento": 2.35904844
+  },
+  {
+    "data": "2021-06-07",
+    "cota_fechamento": 2.37325828
+  },
+  {
+    "data": "2021-06-08",
+    "cota_fechamento": 2.32837103
+  },
+  {
+    "data": "2021-06-09",
+    "cota_fechamento": 2.29372156
+  },
+  {
+    "data": "2021-06-10",
+    "cota_fechamento": 2.30218413
+  },
+  {
+    "data": "2021-06-11",
+    "cota_fechamento": 2.30888085
+  },
+  {
+    "data": "2021-06-14",
+    "cota_fechamento": 2.3080862
+  },
+  {
+    "data": "2021-06-15",
+    "cota_fechamento": 2.27815615
+  },
+  {
+    "data": "2021-06-16",
+    "cota_fechamento": 2.2832707
+  },
+  {
+    "data": "2021-06-17",
+    "cota_fechamento": 2.26747136
+  },
+  {
+    "data": "2021-06-18",
+    "cota_fechamento": 2.22877701
+  },
+  {
+    "data": "2021-06-21",
+    "cota_fechamento": 2.26948214
+  },
+  {
+    "data": "2021-06-22",
+    "cota_fechamento": 2.27654552
+  },
+  {
+    "data": "2021-06-23",
+    "cota_fechamento": 2.27622038
+  },
+  {
+    "data": "2021-06-24",
+    "cota_fechamento": 2.28849322
+  },
+  {
+    "data": "2021-06-25",
+    "cota_fechamento": 2.2958223
+  },
+  {
+    "data": "2021-06-28",
+    "cota_fechamento": 2.26503764
+  },
+  {
+    "data": "2021-06-29",
+    "cota_fechamento": 2.27759643
+  },
+  {
+    "data": "2021-06-30",
+    "cota_fechamento": 2.29202157
+  },
+  {
+    "data": "2021-07-01",
+    "cota_fechamento": 2.31854654
+  },
+  {
+    "data": "2021-07-02",
+    "cota_fechamento": 2.33848883
+  },
+  {
+    "data": "2021-07-05",
+    "cota_fechamento": 2.40678575
+  },
+  {
+    "data": "2021-07-06",
+    "cota_fechamento": 2.4567098
+  },
+  {
+    "data": "2021-07-07",
+    "cota_fechamento": 2.41019772
+  },
+  {
+    "data": "2021-07-08",
+    "cota_fechamento": 2.42074182
+  },
+  {
+    "data": "2021-07-09",
+    "cota_fechamento": 2.40375825
+  },
+  {
+    "data": "2021-07-12",
+    "cota_fechamento": 2.40360564
+  },
+  {
+    "data": "2021-07-13",
+    "cota_fechamento": 2.42492767
+  },
+  {
+    "data": "2021-07-14",
+    "cota_fechamento": 2.44072926
+  },
+  {
+    "data": "2021-07-15",
+    "cota_fechamento": 2.46143795
+  },
+  {
+    "data": "2021-07-16",
+    "cota_fechamento": 2.44939649
+  },
+  {
+    "data": "2021-07-19",
+    "cota_fechamento": 2.42718724
+  },
+  {
+    "data": "2021-07-20",
+    "cota_fechamento": 2.37451847
+  },
+  {
+    "data": "2021-07-21",
+    "cota_fechamento": 2.40187493
+  },
+  {
+    "data": "2021-07-22",
+    "cota_fechamento": 2.40775271
+  },
+  {
+    "data": "2021-07-23",
+    "cota_fechamento": 2.37644116
+  },
+  {
+    "data": "2021-07-26",
+    "cota_fechamento": 2.37676532
+  },
+  {
+    "data": "2021-07-27",
+    "cota_fechamento": 2.3471381
+  },
+  {
+    "data": "2021-07-28",
+    "cota_fechamento": 2.30345314
+  },
+  {
+    "data": "2021-07-29",
+    "cota_fechamento": 2.29733252
+  },
+  {
+    "data": "2021-07-30",
+    "cota_fechamento": 2.3326806
+  },
+  {
+    "data": "2021-08-02",
+    "cota_fechamento": 2.27694412
+  },
+  {
+    "data": "2021-08-03",
+    "cota_fechamento": 2.29513625
+  },
+  {
+    "data": "2021-08-04",
+    "cota_fechamento": 2.30288208
+  },
+  {
+    "data": "2021-08-05",
+    "cota_fechamento": 2.28497404
+  },
+  {
+    "data": "2021-08-06",
+    "cota_fechamento": 2.27690996
+  },
+  {
+    "data": "2021-08-09",
+    "cota_fechamento": 2.2922599
+  },
+  {
+    "data": "2021-08-10",
+    "cota_fechamento": 2.33461914
+  },
+  {
+    "data": "2021-08-11",
+    "cota_fechamento": 2.330752
+  },
+  {
+    "data": "2021-08-12",
+    "cota_fechamento": 2.28130671
+  },
+  {
+    "data": "2021-08-13",
+    "cota_fechamento": 2.26785359
+  },
+  {
+    "data": "2021-08-16",
+    "cota_fechamento": 2.20470208
+  },
+  {
+    "data": "2021-08-17",
+    "cota_fechamento": 2.09035888
+  },
+  {
+    "data": "2021-08-18",
+    "cota_fechamento": 2.05673174
+  },
+  {
+    "data": "2021-08-19",
+    "cota_fechamento": 2.08507243
+  },
+  {
+    "data": "2021-08-20",
+    "cota_fechamento": 2.12358908
+  },
+  {
+    "data": "2021-08-23",
+    "cota_fechamento": 2.13698498
+  },
+  {
+    "data": "2021-08-24",
+    "cota_fechamento": 2.16426137
+  },
+  {
+    "data": "2021-08-25",
+    "cota_fechamento": 2.22118235
+  },
+  {
+    "data": "2021-08-26",
+    "cota_fechamento": 2.2155684
+  },
+  {
+    "data": "2021-08-27",
+    "cota_fechamento": 2.1569983
+  },
+  {
+    "data": "2021-08-30",
+    "cota_fechamento": 2.24202823
+  },
+  {
+    "data": "2021-08-31",
+    "cota_fechamento": 2.21105832
+  },
+  {
+    "data": "2021-09-01",
+    "cota_fechamento": 2.15543323
+  },
+  {
+    "data": "2021-09-02",
+    "cota_fechamento": 2.10517656
+  },
+  {
+    "data": "2021-09-03",
+    "cota_fechamento": 2.06230599
+  },
+  {
+    "data": "2021-09-06",
+    "cota_fechamento": 2.02278777
+  },
+  {
+    "data": "2021-09-08",
+    "cota_fechamento": 2.0646342
+  },
+  {
+    "data": "2021-09-09",
+    "cota_fechamento": 1.97583905
+  },
+  {
+    "data": "2021-09-10",
+    "cota_fechamento": 2.05351253
+  },
+  {
+    "data": "2021-09-13",
+    "cota_fechamento": 2.03695907
+  },
+  {
+    "data": "2021-09-14",
+    "cota_fechamento": 2.01152434
+  },
+  {
+    "data": "2021-09-15",
+    "cota_fechamento": 2.12902527
+  },
+  {
+    "data": "2021-09-16",
+    "cota_fechamento": 2.19192055
+  },
+  {
+    "data": "2021-09-17",
+    "cota_fechamento": 2.14622797
+  },
+  {
+    "data": "2021-09-20",
+    "cota_fechamento": 2.06939033
+  },
+  {
+    "data": "2021-09-21",
+    "cota_fechamento": 1.97750696
+  },
+  {
+    "data": "2021-09-22",
+    "cota_fechamento": 2.00878112
+  },
+  {
+    "data": "2021-09-23",
+    "cota_fechamento": 2.09865087
+  },
+  {
+    "data": "2021-09-24",
+    "cota_fechamento": 2.1302095
+  },
+  {
+    "data": "2021-09-27",
+    "cota_fechamento": 2.1310662
+  },
+  {
+    "data": "2021-09-28",
+    "cota_fechamento": 2.12092302
+  },
+  {
+    "data": "2021-09-29",
+    "cota_fechamento": 2.00129554
+  },
+  {
+    "data": "2021-09-30",
+    "cota_fechamento": 2.03706977
+  },
+  {
+    "data": "2021-10-01",
+    "cota_fechamento": 2.0617874
+  },
+  {
+    "data": "2021-10-04",
+    "cota_fechamento": 2.12897345
+  },
+  {
+    "data": "2021-10-05",
+    "cota_fechamento": 2.04463125
+  },
+  {
+    "data": "2021-10-06",
+    "cota_fechamento": 2.00610678
+  },
+  {
+    "data": "2021-10-07",
+    "cota_fechamento": 2.00350437
+  },
+  {
+    "data": "2021-10-08",
+    "cota_fechamento": 2.05720415
+  },
+  {
+    "data": "2021-10-11",
+    "cota_fechamento": 2.09405535
+  },
+  {
+    "data": "2021-10-13",
+    "cota_fechamento": 2.10570252
+  },
+  {
+    "data": "2021-10-14",
+    "cota_fechamento": 2.1298229
+  },
+  {
+    "data": "2021-10-15",
+    "cota_fechamento": 2.19739888
+  },
+  {
+    "data": "2021-10-18",
+    "cota_fechamento": 2.20032187
+  },
+  {
+    "data": "2021-10-19",
+    "cota_fechamento": 2.24634994
+  },
+  {
+    "data": "2021-10-20",
+    "cota_fechamento": 2.19082994
+  },
+  {
+    "data": "2021-10-21",
+    "cota_fechamento": 2.18727334
+  },
+  {
+    "data": "2021-10-22",
+    "cota_fechamento": 2.09067815
+  },
+  {
+    "data": "2021-10-25",
+    "cota_fechamento": 1.99757484
+  },
+  {
+    "data": "2021-10-26",
+    "cota_fechamento": 2.06027241
+  },
+  {
+    "data": "2021-10-27",
+    "cota_fechamento": 1.97168163
+  },
+  {
+    "data": "2021-10-28",
+    "cota_fechamento": 1.93798083
+  },
+  {
+    "data": "2021-10-29",
+    "cota_fechamento": 1.86092305
+  },
+  {
+    "data": "2021-11-01",
+    "cota_fechamento": 1.78570095
+  },
+  {
+    "data": "2021-11-03",
+    "cota_fechamento": 1.85550024
+  },
+  {
+    "data": "2021-11-04",
+    "cota_fechamento": 1.94072897
+  },
+  {
+    "data": "2021-11-05",
+    "cota_fechamento": 1.91437843
+  },
+  {
+    "data": "2021-11-08",
+    "cota_fechamento": 2.07143975
+  },
+  {
+    "data": "2021-11-09",
+    "cota_fechamento": 2.06364592
+  },
+  {
+    "data": "2021-11-10",
+    "cota_fechamento": 2.0706253
+  },
+  {
+    "data": "2021-11-11",
+    "cota_fechamento": 2.08336408
+  },
+  {
+    "data": "2021-11-12",
+    "cota_fechamento": 2.09681627
+  },
+  {
+    "data": "2021-11-16",
+    "cota_fechamento": 2.0259294
+  },
+  {
+    "data": "2021-11-17",
+    "cota_fechamento": 1.93912943
+  },
+  {
+    "data": "2021-11-18",
+    "cota_fechamento": 1.87434427
+  },
+  {
+    "data": "2021-11-19",
+    "cota_fechamento": 1.8356853
+  },
+  {
+    "data": "2021-11-22",
+    "cota_fechamento": 1.88113243
+  },
+  {
+    "data": "2021-11-23",
+    "cota_fechamento": 1.810919
+  },
+  {
+    "data": "2021-11-24",
+    "cota_fechamento": 1.83777779
+  },
+  {
+    "data": "2021-11-25",
+    "cota_fechamento": 1.8682901
+  },
+  {
+    "data": "2021-11-26",
+    "cota_fechamento": 1.93673994
+  },
+  {
+    "data": "2021-11-29",
+    "cota_fechamento": 1.8405466
+  },
+  {
+    "data": "2021-11-30",
+    "cota_fechamento": 1.86308879
+  },
+  {
+    "data": "2021-12-01",
+    "cota_fechamento": 1.8094267
+  },
+  {
+    "data": "2021-12-02",
+    "cota_fechamento": 1.78508507
+  },
+  {
+    "data": "2021-12-03",
+    "cota_fechamento": 1.82508583
+  },
+  {
+    "data": "2021-12-06",
+    "cota_fechamento": 1.83889526
+  },
+  {
+    "data": "2021-12-07",
+    "cota_fechamento": 1.89395619
+  },
+  {
+    "data": "2021-12-08",
+    "cota_fechamento": 1.92743467
+  },
+  {
+    "data": "2021-12-09",
+    "cota_fechamento": 1.99605321
+  },
+  {
+    "data": "2021-12-10",
+    "cota_fechamento": 1.9330263
+  },
+  {
+    "data": "2021-12-13",
+    "cota_fechamento": 1.96705071
+  },
+  {
+    "data": "2021-12-14",
+    "cota_fechamento": 1.95276845
+  },
+  {
+    "data": "2021-12-15",
+    "cota_fechamento": 1.86953507
+  },
+  {
+    "data": "2021-12-16",
+    "cota_fechamento": 1.91658433
+  },
+  {
+    "data": "2021-12-17",
+    "cota_fechamento": 1.88861237
+  },
+  {
+    "data": "2021-12-20",
+    "cota_fechamento": 1.89116311
+  },
+  {
+    "data": "2021-12-21",
+    "cota_fechamento": 1.83497831
+  },
+  {
+    "data": "2021-12-22",
+    "cota_fechamento": 1.82945282
+  },
+  {
+    "data": "2021-12-23",
+    "cota_fechamento": 1.8214011
+  },
+  {
+    "data": "2021-12-24",
+    "cota_fechamento": 1.81397776
+  },
+  {
+    "data": "2021-12-27",
+    "cota_fechamento": 1.81383379
+  },
+  {
+    "data": "2021-12-28",
+    "cota_fechamento": 1.85086012
+  },
+  {
+    "data": "2021-12-29",
+    "cota_fechamento": 1.85090048
+  },
+  {
+    "data": "2021-12-30",
+    "cota_fechamento": 1.8487808
+  },
+  {
+    "data": "2021-12-31",
+    "cota_fechamento": 1.87991136
+  },
+  {
+    "data": "2022-01-03",
+    "cota_fechamento": 1.87976216
+  },
+  {
+    "data": "2022-01-04",
+    "cota_fechamento": 1.83988723
+  },
+  {
+    "data": "2022-01-05",
+    "cota_fechamento": 1.76175174
+  },
+  {
+    "data": "2022-01-06",
+    "cota_fechamento": 1.58786058
+  },
+  {
+    "data": "2022-01-07",
+    "cota_fechamento": 1.57344354
+  },
+  {
+    "data": "2022-01-10",
+    "cota_fechamento": 1.66548675
+  },
+  {
+    "data": "2022-01-11",
+    "cota_fechamento": 1.63391414
+  },
+  {
+    "data": "2022-01-12",
+    "cota_fechamento": 1.67957351
+  },
+  {
+    "data": "2022-01-13",
+    "cota_fechamento": 1.72624024
+  },
+  {
+    "data": "2022-01-14",
+    "cota_fechamento": 1.68926446
+  },
+  {
+    "data": "2022-01-17",
+    "cota_fechamento": 1.71935368
+  },
+  {
+    "data": "2022-01-18",
+    "cota_fechamento": 1.73007121
+  },
+  {
+    "data": "2022-01-19",
+    "cota_fechamento": 1.73976799
+  },
+  {
+    "data": "2022-01-20",
+    "cota_fechamento": 1.74677231
+  },
+  {
+    "data": "2022-01-21",
+    "cota_fechamento": 1.82729188
+  },
+  {
+    "data": "2022-01-24",
+    "cota_fechamento": 1.7958803
+  },
+  {
+    "data": "2022-01-25",
+    "cota_fechamento": 1.7585555
+  },
+  {
+    "data": "2022-01-26",
+    "cota_fechamento": 1.80356394
+  },
+  {
+    "data": "2022-01-27",
+    "cota_fechamento": 1.81218843
+  },
+  {
+    "data": "2022-01-28",
+    "cota_fechamento": 1.86076336
+  },
+  {
+    "data": "2022-01-31",
+    "cota_fechamento": 1.87066949
+  },
+  {
+    "data": "2022-02-01",
+    "cota_fechamento": 1.90795636
+  },
+  {
+    "data": "2022-02-02",
+    "cota_fechamento": 1.92244632
+  },
+  {
+    "data": "2022-02-03",
+    "cota_fechamento": 1.86601218
+  },
+  {
+    "data": "2022-02-04",
+    "cota_fechamento": 1.83035458
+  },
+  {
+    "data": "2022-02-07",
+    "cota_fechamento": 1.86828681
+  },
+  {
+    "data": "2022-02-08",
+    "cota_fechamento": 1.84203445
+  },
+  {
+    "data": "2022-02-09",
+    "cota_fechamento": 1.86907547
+  },
+  {
+    "data": "2022-02-10",
+    "cota_fechamento": 1.87526507
+  },
+  {
+    "data": "2022-02-11",
+    "cota_fechamento": 1.87514631
+  },
+  {
+    "data": "2022-02-14",
+    "cota_fechamento": 1.85927397
+  },
+  {
+    "data": "2022-02-15",
+    "cota_fechamento": 1.89799256
+  },
+  {
+    "data": "2022-02-16",
+    "cota_fechamento": 1.93935749
+  },
+  {
+    "data": "2022-02-17",
+    "cota_fechamento": 1.93551159
+  },
+  {
+    "data": "2022-02-18",
+    "cota_fechamento": 1.89471136
+  },
+  {
+    "data": "2022-02-21",
+    "cota_fechamento": 1.85697766
+  },
+  {
+    "data": "2022-02-22",
+    "cota_fechamento": 1.84181522
+  },
+  {
+    "data": "2022-02-23",
+    "cota_fechamento": 1.82885549
+  },
+  {
+    "data": "2022-02-24",
+    "cota_fechamento": 1.80876553
+  },
+  {
+    "data": "2022-02-25",
+    "cota_fechamento": 1.78314114
+  },
+  {
+    "data": "2022-03-02",
+    "cota_fechamento": 1.80999539
+  },
+  {
+    "data": "2022-03-03",
+    "cota_fechamento": 1.86464014
+  },
+  {
+    "data": "2022-03-04",
+    "cota_fechamento": 1.87828999
+  },
+  {
+    "data": "2022-03-07",
+    "cota_fechamento": 1.82079332
+  },
+  {
+    "data": "2022-03-08",
+    "cota_fechamento": 1.72513484
+  },
+  {
+    "data": "2022-03-09",
+    "cota_fechamento": 1.75660615
+  },
+  {
+    "data": "2022-03-10",
+    "cota_fechamento": 1.81223117
+  },
+  {
+    "data": "2022-03-11",
+    "cota_fechamento": 1.80592945
+  },
+  {
+    "data": "2022-03-14",
+    "cota_fechamento": 1.72254906
+  },
+  {
+    "data": "2022-03-15",
+    "cota_fechamento": 1.65456125
+  },
+  {
+    "data": "2022-03-16",
+    "cota_fechamento": 1.68697023
+  },
+  {
+    "data": "2022-03-17",
+    "cota_fechamento": 1.71029691
+  },
+  {
+    "data": "2022-03-18",
+    "cota_fechamento": 1.79842195
+  },
+  {
+    "data": "2022-03-21",
+    "cota_fechamento": 1.86151669
+  },
+  {
+    "data": "2022-03-22",
+    "cota_fechamento": 1.82822922
+  },
+  {
+    "data": "2022-03-23",
+    "cota_fechamento": 1.87788515
+  },
+  {
+    "data": "2022-03-24",
+    "cota_fechamento": 1.91473148
+  },
+  {
+    "data": "2022-03-25",
+    "cota_fechamento": 1.95386903
+  },
+  {
+    "data": "2022-03-28",
+    "cota_fechamento": 1.92875807
+  },
+  {
+    "data": "2022-03-29",
+    "cota_fechamento": 1.92434872
+  },
+  {
+    "data": "2022-03-30",
+    "cota_fechamento": 1.97305398
+  },
+  {
+    "data": "2022-03-31",
+    "cota_fechamento": 1.93709636
+  },
+  {
+    "data": "2022-04-01",
+    "cota_fechamento": 1.8884738
+  },
+  {
+    "data": "2022-04-04",
+    "cota_fechamento": 1.93872697
+  },
+  {
+    "data": "2022-04-05",
+    "cota_fechamento": 1.94513476
+  },
+  {
+    "data": "2022-04-06",
+    "cota_fechamento": 1.89479559
+  },
+  {
+    "data": "2022-04-07",
+    "cota_fechamento": 1.82022497
+  },
+  {
+    "data": "2022-04-08",
+    "cota_fechamento": 1.81903158
+  },
+  {
+    "data": "2022-04-11",
+    "cota_fechamento": 1.79781781
+  },
+  {
+    "data": "2022-04-12",
+    "cota_fechamento": 1.77388276
+  },
+  {
+    "data": "2022-04-13",
+    "cota_fechamento": 1.75593921
+  },
+  {
+    "data": "2022-04-14",
+    "cota_fechamento": 1.78485729
+  },
+  {
+    "data": "2022-04-18",
+    "cota_fechamento": 1.84348314
+  },
+  {
+    "data": "2022-04-19",
+    "cota_fechamento": 1.90189502
+  },
+  {
+    "data": "2022-04-20",
+    "cota_fechamento": 1.89884549
+  },
+  {
+    "data": "2022-04-22",
+    "cota_fechamento": 1.81897069
+  },
+  {
+    "data": "2022-04-25",
+    "cota_fechamento": 1.82377177
+  },
+  {
+    "data": "2022-04-26",
+    "cota_fechamento": 1.80879968
+  },
+  {
+    "data": "2022-04-27",
+    "cota_fechamento": 1.81974878
+  },
+  {
+    "data": "2022-04-28",
+    "cota_fechamento": 1.87413598
+  },
+  {
+    "data": "2022-04-29",
+    "cota_fechamento": 1.86305206
+  },
+  {
+    "data": "2022-05-02",
+    "cota_fechamento": 1.78944372
+  },
+  {
+    "data": "2022-05-03",
+    "cota_fechamento": 1.80187864
+  },
+  {
+    "data": "2022-05-04",
+    "cota_fechamento": 1.88239691
+  },
+  {
+    "data": "2022-05-05",
+    "cota_fechamento": 1.82058542
+  },
+  {
+    "data": "2022-05-06",
+    "cota_fechamento": 1.77780628
+  },
+  {
+    "data": "2022-05-09",
+    "cota_fechamento": 1.65631627
+  },
+  {
+    "data": "2022-05-10",
+    "cota_fechamento": 1.6932983
+  },
+  {
+    "data": "2022-05-11",
+    "cota_fechamento": 1.69124884
+  },
+  {
+    "data": "2022-05-12",
+    "cota_fechamento": 1.72480351
+  },
+  {
+    "data": "2022-05-13",
+    "cota_fechamento": 1.79050926
+  },
+  {
+    "data": "2022-05-16",
+    "cota_fechamento": 1.81624985
+  },
+  {
+    "data": "2022-05-17",
+    "cota_fechamento": 1.78912262
+  },
+  {
+    "data": "2022-05-18",
+    "cota_fechamento": 1.71408468
+  },
+  {
+    "data": "2022-05-19",
+    "cota_fechamento": 1.7228503
+  },
+  {
+    "data": "2022-05-20",
+    "cota_fechamento": 1.73892609
+  },
+  {
+    "data": "2022-05-23",
+    "cota_fechamento": 1.74822915
+  },
+  {
+    "data": "2022-05-24",
+    "cota_fechamento": 1.75085124
+  },
+  {
+    "data": "2022-05-25",
+    "cota_fechamento": 1.75157594
+  },
+  {
+    "data": "2022-05-26",
+    "cota_fechamento": 1.76888325
+  },
+  {
+    "data": "2022-05-27",
+    "cota_fechamento": 1.82826414
+  },
+  {
+    "data": "2022-05-30",
+    "cota_fechamento": 1.79374876
+  },
+  {
+    "data": "2022-05-31",
+    "cota_fechamento": 1.76829481
+  },
+  {
+    "data": "2022-06-01",
+    "cota_fechamento": 1.74900737
+  },
+  {
+    "data": "2022-06-02",
+    "cota_fechamento": 1.78838043
+  },
+  {
+    "data": "2022-06-03",
+    "cota_fechamento": 1.73227626
+  },
+  {
+    "data": "2022-06-06",
+    "cota_fechamento": 1.69315577
+  },
+  {
+    "data": "2022-06-07",
+    "cota_fechamento": 1.6668352
+  },
+  {
+    "data": "2022-06-08",
+    "cota_fechamento": 1.64055167
+  },
+  {
+    "data": "2022-06-09",
+    "cota_fechamento": 1.62631423
+  },
+  {
+    "data": "2022-06-10",
+    "cota_fechamento": 1.57026182
+  },
+  {
+    "data": "2022-06-13",
+    "cota_fechamento": 1.49111211
+  },
+  {
+    "data": "2022-06-14",
+    "cota_fechamento": 1.45228999
+  },
+  {
+    "data": "2022-06-15",
+    "cota_fechamento": 1.49318436
+  },
+  {
+    "data": "2022-06-17",
+    "cota_fechamento": 1.43554274
+  },
+  {
+    "data": "2022-06-20",
+    "cota_fechamento": 1.42268749
+  },
+  {
+    "data": "2022-06-21",
+    "cota_fechamento": 1.41545346
+  },
+  {
+    "data": "2022-06-22",
+    "cota_fechamento": 1.36784071
+  },
+  {
+    "data": "2022-06-23",
+    "cota_fechamento": 1.35223731
+  },
+  {
+    "data": "2022-06-24",
+    "cota_fechamento": 1.37794349
+  },
+  {
+    "data": "2022-06-27",
+    "cota_fechamento": 1.39638797
+  },
+  {
+    "data": "2022-06-28",
+    "cota_fechamento": 1.37488098
+  },
+  {
+    "data": "2022-06-29",
+    "cota_fechamento": 1.3482496
+  },
+  {
+    "data": "2022-06-30",
+    "cota_fechamento": 1.31676325
+  },
+  {
+    "data": "2022-07-01",
+    "cota_fechamento": 1.34929382
+  },
+  {
+    "data": "2022-07-04",
+    "cota_fechamento": 1.34016045
+  },
+  {
+    "data": "2022-07-05",
+    "cota_fechamento": 1.32881763
+  },
+  {
+    "data": "2022-07-06",
+    "cota_fechamento": 1.32658825
+  },
+  {
+    "data": "2022-07-07",
+    "cota_fechamento": 1.3541151
+  },
+  {
+    "data": "2022-07-08",
+    "cota_fechamento": 1.34230327
+  },
+  {
+    "data": "2022-07-11",
+    "cota_fechamento": 1.3081197
+  },
+  {
+    "data": "2022-07-12",
+    "cota_fechamento": 1.31908461
+  },
+  {
+    "data": "2022-07-13",
+    "cota_fechamento": 1.30432327
+  },
+  {
+    "data": "2022-07-14",
+    "cota_fechamento": 1.28804618
+  },
+  {
+    "data": "2022-07-15",
+    "cota_fechamento": 1.27426236
+  },
+  {
+    "data": "2022-07-18",
+    "cota_fechamento": 1.30277404
+  },
+  {
+    "data": "2022-07-19",
+    "cota_fechamento": 1.32576811
+  },
+  {
+    "data": "2022-07-20",
+    "cota_fechamento": 1.37272076
+  },
+  {
+    "data": "2022-07-21",
+    "cota_fechamento": 1.4050999
+  },
+  {
+    "data": "2022-07-22",
+    "cota_fechamento": 1.40138284
+  },
+  {
+    "data": "2022-07-25",
+    "cota_fechamento": 1.40845927
+  },
+  {
+    "data": "2022-07-26",
+    "cota_fechamento": 1.38847794
+  },
+  {
+    "data": "2022-07-27",
+    "cota_fechamento": 1.42618621
+  },
+  {
+    "data": "2022-07-28",
+    "cota_fechamento": 1.44148877
+  },
+  {
+    "data": "2022-07-29",
+    "cota_fechamento": 1.43416393
+  },
+  {
+    "data": "2022-08-01",
+    "cota_fechamento": 1.42726264
+  },
+  {
+    "data": "2022-08-02",
+    "cota_fechamento": 1.42571683
+  },
+  {
+    "data": "2022-08-03",
+    "cota_fechamento": 1.47601334
+  },
+  {
+    "data": "2022-08-04",
+    "cota_fechamento": 1.52329725
+  },
+  {
+    "data": "2022-08-05",
+    "cota_fechamento": 1.55454798
+  },
+  {
+    "data": "2022-08-08",
+    "cota_fechamento": 1.61138567
+  },
+  {
+    "data": "2022-08-09",
+    "cota_fechamento": 1.58023773
+  },
+  {
+    "data": "2022-08-10",
+    "cota_fechamento": 1.58237594
+  },
+  {
+    "data": "2022-08-11",
+    "cota_fechamento": 1.58374052
+  },
+  {
+    "data": "2022-08-12",
+    "cota_fechamento": 1.59474526
+  },
+  {
+    "data": "2022-08-15",
+    "cota_fechamento": 1.62973153
+  },
+  {
+    "data": "2022-08-16",
+    "cota_fechamento": 1.62682792
+  },
+  {
+    "data": "2022-08-17",
+    "cota_fechamento": 1.62234136
+  },
+  {
+    "data": "2022-08-18",
+    "cota_fechamento": 1.61447495
+  },
+  {
+    "data": "2022-08-19",
+    "cota_fechamento": 1.5718999
+  },
+  {
+    "data": "2022-08-22",
+    "cota_fechamento": 1.56420526
+  },
+  {
+    "data": "2022-08-23",
+    "cota_fechamento": 1.59883309
+  },
+  {
+    "data": "2022-08-24",
+    "cota_fechamento": 1.64196964
+  },
+  {
+    "data": "2022-08-25",
+    "cota_fechamento": 1.66752056
+  },
+  {
+    "data": "2022-08-26",
+    "cota_fechamento": 1.65633842
+  },
+  {
+    "data": "2022-08-29",
+    "cota_fechamento": 1.67089232
+  },
+  {
+    "data": "2022-08-30",
+    "cota_fechamento": 1.63873828
+  },
+  {
+    "data": "2022-08-31",
+    "cota_fechamento": 1.62920038
+  },
+  {
+    "data": "2022-09-01",
+    "cota_fechamento": 1.65066354
+  },
+  {
+    "data": "2022-09-02",
+    "cota_fechamento": 1.66955378
+  },
+  {
+    "data": "2022-09-05",
+    "cota_fechamento": 1.7126153
+  },
+  {
+    "data": "2022-09-06",
+    "cota_fechamento": 1.64335448
+  },
+  {
+    "data": "2022-09-08",
+    "cota_fechamento": 1.61682706
+  },
+  {
+    "data": "2022-09-09",
+    "cota_fechamento": 1.65669628
+  },
+  {
+    "data": "2022-09-12",
+    "cota_fechamento": 1.66431029
+  },
+  {
+    "data": "2022-09-13",
+    "cota_fechamento": 1.63463009
+  },
+  {
+    "data": "2022-09-14",
+    "cota_fechamento": 1.66575058
+  },
+  {
+    "data": "2022-09-15",
+    "cota_fechamento": 1.64387442
+  },
+  {
+    "data": "2022-09-16",
+    "cota_fechamento": 1.61399602
+  },
+  {
+    "data": "2022-09-19",
+    "cota_fechamento": 1.63669197
+  },
+  {
+    "data": "2022-09-20",
+    "cota_fechamento": 1.62577248
+  },
+  {
+    "data": "2022-09-21",
+    "cota_fechamento": 1.62338984
+  },
+  {
+    "data": "2022-09-22",
+    "cota_fechamento": 1.68556379
+  },
+  {
+    "data": "2022-09-23",
+    "cota_fechamento": 1.62647398
+  },
+  {
+    "data": "2022-09-26",
+    "cota_fechamento": 1.54559734
+  },
+  {
+    "data": "2022-09-27",
+    "cota_fechamento": 1.50444056
+  },
+  {
+    "data": "2022-09-28",
+    "cota_fechamento": 1.51987616
+  },
+  {
+    "data": "2022-09-29",
+    "cota_fechamento": 1.48756573
+  },
+  {
+    "data": "2022-09-30",
+    "cota_fechamento": 1.53092893
+  },
+  {
+    "data": "2022-10-03",
+    "cota_fechamento": 1.61821624
+  },
+  {
+    "data": "2022-10-04",
+    "cota_fechamento": 1.63485568
+  },
+  {
+    "data": "2022-10-05",
+    "cota_fechamento": 1.64174443
+  },
+  {
+    "data": "2022-10-06",
+    "cota_fechamento": 1.68921139
+  },
+  {
+    "data": "2022-10-07",
+    "cota_fechamento": 1.68319795
+  },
+  {
+    "data": "2022-10-10",
+    "cota_fechamento": 1.68201557
+  },
+  {
+    "data": "2022-10-11",
+    "cota_fechamento": 1.6699966
+  },
+  {
+    "data": "2022-10-13",
+    "cota_fechamento": 1.66739721
+  },
+  {
+    "data": "2022-10-14",
+    "cota_fechamento": 1.61692155
+  },
+  {
+    "data": "2022-10-17",
+    "cota_fechamento": 1.62007956
+  },
+  {
+    "data": "2022-10-18",
+    "cota_fechamento": 1.62730453
+  },
+  {
+    "data": "2022-10-19",
+    "cota_fechamento": 1.63147197
+  },
+  {
+    "data": "2022-10-20",
+    "cota_fechamento": 1.58667991
+  },
+  {
+    "data": "2022-10-21",
+    "cota_fechamento": 1.6124091
+  },
+  {
+    "data": "2022-10-24",
+    "cota_fechamento": 1.58840011
+  },
+  {
+    "data": "2022-10-25",
+    "cota_fechamento": 1.57572393
+  },
+  {
+    "data": "2022-10-26",
+    "cota_fechamento": 1.48842026
+  },
+  {
+    "data": "2022-10-27",
+    "cota_fechamento": 1.54094404
+  },
+  {
+    "data": "2022-10-28",
+    "cota_fechamento": 1.5533256
+  },
+  {
+    "data": "2022-10-31",
+    "cota_fechamento": 1.60889676
+  },
+  {
+    "data": "2022-11-01",
+    "cota_fechamento": 1.64913853
+  },
+  {
+    "data": "2022-11-03",
+    "cota_fechamento": 1.66639361
+  },
+  {
+    "data": "2022-11-04",
+    "cota_fechamento": 1.68846736
+  },
+  {
+    "data": "2022-11-07",
+    "cota_fechamento": 1.60135093
+  },
+  {
+    "data": "2022-11-08",
+    "cota_fechamento": 1.59625913
+  },
+  {
+    "data": "2022-11-09",
+    "cota_fechamento": 1.561622
+  },
+  {
+    "data": "2022-11-10",
+    "cota_fechamento": 1.45737555
+  },
+  {
+    "data": "2022-11-11",
+    "cota_fechamento": 1.44222868
+  },
+  {
+    "data": "2022-11-14",
+    "cota_fechamento": 1.45846855
+  },
+  {
+    "data": "2022-11-16",
+    "cota_fechamento": 1.38730711
+  },
+  {
+    "data": "2022-11-17",
+    "cota_fechamento": 1.34925347
+  },
+  {
+    "data": "2022-11-18",
+    "cota_fechamento": 1.33767343
+  },
+  {
+    "data": "2022-11-21",
+    "cota_fechamento": 1.36243212
+  },
+  {
+    "data": "2022-11-22",
+    "cota_fechamento": 1.35221863
+  },
+  {
+    "data": "2022-11-23",
+    "cota_fechamento": 1.3325477
+  },
+  {
+    "data": "2022-11-24",
+    "cota_fechamento": 1.38952303
+  },
+  {
+    "data": "2022-11-25",
+    "cota_fechamento": 1.34547216
+  },
+  {
+    "data": "2022-11-28",
+    "cota_fechamento": 1.31803408
+  },
+  {
+    "data": "2022-11-29",
+    "cota_fechamento": 1.35134947
+  },
+  {
+    "data": "2022-11-30",
+    "cota_fechamento": 1.36356873
+  },
+  {
+    "data": "2022-12-01",
+    "cota_fechamento": 1.36513785
+  },
+  {
+    "data": "2022-12-02",
+    "cota_fechamento": 1.39400162
+  },
+  {
+    "data": "2022-12-05",
+    "cota_fechamento": 1.31720696
+  },
+  {
+    "data": "2022-12-06",
+    "cota_fechamento": 1.30207526
+  },
+  {
+    "data": "2022-12-07",
+    "cota_fechamento": 1.28088902
+  },
+  {
+    "data": "2022-12-08",
+    "cota_fechamento": 1.2265937
+  },
+  {
+    "data": "2022-12-09",
+    "cota_fechamento": 1.21309257
+  },
+  {
+    "data": "2022-12-12",
+    "cota_fechamento": 1.20153515
+  },
+  {
+    "data": "2022-12-13",
+    "cota_fechamento": 1.18250135
+  },
+  {
+    "data": "2022-12-14",
+    "cota_fechamento": 1.19634935
+  },
+  {
+    "data": "2022-12-15",
+    "cota_fechamento": 1.19221537
+  },
+  {
+    "data": "2022-12-16",
+    "cota_fechamento": 1.16787675
+  },
+  {
+    "data": "2022-12-19",
+    "cota_fechamento": 1.20000665
+  },
+  {
+    "data": "2022-12-20",
+    "cota_fechamento": 1.23779715
+  },
+  {
+    "data": "2022-12-21",
+    "cota_fechamento": 1.2301131
+  },
+  {
+    "data": "2022-12-22",
+    "cota_fechamento": 1.22468098
+  },
+  {
+    "data": "2022-12-23",
+    "cota_fechamento": 1.26112856
+  },
+  {
+    "data": "2022-12-26",
+    "cota_fechamento": 1.25766089
+  },
+  {
+    "data": "2022-12-27",
+    "cota_fechamento": 1.22323276
+  },
+  {
+    "data": "2022-12-28",
+    "cota_fechamento": 1.28362209
+  },
+  {
+    "data": "2022-12-29",
+    "cota_fechamento": 1.28280663
+  },
+  {
+    "data": "2022-12-30",
+    "cota_fechamento": 1.28267862
+  },
+  {
+    "data": "2023-01-02",
+    "cota_fechamento": 1.23152263
+  },
+  {
+    "data": "2023-01-03",
+    "cota_fechamento": 1.16397961
+  },
+  {
+    "data": "2023-01-04",
+    "cota_fechamento": 1.16893387
+  },
+  {
+    "data": "2023-01-05",
+    "cota_fechamento": 1.20396218
+  },
+  {
+    "data": "2023-01-06",
+    "cota_fechamento": 1.22325482
+  },
+  {
+    "data": "2023-01-09",
+    "cota_fechamento": 1.23797001
+  },
+  {
+    "data": "2023-01-10",
+    "cota_fechamento": 1.2665909
+  },
+  {
+    "data": "2023-01-11",
+    "cota_fechamento": 1.30587915
+  },
+  {
+    "data": "2023-01-12",
+    "cota_fechamento": 1.27354318
+  },
+  {
+    "data": "2023-01-13",
+    "cota_fechamento": 1.24715304
+  },
+  {
+    "data": "2023-01-16",
+    "cota_fechamento": 1.23207399
+  },
+  {
+    "data": "2023-01-17",
+    "cota_fechamento": 1.25535423
+  },
+  {
+    "data": "2023-01-18",
+    "cota_fechamento": 1.27759455
+  },
+  {
+    "data": "2023-01-19",
+    "cota_fechamento": 1.31521557
+  },
+  {
+    "data": "2023-01-20",
+    "cota_fechamento": 1.3412808
+  },
+  {
+    "data": "2023-01-23",
+    "cota_fechamento": 1.36588881
+  },
+  {
+    "data": "2023-01-24",
+    "cota_fechamento": 1.37345159
+  },
+  {
+    "data": "2023-01-25",
+    "cota_fechamento": 1.40543137
+  },
+  {
+    "data": "2023-01-26",
+    "cota_fechamento": 1.41619238
+  },
+  {
+    "data": "2023-01-27",
+    "cota_fechamento": 1.39759427
+  },
+  {
+    "data": "2023-01-30",
+    "cota_fechamento": 1.38957449
+  },
+  {
+    "data": "2023-01-31",
+    "cota_fechamento": 1.4483205
+  },
+  {
+    "data": "2023-02-01",
+    "cota_fechamento": 1.42298549
+  },
+  {
+    "data": "2023-02-02",
+    "cota_fechamento": 1.3969176
+  },
+  {
+    "data": "2023-02-03",
+    "cota_fechamento": 1.36346084
+  },
+  {
+    "data": "2023-02-06",
+    "cota_fechamento": 1.35686388
+  },
+  {
+    "data": "2023-02-07",
+    "cota_fechamento": 1.34838678
+  },
+  {
+    "data": "2023-02-08",
+    "cota_fechamento": 1.37682635
+  },
+  {
+    "data": "2023-02-09",
+    "cota_fechamento": 1.32652699
+  },
+  {
+    "data": "2023-02-10",
+    "cota_fechamento": 1.37261592
+  },
+  {
+    "data": "2023-02-13",
+    "cota_fechamento": 1.36406636
+  },
+  {
+    "data": "2023-02-14",
+    "cota_fechamento": 1.33067306
+  },
+  {
+    "data": "2023-02-15",
+    "cota_fechamento": 1.37140895
+  },
+  {
+    "data": "2023-02-16",
+    "cota_fechamento": 1.33933685
+  },
+  {
+    "data": "2023-02-17",
+    "cota_fechamento": 1.30765289
+  },
+  {
+    "data": "2023-02-22",
+    "cota_fechamento": 1.29330268
+  },
+  {
+    "data": "2023-02-23",
+    "cota_fechamento": 1.28720523
+  },
+  {
+    "data": "2023-02-24",
+    "cota_fechamento": 1.27221304
+  },
+  {
+    "data": "2023-02-27",
+    "cota_fechamento": 1.26166408
+  },
+  {
+    "data": "2023-02-28",
+    "cota_fechamento": 1.20716132
+  },
+  {
+    "data": "2023-03-01",
+    "cota_fechamento": 1.18130881
+  },
+  {
+    "data": "2023-03-02",
+    "cota_fechamento": 1.19242611
+  },
+  {
+    "data": "2023-03-03",
+    "cota_fechamento": 1.206247
+  },
+  {
+    "data": "2023-03-06",
+    "cota_fechamento": 1.21874054
+  },
+  {
+    "data": "2023-03-07",
+    "cota_fechamento": 1.20647092
+  },
+  {
+    "data": "2023-03-08",
+    "cota_fechamento": 1.2624364
+  },
+  {
+    "data": "2023-03-09",
+    "cota_fechamento": 1.25449087
+  },
+  {
+    "data": "2023-03-10",
+    "cota_fechamento": 1.22678103
+  },
+  {
+    "data": "2023-03-13",
+    "cota_fechamento": 1.20387958
+  },
+  {
+    "data": "2023-03-14",
+    "cota_fechamento": 1.17556543
+  },
+  {
+    "data": "2023-03-15",
+    "cota_fechamento": 1.16140321
+  },
+  {
+    "data": "2023-03-16",
+    "cota_fechamento": 1.17810447
+  },
+  {
+    "data": "2023-03-17",
+    "cota_fechamento": 1.16448593
+  },
+  {
+    "data": "2023-03-20",
+    "cota_fechamento": 1.12302955
+  },
+  {
+    "data": "2023-03-21",
+    "cota_fechamento": 1.11655999
+  },
+  {
+    "data": "2023-03-22",
+    "cota_fechamento": 1.13986796
+  },
+  {
+    "data": "2023-03-23",
+    "cota_fechamento": 1.07552188
+  },
+  {
+    "data": "2023-03-24",
+    "cota_fechamento": 1.1360208
+  },
+  {
+    "data": "2023-03-27",
+    "cota_fechamento": 1.16675597
+  },
+  {
+    "data": "2023-03-28",
+    "cota_fechamento": 1.16860266
+  },
+  {
+    "data": "2023-03-29",
+    "cota_fechamento": 1.15339462
+  },
+  {
+    "data": "2023-03-30",
+    "cota_fechamento": 1.17398151
+  },
+  {
+    "data": "2023-03-31",
+    "cota_fechamento": 1.15418685
+  },
+  {
+    "data": "2023-04-03",
+    "cota_fechamento": 1.14560232
+  },
+  {
+    "data": "2023-04-04",
+    "cota_fechamento": 1.16003242
+  },
+  {
+    "data": "2023-04-05",
+    "cota_fechamento": 1.13638459
+  },
+  {
+    "data": "2023-04-06",
+    "cota_fechamento": 1.15005069
+  },
+  {
+    "data": "2023-04-10",
+    "cota_fechamento": 1.16098465
+  },
+  {
+    "data": "2023-04-11",
+    "cota_fechamento": 1.2094226
+  },
+  {
+    "data": "2023-04-12",
+    "cota_fechamento": 1.22978321
+  },
+  {
+    "data": "2023-04-13",
+    "cota_fechamento": 1.23540015
+  },
+  {
+    "data": "2023-04-14",
+    "cota_fechamento": 1.24061461
+  },
+  {
+    "data": "2023-04-17",
+    "cota_fechamento": 1.20960442
+  },
+  {
+    "data": "2023-04-18",
+    "cota_fechamento": 1.17781999
+  },
+  {
+    "data": "2023-04-19",
+    "cota_fechamento": 1.12506238
+  },
+  {
+    "data": "2023-04-20",
+    "cota_fechamento": 1.12887876
+  },
+  {
+    "data": "2023-04-24",
+    "cota_fechamento": 1.13237846
+  },
+  {
+    "data": "2023-04-25",
+    "cota_fechamento": 1.11250914
+  },
+  {
+    "data": "2023-04-26",
+    "cota_fechamento": 1.11772861
+  },
+  {
+    "data": "2023-04-27",
+    "cota_fechamento": 1.13374436
+  },
+  {
+    "data": "2023-04-28",
+    "cota_fechamento": 1.15803651
+  },
+  {
+    "data": "2023-05-02",
+    "cota_fechamento": 1.11146099
+  },
+  {
+    "data": "2023-05-03",
+    "cota_fechamento": 1.1214491
+  },
+  {
+    "data": "2023-05-04",
+    "cota_fechamento": 1.0993542
+  },
+  {
+    "data": "2023-05-05",
+    "cota_fechamento": 1.15006672
+  },
+  {
+    "data": "2023-05-08",
+    "cota_fechamento": 1.17701267
+  },
+  {
+    "data": "2023-05-09",
+    "cota_fechamento": 1.18842097
+  },
+  {
+    "data": "2023-05-10",
+    "cota_fechamento": 1.21990098
+  },
+  {
+    "data": "2023-05-11",
+    "cota_fechamento": 1.25848787
+  },
+  {
+    "data": "2023-05-12",
+    "cota_fechamento": 1.21965484
+  },
+  {
+    "data": "2023-05-15",
+    "cota_fechamento": 1.22180222
+  },
+  {
+    "data": "2023-05-16",
+    "cota_fechamento": 1.1697113
+  },
+  {
+    "data": "2023-05-17",
+    "cota_fechamento": 1.23135503
+  },
+  {
+    "data": "2023-05-18",
+    "cota_fechamento": 1.27494574
+  },
+  {
+    "data": "2023-05-19",
+    "cota_fechamento": 1.28383666
+  },
+  {
+    "data": "2023-05-22",
+    "cota_fechamento": 1.28349214
+  },
+  {
+    "data": "2023-05-23",
+    "cota_fechamento": 1.26835196
+  },
+  {
+    "data": "2023-05-24",
+    "cota_fechamento": 1.25201322
+  },
+  {
+    "data": "2023-05-25",
+    "cota_fechamento": 1.27709266
+  },
+  {
+    "data": "2023-05-26",
+    "cota_fechamento": 1.29512827
+  },
+  {
+    "data": "2023-05-29",
+    "cota_fechamento": 1.30316501
+  },
+  {
+    "data": "2023-05-30",
+    "cota_fechamento": 1.27553343
+  },
+  {
+    "data": "2023-05-31",
+    "cota_fechamento": 1.28826007
+  },
+  {
+    "data": "2023-06-01",
+    "cota_fechamento": 1.34285702
+  },
+  {
+    "data": "2023-06-02",
+    "cota_fechamento": 1.36543155
+  },
+  {
+    "data": "2023-06-05",
+    "cota_fechamento": 1.38884645
+  },
+  {
+    "data": "2023-06-06",
+    "cota_fechamento": 1.41680417
+  },
+  {
+    "data": "2023-06-07",
+    "cota_fechamento": 1.43045454
+  },
+  {
+    "data": "2023-06-09",
+    "cota_fechamento": 1.44007972
+  },
+  {
+    "data": "2023-06-12",
+    "cota_fechamento": 1.41225227
+  },
+  {
+    "data": "2023-06-13",
+    "cota_fechamento": 1.37818145
+  },
+  {
+    "data": "2023-06-14",
+    "cota_fechamento": 1.41517708
+  },
+  {
+    "data": "2023-06-15",
+    "cota_fechamento": 1.43369364
+  },
+  {
+    "data": "2023-06-16",
+    "cota_fechamento": 1.4354113
+  },
+  {
+    "data": "2023-06-19",
+    "cota_fechamento": 1.47435198
+  },
+  {
+    "data": "2023-06-20",
+    "cota_fechamento": 1.49075151
+  },
+  {
+    "data": "2023-06-21",
+    "cota_fechamento": 1.51484032
+  },
+  {
+    "data": "2023-06-22",
+    "cota_fechamento": 1.4840922
+  },
+  {
+    "data": "2023-06-23",
+    "cota_fechamento": 1.47676707
+  },
+  {
+    "data": "2023-06-26",
+    "cota_fechamento": 1.45595437
+  },
+  {
+    "data": "2023-06-27",
+    "cota_fechamento": 1.42227632
+  },
+  {
+    "data": "2023-06-28",
+    "cota_fechamento": 1.39865378
+  },
+  {
+    "data": "2023-06-29",
+    "cota_fechamento": 1.4198371
+  },
+  {
+    "data": "2023-06-30",
+    "cota_fechamento": 1.4441444
+  },
+  {
+    "data": "2023-07-03",
+    "cota_fechamento": 1.45295281
+  },
+  {
+    "data": "2023-07-04",
+    "cota_fechamento": 1.45717459
+  },
+  {
+    "data": "2023-07-05",
+    "cota_fechamento": 1.49579894
+  },
+  {
+    "data": "2023-07-06",
+    "cota_fechamento": 1.45250875
+  },
+  {
+    "data": "2023-07-07",
+    "cota_fechamento": 1.51328138
+  },
+  {
+    "data": "2023-07-10",
+    "cota_fechamento": 1.49193355
+  },
+  {
+    "data": "2023-07-11",
+    "cota_fechamento": 1.49707128
+  },
+  {
+    "data": "2023-07-12",
+    "cota_fechamento": 1.48966034
+  },
+  {
+    "data": "2023-07-13",
+    "cota_fechamento": 1.50086578
+  },
+  {
+    "data": "2023-07-14",
+    "cota_fechamento": 1.45298646
+  },
+  {
+    "data": "2023-07-17",
+    "cota_fechamento": 1.47480179
+  },
+  {
+    "data": "2023-07-18",
+    "cota_fechamento": 1.51177179
+  },
+  {
+    "data": "2023-07-19",
+    "cota_fechamento": 1.50702212
+  },
+  {
+    "data": "2023-07-20",
+    "cota_fechamento": 1.50737272
+  },
+  {
+    "data": "2023-07-21",
+    "cota_fechamento": 1.54548043
+  },
+  {
+    "data": "2023-07-24",
+    "cota_fechamento": 1.55966964
+  },
+  {
+    "data": "2023-07-25",
+    "cota_fechamento": 1.5659315
+  },
+  {
+    "data": "2023-07-26",
+    "cota_fechamento": 1.56352118
+  },
+  {
+    "data": "2023-07-27",
+    "cota_fechamento": 1.56173857
+  },
+  {
+    "data": "2023-07-28",
+    "cota_fechamento": 1.57764915
+  },
+  {
+    "data": "2023-07-31",
+    "cota_fechamento": 1.60926158
+  },
+  {
+    "data": "2023-08-01",
+    "cota_fechamento": 1.63229598
+  },
+  {
+    "data": "2023-08-02",
+    "cota_fechamento": 1.6106988
+  },
+  {
+    "data": "2023-08-03",
+    "cota_fechamento": 1.65903855
+  },
+  {
+    "data": "2023-08-04",
+    "cota_fechamento": 1.67827716
+  },
+  {
+    "data": "2023-08-07",
+    "cota_fechamento": 1.64342093
+  },
+  {
+    "data": "2023-08-08",
+    "cota_fechamento": 1.6561548
+  },
+  {
+    "data": "2023-08-09",
+    "cota_fechamento": 1.63713153
+  },
+  {
+    "data": "2023-08-10",
+    "cota_fechamento": 1.64704673
+  },
+  {
+    "data": "2023-08-11",
+    "cota_fechamento": 1.65804416
+  },
+  {
+    "data": "2023-08-14",
+    "cota_fechamento": 1.64983131
+  },
+  {
+    "data": "2023-08-15",
+    "cota_fechamento": 1.63015779
+  },
+  {
+    "data": "2023-08-16",
+    "cota_fechamento": 1.62765543
+  },
+  {
+    "data": "2023-08-17",
+    "cota_fechamento": 1.60451833
+  },
+  {
+    "data": "2023-08-18",
+    "cota_fechamento": 1.65130114
+  },
+  {
+    "data": "2023-08-21",
+    "cota_fechamento": 1.62868012
+  },
+  {
+    "data": "2023-08-22",
+    "cota_fechamento": 1.68840573
+  },
+  {
+    "data": "2023-08-23",
+    "cota_fechamento": 1.71863858
+  },
+  {
+    "data": "2023-08-24",
+    "cota_fechamento": 1.7000297
+  },
+  {
+    "data": "2023-08-25",
+    "cota_fechamento": 1.6667248
+  },
+  {
+    "data": "2023-08-28",
+    "cota_fechamento": 1.67446554
+  },
+  {
+    "data": "2023-08-29",
+    "cota_fechamento": 1.67937355
+  },
+  {
+    "data": "2023-08-30",
+    "cota_fechamento": 1.65749334
+  },
+  {
+    "data": "2023-08-31",
+    "cota_fechamento": 1.59505578
+  },
+  {
+    "data": "2023-09-01",
+    "cota_fechamento": 1.6446622
+  },
+  {
+    "data": "2023-09-04",
+    "cota_fechamento": 1.62514039
+  },
+  {
+    "data": "2023-09-05",
+    "cota_fechamento": 1.61129481
+  },
+  {
+    "data": "2023-09-06",
+    "cota_fechamento": 1.56007299
+  },
+  {
+    "data": "2023-09-08",
+    "cota_fechamento": 1.5510104
+  },
+  {
+    "data": "2023-09-11",
+    "cota_fechamento": 1.57818239
+  },
+  {
+    "data": "2023-09-12",
+    "cota_fechamento": 1.63113648
+  },
+  {
+    "data": "2023-09-13",
+    "cota_fechamento": 1.63482387
+  },
+  {
+    "data": "2023-09-14",
+    "cota_fechamento": 1.64189931
+  },
+  {
+    "data": "2023-09-15",
+    "cota_fechamento": 1.60090687
+  },
+  {
+    "data": "2023-09-18",
+    "cota_fechamento": 1.57849924
+  },
+  {
+    "data": "2023-09-19",
+    "cota_fechamento": 1.560197
+  },
+  {
+    "data": "2023-09-20",
+    "cota_fechamento": 1.56649173
+  },
+  {
+    "data": "2023-09-21",
+    "cota_fechamento": 1.50292722
+  },
+  {
+    "data": "2023-09-22",
+    "cota_fechamento": 1.47973154
+  },
+  {
+    "data": "2023-09-25",
+    "cota_fechamento": 1.45035156
+  },
+  {
+    "data": "2023-09-26",
+    "cota_fechamento": 1.40591457
+  },
+  {
+    "data": "2023-09-27",
+    "cota_fechamento": 1.40194419
+  },
+  {
+    "data": "2023-09-28",
+    "cota_fechamento": 1.4432998
+  },
+  {
+    "data": "2023-09-29",
+    "cota_fechamento": 1.48618454
+  },
+  {
+    "data": "2023-10-02",
+    "cota_fechamento": 1.41092704
+  },
+  {
+    "data": "2023-10-03",
+    "cota_fechamento": 1.35296388
+  },
+  {
+    "data": "2023-10-04",
+    "cota_fechamento": 1.37434034
+  },
+  {
+    "data": "2023-10-05",
+    "cota_fechamento": 1.36267953
+  },
+  {
+    "data": "2023-10-06",
+    "cota_fechamento": 1.359262
+  },
+  {
+    "data": "2023-10-09",
+    "cota_fechamento": 1.38764388
+  },
+  {
+    "data": "2023-10-10",
+    "cota_fechamento": 1.44359481
+  },
+  {
+    "data": "2023-10-11",
+    "cota_fechamento": 1.44768335
+  },
+  {
+    "data": "2023-10-13",
+    "cota_fechamento": 1.39248534
+  },
+  {
+    "data": "2023-10-16",
+    "cota_fechamento": 1.3932743
+  },
+  {
+    "data": "2023-10-17",
+    "cota_fechamento": 1.37501587
+  },
+  {
+    "data": "2023-10-18",
+    "cota_fechamento": 1.31805447
+  },
+  {
+    "data": "2023-10-19",
+    "cota_fechamento": 1.31089371
+  },
+  {
+    "data": "2023-10-20",
+    "cota_fechamento": 1.31490968
+  },
+  {
+    "data": "2023-10-23",
+    "cota_fechamento": 1.3440739
+  },
+  {
+    "data": "2023-10-24",
+    "cota_fechamento": 1.39132949
+  },
+  {
+    "data": "2023-10-25",
+    "cota_fechamento": 1.37790058
+  },
+  {
+    "data": "2023-10-26",
+    "cota_fechamento": 1.42185703
+  },
+  {
+    "data": "2023-10-27",
+    "cota_fechamento": 1.38624123
+  },
+  {
+    "data": "2023-10-30",
+    "cota_fechamento": 1.33815742
+  },
+  {
+    "data": "2023-10-31",
+    "cota_fechamento": 1.36693238
+  },
+  {
+    "data": "2023-11-01",
+    "cota_fechamento": 1.40513618
+  },
+  {
+    "data": "2023-11-03",
+    "cota_fechamento": 1.5144792
+  },
+  {
+    "data": "2023-11-06",
+    "cota_fechamento": 1.44804363
+  },
+  {
+    "data": "2023-11-07",
+    "cota_fechamento": 1.48871267
+  },
+  {
+    "data": "2023-11-08",
+    "cota_fechamento": 1.48685331
+  },
+  {
+    "data": "2023-11-09",
+    "cota_fechamento": 1.48789396
+  },
+  {
+    "data": "2023-11-10",
+    "cota_fechamento": 1.57130604
+  },
+  {
+    "data": "2023-11-13",
+    "cota_fechamento": 1.58094077
+  },
+  {
+    "data": "2023-11-14",
+    "cota_fechamento": 1.64869871
+  },
+  {
+    "data": "2023-11-16",
+    "cota_fechamento": 1.68934291
+  },
+  {
+    "data": "2023-11-17",
+    "cota_fechamento": 1.69727544
+  },
+  {
+    "data": "2023-11-20",
+    "cota_fechamento": 1.72174627
+  },
+  {
+    "data": "2023-11-21",
+    "cota_fechamento": 1.69435234
+  },
+  {
+    "data": "2023-11-22",
+    "cota_fechamento": 1.65441249
+  },
+  {
+    "data": "2023-11-23",
+    "cota_fechamento": 1.67115701
+  },
+  {
+    "data": "2023-11-24",
+    "cota_fechamento": 1.62500166
+  },
+  {
+    "data": "2023-11-27",
+    "cota_fechamento": 1.62050747
+  },
+  {
+    "data": "2023-11-28",
+    "cota_fechamento": 1.65764948
+  },
+  {
+    "data": "2023-11-29",
+    "cota_fechamento": 1.64822612
+  },
+  {
+    "data": "2023-11-30",
+    "cota_fechamento": 1.67152732
+  },
+  {
+    "data": "2023-12-01",
+    "cota_fechamento": 1.67235443
+  },
+  {
+    "data": "2023-12-04",
+    "cota_fechamento": 1.5953837
+  },
+  {
+    "data": "2023-12-05",
+    "cota_fechamento": 1.61439151
+  },
+  {
+    "data": "2023-12-06",
+    "cota_fechamento": 1.60274896
+  },
+  {
+    "data": "2023-12-07",
+    "cota_fechamento": 1.66856841
+  },
+  {
+    "data": "2023-12-08",
+    "cota_fechamento": 1.6738454
+  },
+  {
+    "data": "2023-12-11",
+    "cota_fechamento": 1.65369977
+  },
+  {
+    "data": "2023-12-12",
+    "cota_fechamento": 1.65204878
+  },
+  {
+    "data": "2023-12-13",
+    "cota_fechamento": 1.74339911
+  },
+  {
+    "data": "2023-12-14",
+    "cota_fechamento": 1.76725883
+  },
+  {
+    "data": "2023-12-15",
+    "cota_fechamento": 1.7317796
+  },
+  {
+    "data": "2023-12-18",
+    "cota_fechamento": 1.74786881
+  },
+  {
+    "data": "2023-12-19",
+    "cota_fechamento": 1.74967028
+  },
+  {
+    "data": "2023-12-20",
+    "cota_fechamento": 1.7468021
+  },
+  {
+    "data": "2023-12-21",
+    "cota_fechamento": 1.76737829
+  },
+  {
+    "data": "2023-12-22",
+    "cota_fechamento": 1.75952756
+  },
+  {
+    "data": "2023-12-26",
+    "cota_fechamento": 1.77343804
+  },
+  {
+    "data": "2023-12-27",
+    "cota_fechamento": 1.81813442
+  },
+  {
+    "data": "2023-12-28",
+    "cota_fechamento": 1.80271322
+  },
+  {
+    "data": "2023-12-29",
+    "cota_fechamento": 1.80082642
+  },
+  {
+    "data": "2024-01-02",
+    "cota_fechamento": 1.68598014
+  },
+  {
+    "data": "2024-01-03",
+    "cota_fechamento": 1.69757774
+  },
+  {
+    "data": "2024-01-04",
+    "cota_fechamento": 1.61719654
+  },
+  {
+    "data": "2024-01-05",
+    "cota_fechamento": 1.63900307
+  },
+  {
+    "data": "2024-01-08",
+    "cota_fechamento": 1.69110692
+  },
+  {
+    "data": "2024-01-09",
+    "cota_fechamento": 1.67543683
+  },
+  {
+    "data": "2024-01-10",
+    "cota_fechamento": 1.63957787
+  },
+  {
+    "data": "2024-01-11",
+    "cota_fechamento": 1.61423907
+  },
+  {
+    "data": "2024-01-12",
+    "cota_fechamento": 1.61872059
+  },
+  {
+    "data": "2024-01-15",
+    "cota_fechamento": 1.63925704
+  },
+  {
+    "data": "2024-01-16",
+    "cota_fechamento": 1.59469565
+  },
+  {
+    "data": "2024-01-17",
+    "cota_fechamento": 1.58172451
+  },
+  {
+    "data": "2024-01-18",
+    "cota_fechamento": 1.51745875
+  },
+  {
+    "data": "2024-01-19",
+    "cota_fechamento": 1.55755019
+  },
+  {
+    "data": "2024-01-22",
+    "cota_fechamento": 1.53880829
+  },
+  {
+    "data": "2024-01-23",
+    "cota_fechamento": 1.56848101
+  },
+  {
+    "data": "2024-01-24",
+    "cota_fechamento": 1.56691226
+  },
+  {
+    "data": "2024-01-25",
+    "cota_fechamento": 1.61987995
+  },
+  {
+    "data": "2024-01-26",
+    "cota_fechamento": 1.63909308
+  },
+  {
+    "data": "2024-01-29",
+    "cota_fechamento": 1.63440875
+  },
+  {
+    "data": "2024-01-30",
+    "cota_fechamento": 1.57543737
+  },
+  {
+    "data": "2024-01-31",
+    "cota_fechamento": 1.60665485
+  },
+  {
+    "data": "2024-02-01",
+    "cota_fechamento": 1.58354385
+  },
+  {
+    "data": "2024-02-02",
+    "cota_fechamento": 1.57226606
+  },
+  {
+    "data": "2024-02-05",
+    "cota_fechamento": 1.54020857
+  },
+  {
+    "data": "2024-02-06",
+    "cota_fechamento": 1.58333562
+  },
+  {
+    "data": "2024-02-07",
+    "cota_fechamento": 1.63244083
+  },
+  {
+    "data": "2024-02-08",
+    "cota_fechamento": 1.61656696
+  },
+  {
+    "data": "2024-02-09",
+    "cota_fechamento": 1.59524193
+  },
+  {
+    "data": "2024-02-14",
+    "cota_fechamento": 1.56549763
+  },
+  {
+    "data": "2024-02-15",
+    "cota_fechamento": 1.57884426
+  },
+  {
+    "data": "2024-02-16",
+    "cota_fechamento": 1.61678576
+  },
+  {
+    "data": "2024-02-19",
+    "cota_fechamento": 1.59868825
+  },
+  {
+    "data": "2024-02-20",
+    "cota_fechamento": 1.68153128
+  },
+  {
+    "data": "2024-02-21",
+    "cota_fechamento": 1.68582997
+  },
+  {
+    "data": "2024-02-22",
+    "cota_fechamento": 1.75510708
+  },
+  {
+    "data": "2024-02-23",
+    "cota_fechamento": 1.70924781
+  },
+  {
+    "data": "2024-02-26",
+    "cota_fechamento": 1.72268662
+  },
+  {
+    "data": "2024-02-27",
+    "cota_fechamento": 1.7975585
+  },
+  {
+    "data": "2024-02-28",
+    "cota_fechamento": 1.77436931
+  },
+  {
+    "data": "2024-02-29",
+    "cota_fechamento": 1.76962179
+  },
+  {
+    "data": "2024-03-01",
+    "cota_fechamento": 1.7988156
+  },
+  {
+    "data": "2024-03-04",
+    "cota_fechamento": 1.76438719
+  },
+  {
+    "data": "2024-03-05",
+    "cota_fechamento": 1.78737617
+  },
+  {
+    "data": "2024-03-06",
+    "cota_fechamento": 1.77570818
+  },
+  {
+    "data": "2024-03-07",
+    "cota_fechamento": 1.77369823
+  },
+  {
+    "data": "2024-03-08",
+    "cota_fechamento": 1.78407614
+  },
+  {
+    "data": "2024-03-11",
+    "cota_fechamento": 1.78753016
+  },
+  {
+    "data": "2024-03-12",
+    "cota_fechamento": 1.86770489
+  },
+  {
+    "data": "2024-03-13",
+    "cota_fechamento": 1.92818364
+  },
+  {
+    "data": "2024-03-14",
+    "cota_fechamento": 1.89658058
+  },
+  {
+    "data": "2024-03-15",
+    "cota_fechamento": 1.86917065
+  },
+  {
+    "data": "2024-03-18",
+    "cota_fechamento": 1.85695256
+  },
+  {
+    "data": "2024-03-19",
+    "cota_fechamento": 1.89785188
+  },
+  {
+    "data": "2024-03-20",
+    "cota_fechamento": 1.93221421
+  },
+  {
+    "data": "2024-03-21",
+    "cota_fechamento": 1.9270763
+  },
+  {
+    "data": "2024-03-22",
+    "cota_fechamento": 1.88362606
+  },
+  {
+    "data": "2024-03-25",
+    "cota_fechamento": 1.88042595
+  },
+  {
+    "data": "2024-03-26",
+    "cota_fechamento": 1.8638737
+  },
+  {
+    "data": "2024-03-27",
+    "cota_fechamento": 1.85302524
+  },
+  {
+    "data": "2024-03-28",
+    "cota_fechamento": 1.91110695
+  },
+  {
+    "data": "2024-04-01",
+    "cota_fechamento": 1.91065076
+  },
+  {
+    "data": "2024-04-02",
+    "cota_fechamento": 1.88618851
+  },
+  {
+    "data": "2024-04-03",
+    "cota_fechamento": 1.87116803
+  },
+  {
+    "data": "2024-04-04",
+    "cota_fechamento": 1.90733169
+  },
+  {
+    "data": "2024-04-05",
+    "cota_fechamento": 1.91311733
+  },
+  {
+    "data": "2024-04-08",
+    "cota_fechamento": 1.94675361
+  },
+  {
+    "data": "2024-04-09",
+    "cota_fechamento": 1.98368739
+  },
+  {
+    "data": "2024-04-10",
+    "cota_fechamento": 1.93817263
+  },
+  {
+    "data": "2024-04-11",
+    "cota_fechamento": 1.92162197
+  },
+  {
+    "data": "2024-04-12",
+    "cota_fechamento": 1.85098199
+  },
+  {
+    "data": "2024-04-15",
+    "cota_fechamento": 1.75918262
+  },
+  {
+    "data": "2024-04-16",
+    "cota_fechamento": 1.73434874
+  },
+  {
+    "data": "2024-04-17",
+    "cota_fechamento": 1.72411796
+  },
+  {
+    "data": "2024-04-18",
+    "cota_fechamento": 1.7346886
+  },
+  {
+    "data": "2024-04-19",
+    "cota_fechamento": 1.750005
+  },
+  {
+    "data": "2024-04-22",
+    "cota_fechamento": 1.73330619
+  },
+  {
+    "data": "2024-04-23",
+    "cota_fechamento": 1.73824692
+  },
+  {
+    "data": "2024-04-24",
+    "cota_fechamento": 1.69549347
+  },
+  {
+    "data": "2024-04-25",
+    "cota_fechamento": 1.7046303
+  },
+  {
+    "data": "2024-04-26",
+    "cota_fechamento": 1.76498677
+  },
+  {
+    "data": "2024-04-29",
+    "cota_fechamento": 1.7578003
+  },
+  {
+    "data": "2024-04-30",
+    "cota_fechamento": 1.69626228
+  },
+  {
+    "data": "2024-05-02",
+    "cota_fechamento": 1.73740718
+  },
+  {
+    "data": "2024-05-03",
+    "cota_fechamento": 1.82395627
+  },
+  {
+    "data": "2024-05-06",
+    "cota_fechamento": 1.78938248
+  },
+  {
+    "data": "2024-05-07",
+    "cota_fechamento": 1.78278634
+  },
+  {
+    "data": "2024-05-08",
+    "cota_fechamento": 1.79372123
+  },
+  {
+    "data": "2024-05-09",
+    "cota_fechamento": 1.80921261
+  },
+  {
+    "data": "2024-05-10",
+    "cota_fechamento": 1.77777189
+  },
+  {
+    "data": "2024-05-13",
+    "cota_fechamento": 1.76024465
+  },
+  {
+    "data": "2024-05-14",
+    "cota_fechamento": 1.79112919
+  },
+  {
+    "data": "2024-05-15",
+    "cota_fechamento": 1.85784864
+  },
+  {
+    "data": "2024-05-16",
+    "cota_fechamento": 1.86617006
+  },
+  {
+    "data": "2024-05-17",
+    "cota_fechamento": 1.87247104
+  },
+  {
+    "data": "2024-05-20",
+    "cota_fechamento": 1.89168316
+  },
+  {
+    "data": "2024-05-21",
+    "cota_fechamento": 1.87906713
+  },
+  {
+    "data": "2024-05-22",
+    "cota_fechamento": 1.80979918
+  },
+  {
+    "data": "2024-05-23",
+    "cota_fechamento": 1.79227964
+  },
+  {
+    "data": "2024-05-24",
+    "cota_fechamento": 1.79111878
+  },
+  {
+    "data": "2024-05-27",
+    "cota_fechamento": 1.79731912
+  },
+  {
+    "data": "2024-05-28",
+    "cota_fechamento": 1.78175709
+  },
+  {
+    "data": "2024-05-29",
+    "cota_fechamento": 1.75914913
+  },
+  {
+    "data": "2024-05-31",
+    "cota_fechamento": 1.73795126
+  },
+  {
+    "data": "2024-06-03",
+    "cota_fechamento": 1.74929775
+  },
+  {
+    "data": "2024-06-04",
+    "cota_fechamento": 1.72162121
+  },
+  {
+    "data": "2024-06-05",
+    "cota_fechamento": 1.70868213
+  },
+  {
+    "data": "2024-06-06",
+    "cota_fechamento": 1.74992119
+  },
+  {
+    "data": "2024-06-07",
+    "cota_fechamento": 1.70233536
+  },
+  {
+    "data": "2024-06-10",
+    "cota_fechamento": 1.68024075
+  },
+  {
+    "data": "2024-06-11",
+    "cota_fechamento": 1.7047377
+  },
+  {
+    "data": "2024-06-12",
+    "cota_fechamento": 1.6757693
+  },
+  {
+    "data": "2024-06-13",
+    "cota_fechamento": 1.63827437
+  },
+  {
+    "data": "2024-06-14",
+    "cota_fechamento": 1.65611353
+  },
+  {
+    "data": "2024-06-17",
+    "cota_fechamento": 1.63006506
+  },
+  {
+    "data": "2024-06-18",
+    "cota_fechamento": 1.63251304
+  },
+  {
+    "data": "2024-06-19",
+    "cota_fechamento": 1.63152482
+  },
+  {
+    "data": "2024-06-20",
+    "cota_fechamento": 1.63879553
+  },
+  {
+    "data": "2024-06-21",
+    "cota_fechamento": 1.6525448
+  },
+  {
+    "data": "2024-06-24",
+    "cota_fechamento": 1.69530875
+  },
+  {
+    "data": "2024-06-25",
+    "cota_fechamento": 1.69758568
+  },
+  {
+    "data": "2024-06-26",
+    "cota_fechamento": 1.69969022
+  },
+  {
+    "data": "2024-06-27",
+    "cota_fechamento": 1.75296608
+  },
+  {
+    "data": "2024-06-28",
+    "cota_fechamento": 1.72487548
+  },
+  {
+    "data": "2024-07-01",
+    "cota_fechamento": 1.72869982
+  },
+  {
+    "data": "2024-07-02",
+    "cota_fechamento": 1.72275966
+  },
+  {
+    "data": "2024-07-03",
+    "cota_fechamento": 1.76668638
+  },
+  {
+    "data": "2024-07-04",
+    "cota_fechamento": 1.84023875
+  },
+  {
+    "data": "2024-07-05",
+    "cota_fechamento": 1.87931038
+  },
+  {
+    "data": "2024-07-08",
+    "cota_fechamento": 1.84940507
+  },
+  {
+    "data": "2024-07-09",
+    "cota_fechamento": 1.88445399
+  },
+  {
+    "data": "2024-07-10",
+    "cota_fechamento": 1.89500188
+  },
+  {
+    "data": "2024-07-11",
+    "cota_fechamento": 1.94744199
+  },
+  {
+    "data": "2024-07-12",
+    "cota_fechamento": 1.94964768
+  },
+  {
+    "data": "2024-07-15",
+    "cota_fechamento": 1.96048791
+  },
+  {
+    "data": "2024-07-16",
+    "cota_fechamento": 1.97018077
+  },
+  {
+    "data": "2024-07-17",
+    "cota_fechamento": 1.96297495
+  },
+  {
+    "data": "2024-07-18",
+    "cota_fechamento": 1.89279568
+  },
+  {
+    "data": "2024-07-19",
+    "cota_fechamento": 1.90323441
+  },
+  {
+    "data": "2024-07-22",
+    "cota_fechamento": 1.92056544
+  },
+  {
+    "data": "2024-07-23",
+    "cota_fechamento": 1.88813779
+  },
+  {
+    "data": "2024-07-24",
+    "cota_fechamento": 1.88398914
+  },
+  {
+    "data": "2024-07-25",
+    "cota_fechamento": 1.85700309
+  },
+  {
+    "data": "2024-07-26",
+    "cota_fechamento": 1.89178057
+  },
+  {
+    "data": "2024-07-29",
+    "cota_fechamento": 1.88170696
+  },
+  {
+    "data": "2024-07-30",
+    "cota_fechamento": 1.88318406
+  },
+  {
+    "data": "2024-07-31",
+    "cota_fechamento": 1.9054164
+  },
+  {
+    "data": "2024-08-01",
+    "cota_fechamento": 1.89467026
+  },
+  {
+    "data": "2024-08-02",
+    "cota_fechamento": 1.89073878
+  },
+  {
+    "data": "2024-08-05",
+    "cota_fechamento": 1.84545204
+  },
+  {
+    "data": "2024-08-06",
+    "cota_fechamento": 1.82466238
+  },
+  {
+    "data": "2024-08-07",
+    "cota_fechamento": 1.89431007
+  },
+  {
+    "data": "2024-08-08",
+    "cota_fechamento": 1.91827841
+  },
+  {
+    "data": "2024-08-09",
+    "cota_fechamento": 1.98676582
+  },
+  {
+    "data": "2024-08-12",
+    "cota_fechamento": 2.00218366
+  },
+  {
+    "data": "2024-08-13",
+    "cota_fechamento": 2.04192645
+  },
+  {
+    "data": "2024-08-14",
+    "cota_fechamento": 1.99328667
+  },
+  {
+    "data": "2024-08-15",
+    "cota_fechamento": 2.0064058
+  },
+  {
+    "data": "2024-08-16",
+    "cota_fechamento": 2.00380905
+  },
+  {
+    "data": "2024-08-19",
+    "cota_fechamento": 2.03087789
+  },
+  {
+    "data": "2024-08-20",
+    "cota_fechamento": 2.04475885
+  },
+  {
+    "data": "2024-08-21",
+    "cota_fechamento": 2.02603563
+  },
+  {
+    "data": "2024-08-22",
+    "cota_fechamento": 1.97709538
+  },
+  {
+    "data": "2024-08-23",
+    "cota_fechamento": 2.03024379
+  },
+  {
+    "data": "2024-08-26",
+    "cota_fechamento": 2.03121287
+  },
+  {
+    "data": "2024-08-27",
+    "cota_fechamento": 2.02573678
+  },
+  {
+    "data": "2024-08-28",
+    "cota_fechamento": 2.00241415
+  },
+  {
+    "data": "2024-08-29",
+    "cota_fechamento": 1.94837618
+  },
+  {
+    "data": "2024-08-30",
+    "cota_fechamento": 1.94707228
+  },
+  {
+    "data": "2024-09-02",
+    "cota_fechamento": 1.94585916
+  },
+  {
+    "data": "2024-09-03",
+    "cota_fechamento": 1.88489921
+  },
+  {
+    "data": "2024-09-04",
+    "cota_fechamento": 1.92036658
+  },
+  {
+    "data": "2024-09-05",
+    "cota_fechamento": 1.91763056
+  },
+  {
+    "data": "2024-09-06",
+    "cota_fechamento": 1.87011007
+  },
+  {
+    "data": "2024-09-09",
+    "cota_fechamento": 1.84441226
+  },
+  {
+    "data": "2024-09-10",
+    "cota_fechamento": 1.8360242
+  },
+  {
+    "data": "2024-09-11",
+    "cota_fechamento": 1.84937402
+  },
+  {
+    "data": "2024-09-12",
+    "cota_fechamento": 1.8203933
+  },
+  {
+    "data": "2024-09-13",
+    "cota_fechamento": 1.87339836
+  },
+  {
+    "data": "2024-09-16",
+    "cota_fechamento": 1.87204583
+  },
+  {
+    "data": "2024-09-17",
+    "cota_fechamento": 1.88141492
+  },
+  {
+    "data": "2024-09-18",
+    "cota_fechamento": 1.87091399
+  },
+  {
+    "data": "2024-09-19",
+    "cota_fechamento": 1.86196011
+  },
+  {
+    "data": "2024-09-20",
+    "cota_fechamento": 1.79497243
+  },
+  {
+    "data": "2024-09-23",
+    "cota_fechamento": 1.76493409
+  },
+  {
+    "data": "2024-09-24",
+    "cota_fechamento": 1.8029267
+  },
+  {
+    "data": "2024-09-25",
+    "cota_fechamento": 1.73254989
+  },
+  {
+    "data": "2024-09-26",
+    "cota_fechamento": 1.70979448
+  },
+  {
+    "data": "2024-09-27",
+    "cota_fechamento": 1.73959298
+  },
+  {
+    "data": "2024-09-30",
+    "cota_fechamento": 1.72452265
+  },
+  {
+    "data": "2024-10-01",
+    "cota_fechamento": 1.75186361
+  },
+  {
+    "data": "2024-10-02",
+    "cota_fechamento": 1.7514091
+  },
+  {
+    "data": "2024-10-03",
+    "cota_fechamento": 1.72357973
+  },
+  {
+    "data": "2024-10-04",
+    "cota_fechamento": 1.73345425
+  },
+  {
+    "data": "2024-10-07",
+    "cota_fechamento": 1.74110798
+  },
+  {
+    "data": "2024-10-08",
+    "cota_fechamento": 1.7367675
+  },
+  {
+    "data": "2024-10-09",
+    "cota_fechamento": 1.71762496
+  },
+  {
+    "data": "2024-10-10",
+    "cota_fechamento": 1.72286853
+  },
+  {
+    "data": "2024-10-11",
+    "cota_fechamento": 1.71143784
+  },
+  {
+    "data": "2024-10-14",
+    "cota_fechamento": 1.72522349
+  },
+  {
+    "data": "2024-10-15",
+    "cota_fechamento": 1.70533994
+  },
+  {
+    "data": "2024-10-16",
+    "cota_fechamento": 1.7192148
+  },
+  {
+    "data": "2024-10-17",
+    "cota_fechamento": 1.70319723
+  },
+  {
+    "data": "2024-10-18",
+    "cota_fechamento": 1.68788387
+  },
+  {
+    "data": "2024-10-21",
+    "cota_fechamento": 1.69370654
+  },
+  {
+    "data": "2024-10-22",
+    "cota_fechamento": 1.68261314
+  },
+  {
+    "data": "2024-10-23",
+    "cota_fechamento": 1.6788854
+  },
+  {
+    "data": "2024-10-24",
+    "cota_fechamento": 1.74102819
+  },
+  {
+    "data": "2024-10-25",
+    "cota_fechamento": 1.71975223
+  },
+  {
+    "data": "2024-10-28",
+    "cota_fechamento": 1.74958597
+  },
+  {
+    "data": "2024-10-29",
+    "cota_fechamento": 1.72628884
+  },
+  {
+    "data": "2024-10-30",
+    "cota_fechamento": 1.76626899
+  },
+  {
+    "data": "2024-10-31",
+    "cota_fechamento": 1.73992542
+  },
+  {
+    "data": "2024-11-01",
+    "cota_fechamento": 1.63750725
+  },
+  {
+    "data": "2024-11-04",
+    "cota_fechamento": 1.76490009
+  },
+  {
+    "data": "2024-11-05",
+    "cota_fechamento": 1.77742825
+  },
+  {
+    "data": "2024-11-06",
+    "cota_fechamento": 1.79072519
+  },
+  {
+    "data": "2024-11-07",
+    "cota_fechamento": 1.72922403
+  },
+  {
+    "data": "2024-11-08",
+    "cota_fechamento": 1.6513639
+  },
+  {
+    "data": "2024-11-11",
+    "cota_fechamento": 1.68421208
+  },
+  {
+    "data": "2024-11-12",
+    "cota_fechamento": 1.69294447
+  },
+  {
+    "data": "2024-11-13",
+    "cota_fechamento": 1.66564618
+  },
+  {
+    "data": "2024-11-14",
+    "cota_fechamento": 1.64119598
+  },
+  {
+    "data": "2024-11-18",
+    "cota_fechamento": 1.64143751
+  },
+  {
+    "data": "2024-11-19",
+    "cota_fechamento": 1.64509353
+  },
+  {
+    "data": "2024-11-21",
+    "cota_fechamento": 1.59578761
+  },
+  {
+    "data": "2024-11-22",
+    "cota_fechamento": 1.66834445
+  },
+  {
+    "data": "2024-11-25",
+    "cota_fechamento": 1.68511173
+  },
+  {
+    "data": "2024-11-26",
+    "cota_fechamento": 1.7229177
+  },
+  {
+    "data": "2024-11-27",
+    "cota_fechamento": 1.59777908
+  },
+  {
+    "data": "2024-11-28",
+    "cota_fechamento": 1.44823129
+  },
+  {
+    "data": "2024-11-29",
+    "cota_fechamento": 1.49589888
+  },
+  {
+    "data": "2024-12-02",
+    "cota_fechamento": 1.44773861
+  },
+  {
+    "data": "2024-12-03",
+    "cota_fechamento": 1.46614332
+  },
+  {
+    "data": "2024-12-04",
+    "cota_fechamento": 1.44076854
+  },
+  {
+    "data": "2024-12-05",
+    "cota_fechamento": 1.50065467
+  },
+  {
+    "data": "2024-12-06",
+    "cota_fechamento": 1.43192164
+  },
+  {
+    "data": "2024-12-09",
+    "cota_fechamento": 1.4169512
+  },
+  {
+    "data": "2024-12-10",
+    "cota_fechamento": 1.46813218
+  },
+  {
+    "data": "2024-12-11",
+    "cota_fechamento": 1.51340334
+  },
+  {
+    "data": "2024-12-12",
+    "cota_fechamento": 1.43265215
+  },
+  {
+    "data": "2024-12-13",
+    "cota_fechamento": 1.42796236
+  },
+  {
+    "data": "2024-12-16",
+    "cota_fechamento": 1.41183335
+  },
+  {
+    "data": "2024-12-17",
+    "cota_fechamento": 1.42182107
+  },
+  {
+    "data": "2024-12-18",
+    "cota_fechamento": 1.32703503
+  },
+  {
+    "data": "2024-12-19",
+    "cota_fechamento": 1.36452344
+  },
+  {
+    "data": "2024-12-20",
+    "cota_fechamento": 1.41717695
+  },
+  {
+    "data": "2024-12-23",
+    "cota_fechamento": 1.34306383
+  },
+  {
+    "data": "2024-12-24",
+    "cota_fechamento": 1.34291237
+  },
+  {
+    "data": "2024-12-26",
+    "cota_fechamento": 1.35623443
+  },
+  {
+    "data": "2024-12-27",
+    "cota_fechamento": 1.37414716
+  },
+  {
+    "data": "2024-12-30",
+    "cota_fechamento": 1.39209023
+  },
+  {
+    "data": "2024-12-31",
+    "cota_fechamento": 1.39219098
+  },
+  {
+    "data": "2025-01-02",
+    "cota_fechamento": 1.36790656
+  },
+  {
+    "data": "2025-01-03",
+    "cota_fechamento": 1.35390773
+  },
+  {
+    "data": "2025-01-06",
+    "cota_fechamento": 1.38412595
+  },
+  {
+    "data": "2025-01-07",
+    "cota_fechamento": 1.41209366
+  },
+  {
+    "data": "2025-01-08",
+    "cota_fechamento": 1.38076209
+  },
+  {
+    "data": "2025-01-09",
+    "cota_fechamento": 1.39576769
+  },
+  {
+    "data": "2025-01-10",
+    "cota_fechamento": 1.38625889
+  },
+  {
+    "data": "2025-01-13",
+    "cota_fechamento": 1.38983245
+  },
+  {
+    "data": "2025-01-14",
+    "cota_fechamento": 1.39809685
+  },
+  {
+    "data": "2025-01-15",
+    "cota_fechamento": 1.44625172
+  },
+  {
+    "data": "2025-01-16",
+    "cota_fechamento": 1.43098095
+  },
+  {
+    "data": "2025-01-17",
+    "cota_fechamento": 1.43181462
+  },
+  {
+    "data": "2025-01-20",
+    "cota_fechamento": 1.42600387
+  },
+  {
+    "data": "2025-01-21",
+    "cota_fechamento": 1.43648519
+  },
+  {
+    "data": "2025-01-22",
+    "cota_fechamento": 1.46217675
+  },
+  {
+    "data": "2025-01-23",
+    "cota_fechamento": 1.43341272
+  },
+  {
+    "data": "2025-01-24",
+    "cota_fechamento": 1.44437669
+  },
+  {
+    "data": "2025-01-27",
+    "cota_fechamento": 1.48952964
+  },
+  {
+    "data": "2025-01-28",
+    "cota_fechamento": 1.49066544
+  },
+  {
+    "data": "2025-01-29",
+    "cota_fechamento": 1.49188697
+  },
+  {
+    "data": "2025-01-30",
+    "cota_fechamento": 1.55056854
+  },
+  {
+    "data": "2025-01-31",
+    "cota_fechamento": 1.54304649
+  },
+  {
+    "data": "2025-02-03",
+    "cota_fechamento": 1.53926513
+  },
+  {
+    "data": "2025-02-04",
+    "cota_fechamento": 1.53719948
+  },
+  {
+    "data": "2025-02-05",
+    "cota_fechamento": 1.52069882
+  },
+  {
+    "data": "2025-02-06",
+    "cota_fechamento": 1.54047625
+  },
+  {
+    "data": "2025-02-07",
+    "cota_fechamento": 1.50849057
+  },
+  {
+    "data": "2025-02-10",
+    "cota_fechamento": 1.54196687
+  },
+  {
+    "data": "2025-02-11",
+    "cota_fechamento": 1.5481205
+  },
+  {
+    "data": "2025-02-12",
+    "cota_fechamento": 1.51330299
+  },
+  {
+    "data": "2025-02-13",
+    "cota_fechamento": 1.51739682
+  },
+  {
+    "data": "2025-02-14",
+    "cota_fechamento": 1.57876278
+  },
+  {
+    "data": "2025-02-17",
+    "cota_fechamento": 1.59913991
+  },
+  {
+    "data": "2025-02-18",
+    "cota_fechamento": 1.58422439
+  },
+  {
+    "data": "2025-02-19",
+    "cota_fechamento": 1.53924326
+  },
+  {
+    "data": "2025-02-20",
+    "cota_fechamento": 1.54154498
+  },
+  {
+    "data": "2025-02-21",
+    "cota_fechamento": 1.52720877
+  },
+  {
+    "data": "2025-02-24",
+    "cota_fechamento": 1.47581111
+  },
+  {
+    "data": "2025-02-25",
+    "cota_fechamento": 1.49345341
+  },
+  {
+    "data": "2025-02-26",
+    "cota_fechamento": 1.46210172
+  },
+  {
+    "data": "2025-02-27",
+    "cota_fechamento": 1.48780363
+  },
+  {
+    "data": "2025-02-28",
+    "cota_fechamento": 1.46213887
+  },
+  {
+    "data": "2025-03-05",
+    "cota_fechamento": 1.44178365
+  },
+  {
+    "data": "2025-03-06",
+    "cota_fechamento": 1.44317991
+  },
+  {
+    "data": "2025-03-07",
+    "cota_fechamento": 1.49277437
+  },
+  {
+    "data": "2025-03-10",
+    "cota_fechamento": 1.4593184
+  },
+  {
+    "data": "2025-03-11",
+    "cota_fechamento": 1.43484894
+  },
+  {
+    "data": "2025-03-12",
+    "cota_fechamento": 1.46223894
+  },
+  {
+    "data": "2025-03-13",
+    "cota_fechamento": 1.44384118
+  },
+  {
+    "data": "2025-03-14",
+    "cota_fechamento": 1.50279239
+  },
+  {
+    "data": "2025-03-17",
+    "cota_fechamento": 1.52401759
+  },
+  {
+    "data": "2025-03-18",
+    "cota_fechamento": 1.52569291
+  },
+  {
+    "data": "2025-03-19",
+    "cota_fechamento": 1.54289711
+  },
+  {
+    "data": "2025-03-20",
+    "cota_fechamento": 1.53337849
+  },
+  {
+    "data": "2025-03-21",
+    "cota_fechamento": 1.53823894
+  },
+  {
+    "data": "2025-03-24",
+    "cota_fechamento": 1.53856537
+  },
+  {
+    "data": "2025-03-25",
+    "cota_fechamento": 1.57529368
+  },
+  {
+    "data": "2025-03-26",
+    "cota_fechamento": 1.61281307
+  },
+  {
+    "data": "2025-03-27",
+    "cota_fechamento": 1.62529852
+  },
+  {
+    "data": "2025-03-28",
+    "cota_fechamento": 1.59329677
+  },
+  {
+    "data": "2025-03-31",
+    "cota_fechamento": 1.55989468
+  },
+  {
+    "data": "2025-04-01",
+    "cota_fechamento": 1.58034161
+  },
+  {
+    "data": "2025-04-02",
+    "cota_fechamento": 1.59404869
+  },
+  {
+    "data": "2025-04-03",
+    "cota_fechamento": 1.59603041
+  },
+  {
+    "data": "2025-04-04",
+    "cota_fechamento": 1.50387908
+  },
+  {
+    "data": "2025-04-07",
+    "cota_fechamento": 1.47435044
+  },
+  {
+    "data": "2025-04-08",
+    "cota_fechamento": 1.46567496
+  },
+  {
+    "data": "2025-04-09",
+    "cota_fechamento": 1.51523945
+  },
+  {
+    "data": "2025-04-10",
+    "cota_fechamento": 1.47541877
+  },
+  {
+    "data": "2025-04-11",
+    "cota_fechamento": 1.54248128
+  },
+  {
+    "data": "2025-04-14",
+    "cota_fechamento": 1.57431523
+  },
+  {
+    "data": "2025-04-15",
+    "cota_fechamento": 1.56542532
+  },
+  {
+    "data": "2025-04-16",
+    "cota_fechamento": 1.56261141
+  },
+  {
+    "data": "2025-04-17",
+    "cota_fechamento": 1.61252222
+  },
+  {
+    "data": "2025-04-22",
+    "cota_fechamento": 1.64328365
+  },
+  {
+    "data": "2025-04-23",
+    "cota_fechamento": 1.66742661
+  },
+  {
+    "data": "2025-04-24",
+    "cota_fechamento": 1.73226235
+  },
+  {
+    "data": "2025-04-25",
+    "cota_fechamento": 1.70660119
+  },
+  {
+    "data": "2025-04-28",
+    "cota_fechamento": 1.68835915
+  },
+  {
+    "data": "2025-04-29",
+    "cota_fechamento": 1.67624465
+  },
+  {
+    "data": "2025-04-30",
+    "cota_fechamento": 1.68296698
+  },
+  {
+    "data": "2025-05-02",
+    "cota_fechamento": 1.67177695
+  },
+  {
+    "data": "2025-05-05",
+    "cota_fechamento": 1.6590264
+  },
+  {
+    "data": "2025-05-06",
+    "cota_fechamento": 1.68709901
+  },
+  {
+    "data": "2025-05-07",
+    "cota_fechamento": 1.64570666
+  },
+  {
+    "data": "2025-05-08",
+    "cota_fechamento": 1.69481229
+  },
+  {
+    "data": "2025-05-09",
+    "cota_fechamento": 1.73657555
+  },
+  {
+    "data": "2025-05-12",
+    "cota_fechamento": 1.69411772
+  },
+  {
+    "data": "2025-05-13",
+    "cota_fechamento": 1.76159872
+  },
+  {
+    "data": "2025-05-14",
+    "cota_fechamento": 1.74486326
+  },
+  {
+    "data": "2025-05-15",
+    "cota_fechamento": 1.80433261
+  },
+  {
+    "data": "2025-05-16",
+    "cota_fechamento": 1.80511325
+  },
+  {
+    "data": "2025-05-19",
+    "cota_fechamento": 1.80514121
+  },
+  {
+    "data": "2025-05-20",
+    "cota_fechamento": 1.85885178
+  },
+  {
+    "data": "2025-05-21",
+    "cota_fechamento": 1.81304956
+  },
+  {
+    "data": "2025-05-22",
+    "cota_fechamento": 1.81844821
+  },
+  {
+    "data": "2025-05-23",
+    "cota_fechamento": 1.8404482
+  },
+  {
+    "data": "2025-05-26",
+    "cota_fechamento": 1.83545759
+  },
+  {
+    "data": "2025-05-27",
+    "cota_fechamento": 1.89991998
+  },
+  {
+    "data": "2025-05-28",
+    "cota_fechamento": 1.910056
+  },
+  {
+    "data": "2025-05-29",
+    "cota_fechamento": 1.91940692
+  },
+  {
+    "data": "2025-05-30",
+    "cota_fechamento": 1.91898663
+  },
+  {
+    "data": "2025-06-02",
+    "cota_fechamento": 1.9412929
+  },
+  {
+    "data": "2025-06-03",
+    "cota_fechamento": 1.94695155
+  },
+  {
+    "data": "2025-06-04",
+    "cota_fechamento": 1.95673652
+  },
+  {
+    "data": "2025-06-05",
+    "cota_fechamento": 1.97904189
+  },
+  {
+    "data": "2025-06-06",
+    "cota_fechamento": 1.98297997
+  },
+  {
+    "data": "2025-06-09",
+    "cota_fechamento": 1.98079187
+  },
+  {
+    "data": "2025-06-10",
+    "cota_fechamento": 1.99631217
+  },
+  {
+    "data": "2025-06-11",
+    "cota_fechamento": 2.00756698
+  },
+  {
+    "data": "2025-06-12",
+    "cota_fechamento": 1.99046715
+  },
+  {
+    "data": "2025-06-13",
+    "cota_fechamento": 1.97776354
+  },
+  {
+    "data": "2025-06-16",
+    "cota_fechamento": 2.00793363
+  },
+  {
+    "data": "2025-06-17",
+    "cota_fechamento": 2.00523751
+  },
+  {
+    "data": "2025-06-18",
+    "cota_fechamento": 1.98090527
+  },
+  {
+    "data": "2025-06-20",
+    "cota_fechamento": 1.97705271
+  },
+  {
+    "data": "2025-06-23",
+    "cota_fechamento": 1.9532379
+  },
+  {
+    "data": "2025-06-24",
+    "cota_fechamento": 1.97867118
+  },
+  {
+    "data": "2025-06-25",
+    "cota_fechamento": 1.97250887
+  },
+  {
+    "data": "2025-06-26",
+    "cota_fechamento": 1.97067643
+  },
+  {
+    "data": "2025-06-27",
+    "cota_fechamento": 1.97156352
+  },
+  {
+    "data": "2025-06-30",
+    "cota_fechamento": 1.99275484
+  },
+  {
+    "data": "2025-07-01",
+    "cota_fechamento": 1.98757619
+  },
+  {
+    "data": "2025-07-02",
+    "cota_fechamento": 1.94112014
+  },
+  {
+    "data": "2025-07-03",
+    "cota_fechamento": 1.97670749
+  },
+  {
+    "data": "2025-07-04",
+    "cota_fechamento": 1.98925025
+  },
+  {
+    "data": "2025-07-07",
+    "cota_fechamento": 1.97439053
+  },
+  {
+    "data": "2025-07-08",
+    "cota_fechamento": 2.00221092
+  },
+  {
+    "data": "2025-07-09",
+    "cota_fechamento": 1.97133144
+  },
+  {
+    "data": "2025-07-10",
+    "cota_fechamento": 1.93763367
+  },
+  {
+    "data": "2025-07-11",
+    "cota_fechamento": 1.91862457
+  },
+  {
+    "data": "2025-07-14",
+    "cota_fechamento": 1.88938674
+  },
+  {
+    "data": "2025-07-15",
+    "cota_fechamento": 1.9290696
+  },
+  {
+    "data": "2025-07-16",
+    "cota_fechamento": 1.91970878
+  },
+  {
+    "data": "2025-07-17",
+    "cota_fechamento": 1.91730168
+  },
+  {
+    "data": "2025-07-18",
+    "cota_fechamento": 1.86176043
+  },
+  {
+    "data": "2025-07-21",
+    "cota_fechamento": 1.81781002
+  },
+  {
+    "data": "2025-07-22",
+    "cota_fechamento": 1.81411233
+  },
+  {
+    "data": "2025-07-23",
+    "cota_fechamento": 1.84654479
+  },
+  {
+    "data": "2025-07-24",
+    "cota_fechamento": 1.83568125
+  },
+  {
+    "data": "2025-07-25",
+    "cota_fechamento": 1.83957527
+  },
+  {
+    "data": "2025-07-28",
+    "cota_fechamento": 1.79955401
+  },
+  {
+    "data": "2025-07-29",
+    "cota_fechamento": 1.82595338
+  },
+  {
+    "data": "2025-07-30",
+    "cota_fechamento": 1.85399657
+  },
+  {
+    "data": "2025-07-31",
+    "cota_fechamento": 1.84886883
+  },
+  {
+    "data": "2025-08-01",
+    "cota_fechamento": 1.83695324
+  },
+  {
+    "data": "2025-08-04",
+    "cota_fechamento": 1.8339367
+  },
+  {
+    "data": "2025-08-05",
+    "cota_fechamento": 1.83706663
+  },
+  {
+    "data": "2025-08-06",
+    "cota_fechamento": 1.89936319
+  },
+  {
+    "data": "2025-08-07",
+    "cota_fechamento": 1.93315175
+  },
+  {
+    "data": "2025-08-08",
+    "cota_fechamento": 1.91822722
+  },
+  {
+    "data": "2025-08-11",
+    "cota_fechamento": 1.90050753
+  },
+  {
+    "data": "2025-08-12",
+    "cota_fechamento": 1.94312627
+  },
+  {
+    "data": "2025-08-13",
+    "cota_fechamento": 1.91313823
+  },
+  {
+    "data": "2025-08-14",
+    "cota_fechamento": 1.92198439
+  },
+  {
+    "data": "2025-08-15",
+    "cota_fechamento": 1.92181033
+  },
+  {
+    "data": "2025-08-18",
+    "cota_fechamento": 1.91870352
+  },
+  {
+    "data": "2025-08-19",
+    "cota_fechamento": 1.85566755
+  },
+  {
+    "data": "2025-08-20",
+    "cota_fechamento": 1.90082177
+  },
+  {
+    "data": "2025-08-21",
+    "cota_fechamento": 1.88869021
+  },
+  {
+    "data": "2025-08-22",
+    "cota_fechamento": 1.95144624
+  },
+  {
+    "data": "2025-08-25",
+    "cota_fechamento": 1.97165952
+  },
+  {
+    "data": "2025-08-26",
+    "cota_fechamento": 1.97616946
+  },
+  {
+    "data": "2025-08-27",
+    "cota_fechamento": 2.03021135
+  },
+  {
+    "data": "2025-08-28",
+    "cota_fechamento": 2.07202621
+  },
+  {
+    "data": "2025-08-29",
+    "cota_fechamento": 2.06354374
+  },
+  {
+    "data": "2025-09-01",
+    "cota_fechamento": 2.03651976
+  },
+  {
+    "data": "2025-09-02",
+    "cota_fechamento": 2.0300672
+  },
+  {
+    "data": "2025-09-03",
+    "cota_fechamento": 2.02376048
+  },
+  {
+    "data": "2025-09-04",
+    "cota_fechamento": 2.06407478
+  },
+  {
+    "data": "2025-09-05",
+    "cota_fechamento": 2.10013964
+  },
+  {
+    "data": "2025-09-08",
+    "cota_fechamento": 2.0755326
+  },
+  {
+    "data": "2025-09-09",
+    "cota_fechamento": 2.08862014
+  },
+  {
+    "data": "2025-09-10",
+    "cota_fechamento": 2.1267089
+  },
+  {
+    "data": "2025-09-11",
+    "cota_fechamento": 2.14870446
+  },
+  {
+    "data": "2025-09-12",
+    "cota_fechamento": 2.14460005
+  },
+  {
+    "data": "2025-09-15",
+    "cota_fechamento": 2.14671638
+  },
+  {
+    "data": "2025-09-16",
+    "cota_fechamento": 2.16651058
+  },
+  {
+    "data": "2025-09-17",
+    "cota_fechamento": 2.19245927
+  },
+  {
+    "data": "2025-09-18",
+    "cota_fechamento": 2.17803699
+  },
+  {
+    "data": "2025-09-19",
+    "cota_fechamento": 2.185684
+  },
+  {
+    "data": "2025-09-22",
+    "cota_fechamento": 2.15383386
+  },
+  {
+    "data": "2025-09-23",
+    "cota_fechamento": 2.20527622
+  },
+  {
+    "data": "2025-09-24",
+    "cota_fechamento": 2.20298489
+  },
+  {
+    "data": "2025-09-25",
+    "cota_fechamento": 2.16220636
+  },
+  {
+    "data": "2025-09-26",
+    "cota_fechamento": 2.19180431
+  },
+  {
+    "data": "2025-09-29",
+    "cota_fechamento": 2.18584856
+  },
+  {
+    "data": "2025-09-30",
+    "cota_fechamento": 2.18248582
+  },
+  {
+    "data": "2025-10-01",
+    "cota_fechamento": 2.15445033
+  },
+  {
+    "data": "2025-10-02",
+    "cota_fechamento": 2.10441997
+  },
+  {
+    "data": "2025-10-03",
+    "cota_fechamento": 2.11546543
+  },
+  {
+    "data": "2025-10-06",
+    "cota_fechamento": 2.07792818
+  },
+  {
+    "data": "2025-10-07",
+    "cota_fechamento": 2.01140382
+  },
+  {
+    "data": "2025-10-08",
+    "cota_fechamento": 2.02643635
+  },
+  {
+    "data": "2025-10-09",
+    "cota_fechamento": 1.99690553
+  },
+  {
+    "data": "2025-10-10",
+    "cota_fechamento": 1.99352455
+  },
+  {
+    "data": "2025-10-13",
+    "cota_fechamento": 1.99939275
+  },
+  {
+    "data": "2025-10-14",
+    "cota_fechamento": 1.98913369
+  },
+  {
+    "data": "2025-10-15",
+    "cota_fechamento": 2.03177414
+  },
+  {
+    "data": "2025-10-16",
+    "cota_fechamento": 2.02179768
+  },
+  {
+    "data": "2025-10-17",
+    "cota_fechamento": 2.01911521
+  },
+  {
+    "data": "2025-10-20",
+    "cota_fechamento": 2.04286129
+  },
+  {
+    "data": "2025-10-21",
+    "cota_fechamento": 2.02832182
+  },
+  {
+    "data": "2025-10-22",
+    "cota_fechamento": 2.03513258
+  },
+  {
+    "data": "2025-10-23",
+    "cota_fechamento": 2.06272073
+  },
+  {
+    "data": "2025-10-24",
+    "cota_fechamento": 2.05383961
+  },
+  {
+    "data": "2025-10-27",
+    "cota_fechamento": 2.0740178
+  },
+  {
+    "data": "2025-10-28",
+    "cota_fechamento": 2.0351843
+  },
+  {
+    "data": "2025-10-29",
+    "cota_fechamento": 2.08351164
+  },
+  {
+    "data": "2025-10-30",
+    "cota_fechamento": 2.08335523
+  },
+  {
+    "data": "2025-10-31",
+    "cota_fechamento": 2.10547368
+  },
+  {
+    "data": "2025-11-03",
+    "cota_fechamento": 2.1000037
+  },
+  {
+    "data": "2025-11-04",
+    "cota_fechamento": 2.11854101
+  },
+  {
+    "data": "2025-11-05",
+    "cota_fechamento": 2.18934173
+  },
+  {
+    "data": "2025-11-06",
+    "cota_fechamento": 2.14420972
+  },
+  {
+    "data": "2025-11-07",
+    "cota_fechamento": 2.19726411
+  },
+  {
+    "data": "2025-11-10",
+    "cota_fechamento": 2.20908733
+  },
+  {
+    "data": "2025-11-11",
+    "cota_fechamento": 2.28545393
+  },
+  {
+    "data": "2025-11-12",
+    "cota_fechamento": 2.24917915
+  },
+  {
+    "data": "2025-11-13",
+    "cota_fechamento": 2.20842287
+  },
+  {
+    "data": "2025-11-14",
+    "cota_fechamento": 2.21279366
+  },
+  {
+    "data": "2025-11-17",
+    "cota_fechamento": 2.16791988
+  },
+  {
+    "data": "2025-11-18",
+    "cota_fechamento": 2.16171485
+  },
+  {
+    "data": "2025-11-19",
+    "cota_fechamento": 2.16615885
+  },
+  {
+    "data": "2025-11-21",
+    "cota_fechamento": 2.13865086
+  },
+  {
+    "data": "2025-11-24",
+    "cota_fechamento": 2.16643706
+  },
+  {
+    "data": "2025-11-25",
+    "cota_fechamento": 2.15985421
+  },
+  {
+    "data": "2025-11-26",
+    "cota_fechamento": 2.23854741
+  },
+  {
+    "data": "2025-11-27",
+    "cota_fechamento": 2.23861875
+  },
+  {
+    "data": "2025-11-28",
+    "cota_fechamento": 2.2927934
+  },
+  {
+    "data": "2025-12-01",
+    "cota_fechamento": 2.30630833
+  },
+  {
+    "data": "2025-12-02",
+    "cota_fechamento": 2.34239182
+  },
+  {
+    "data": "2025-12-03",
+    "cota_fechamento": 2.30659363
+  },
+  {
+    "data": "2025-12-04",
+    "cota_fechamento": 2.36101402
+  },
+  {
+    "data": "2025-12-05",
+    "cota_fechamento": 2.18467546
+  },
+  {
+    "data": "2025-12-08",
+    "cota_fechamento": 2.19215098
+  },
+  {
+    "data": "2025-12-09",
+    "cota_fechamento": 2.17896286
+  },
+  {
+    "data": "2025-12-10",
+    "cota_fechamento": 2.19757745
+  },
+  {
+    "data": "2025-12-11",
+    "cota_fechamento": 2.1852458
+  },
+  {
+    "data": "2025-12-12",
+    "cota_fechamento": 2.2063167
+  },
+  {
+    "data": "2025-12-15",
+    "cota_fechamento": 2.22643812
+  },
+  {
+    "data": "2025-12-16",
+    "cota_fechamento": 2.1213346
+  },
+  {
+    "data": "2025-12-17",
+    "cota_fechamento": 2.072707
+  },
+  {
+    "data": "2025-12-18",
+    "cota_fechamento": 2.07980658
+  },
+  {
+    "data": "2025-12-19",
+    "cota_fechamento": 2.07865286
+  },
+  {
+    "data": "2025-12-22",
+    "cota_fechamento": 2.06751323
+  },
+  {
+    "data": "2025-12-23",
+    "cota_fechamento": 2.13356144
+  },
+  {
+    "data": "2025-12-24",
+    "cota_fechamento": 2.13335829
+  },
+  {
+    "data": "2025-12-26",
+    "cota_fechamento": 2.14608504
+  },
+  {
+    "data": "2025-12-29",
+    "cota_fechamento": 2.13097523
+  },
+  {
+    "data": "2025-12-30",
+    "cota_fechamento": 2.19297787
+  },
+  {
+    "data": "2025-12-31",
+    "cota_fechamento": 2.19277312
+  },
+  {
+    "data": "2026-01-02",
+    "cota_fechamento": 2.15893131
+  },
+  {
+    "data": "2026-01-05",
+    "cota_fechamento": 2.23176059
+  },
+  {
+    "data": "2026-01-06",
+    "cota_fechamento": 2.3032788
+  },
+  {
+    "data": "2026-01-07",
+    "cota_fechamento": 2.27831076
+  },
+  {
+    "data": "2026-01-08",
+    "cota_fechamento": 2.31284139
+  },
+  {
+    "data": "2026-01-09",
+    "cota_fechamento": 2.30023611
+  },
+  {
+    "data": "2026-01-12",
+    "cota_fechamento": 2.28460693
+  },
+  {
+    "data": "2026-01-13",
+    "cota_fechamento": 2.2334119
+  },
+  {
+    "data": "2026-01-14",
+    "cota_fechamento": 2.22776265
+  },
+  {
+    "data": "2026-01-15",
+    "cota_fechamento": 2.24584078
+  },
+  {
+    "data": "2026-01-16",
+    "cota_fechamento": 2.20086524
+  },
+  {
+    "data": "2026-01-19",
+    "cota_fechamento": 2.19588167
+  },
+  {
+    "data": "2026-01-20",
+    "cota_fechamento": 2.21656081
+  },
+  {
+    "data": "2026-01-21",
+    "cota_fechamento": 2.29101163
+  },
+  {
+    "data": "2026-01-22",
+    "cota_fechamento": 2.34166154
+  },
+  {
+    "data": "2026-01-23",
+    "cota_fechamento": 2.38868453
+  },
+  {
+    "data": "2026-01-26",
+    "cota_fechamento": 2.42774048
+  },
+  {
+    "data": "2026-01-27",
+    "cota_fechamento": 2.45472657
+  },
+  {
+    "data": "2026-01-28",
+    "cota_fechamento": 2.52379837
+  },
+  {
+    "data": "2026-01-29",
+    "cota_fechamento": 2.55901257
+  },
+  {
+    "data": "2026-01-30",
+    "cota_fechamento": 2.57677673
+  },
+  {
+    "data": "2026-02-02",
+    "cota_fechamento": 2.59550111
+  },
+  {
+    "data": "2026-02-03",
+    "cota_fechamento": 2.64054148
+  },
+  {
+    "data": "2026-02-04",
+    "cota_fechamento": 2.58227228
+  },
+  {
+    "data": "2026-02-05",
+    "cota_fechamento": 2.56607586
+  },
+  {
+    "data": "2026-02-06",
+    "cota_fechamento": 2.63552925
+  },
+  {
+    "data": "2026-02-09",
+    "cota_fechamento": 2.62901061
+  },
+  {
+    "data": "2026-02-10",
+    "cota_fechamento": 2.64029242
+  },
+  {
+    "data": "2026-02-11",
+    "cota_fechamento": 2.68098085
+  },
+  {
+    "data": "2026-02-12",
+    "cota_fechamento": 2.65770452
+  },
+  {
+    "data": "2026-02-13",
+    "cota_fechamento": 2.65222978
+  },
+  {
+    "data": "2026-02-18",
+    "cota_fechamento": 2.67539915
+  },
+  {
+    "data": "2026-02-19",
+    "cota_fechamento": 2.74040027
+  },
+  {
+    "data": "2026-02-20",
+    "cota_fechamento": 2.77722566
+  },
+  {
+    "data": "2026-02-23",
+    "cota_fechamento": 2.73569115
+  },
+  {
+    "data": "2026-02-24",
+    "cota_fechamento": 2.74593129
+  },
+  {
+    "data": "2026-02-25",
+    "cota_fechamento": 2.70992441
+  },
+  {
+    "data": "2026-02-26",
+    "cota_fechamento": 2.71915144
+  },
+  {
+    "data": "2026-02-27",
+    "cota_fechamento": 2.71272276
+  },
+  {
+    "data": "2026-03-02",
+    "cota_fechamento": 2.72042583
+  },
+  {
+    "data": "2026-03-03",
+    "cota_fechamento": 2.59519826
+  },
+  {
+    "data": "2026-03-04",
+    "cota_fechamento": 2.66512167
+  },
+  {
+    "data": "2026-03-05",
+    "cota_fechamento": 2.62878115
+  },
+  {
+    "data": "2026-03-06",
+    "cota_fechamento": 2.60753315
+  },
+  {
+    "data": "2026-03-09",
+    "cota_fechamento": 2.66516698
+  },
+  {
+    "data": "2026-03-10",
+    "cota_fechamento": 2.70663644
+  },
+  {
+    "data": "2026-03-11",
+    "cota_fechamento": 2.73918514
+  },
+  {
+    "data": "2026-03-12",
+    "cota_fechamento": 2.62949173
+  },
+  {
+    "data": "2026-03-13",
+    "cota_fechamento": 2.63639179
+  },
+  {
+    "data": "2026-03-16",
+    "cota_fechamento": 2.67438094
+  },
+  {
+    "data": "2026-03-17",
+    "cota_fechamento": 2.71660881
+  },
+  {
+    "data": "2026-03-18",
+    "cota_fechamento": 2.79504258
+  }
 ]

@@ -363,6 +363,24 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 }
 .error-msg.hidden { display: none; }
 
+/* ═══════════════ PERF SUMMARY BAR ══════════════════════════════ */
+.perf-summary {
+  display: flex; gap: 0; border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.perf-summary.hidden { display: none; }
+.perf-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 6px 10px; border-right: 1px solid var(--border);
+  gap: 2px;
+}
+.perf-item:last-child { border-right: none; }
+.perf-item-lbl { font-size: 8px; color: var(--orange-text); letter-spacing: 0.8px; }
+.perf-item-val { font-size: 13px; font-weight: 700; }
+.perf-item-val.positive { color: var(--green); }
+.perf-item-val.negative { color: var(--red); }
+.perf-item-val.neutral  { color: var(--text-muted); }
+
 /* ═══════════════ HISTÓRICO DE COTAS ════════════════════════════ */
 .hist-register-bar {
   display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;

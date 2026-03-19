@@ -516,6 +516,40 @@ def api_auto_close():
 
     return jsonify({"ok": True, "data": today, "cota_fechamento": round(cota_est, 8)})
 
+@app.route("/api/performance-chart")
+def api_performance_chart():
+    history = load_quota_history()
+    if not history:
+        return jsonify({"series": []})
+
+    cache = load_cache()
+    now   = time.time()
+    ibov_key = "ibov_history_full"
+
+    ibov_map = {}
+    if cache.get(ibov_key) and now < cache[ibov_key].get("expires_at", 0):
+        ibov_map = cache[ibov_key]["data"]
+    else:
+        import pandas as pd
+        start   = history[0]["data"]
+        end_dt  = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+        try:
+            df = yf.download("^BVSP", start=start, end=end_dt.strftime("%Y-%m-%d"),
+                             progress=False, auto_adjust=True)
+            if not df.empty:
+                close = df["Close"]
+                if hasattr(close, "squeeze"):
+                    close = close.squeeze()
+                ibov_map = {str(d.date()): round(float(v), 2) for d, v in close.items()}
+        except Exception as e:
+            ibov_map = {}
+        cache[ibov_key] = {"data": ibov_map, "expires_at": now + HISTORY_TTL}
+        save_cache(cache)
+
+    series = [{"date": e["data"], "fund": e["cota_fechamento"], "ibov": ibov_map.get(e["data"])}
+              for e in history]
+    return jsonify({"series": series, "base_date": history[0]["data"]})
+
 @app.route("/api/quota-history", methods=["GET"])
 def api_get_quota_history():
     return jsonify(load_quota_history())
