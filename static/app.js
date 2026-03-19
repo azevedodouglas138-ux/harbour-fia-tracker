@@ -11,7 +11,7 @@ let sortCol = 'pct_total', sortDir = 'desc';
 let refreshTimer = null, countdownTimer = null;
 let secondsLeft  = 30;
 let editingTicker = null;
-let currentDays   = 90;
+let currentDays   = '0';
 const REFRESH_SEC = 30;
 
 // Chart.js dark/Bloomberg defaults
@@ -277,6 +277,21 @@ function renderChartsIfVisible() {
 // ── Chart: Performance (cota history vs IBOV) ────────────────────
 let _perfCache = null;
 
+// Filtra série por range usando datas de calendário, não contagem de entradas
+function filterSeriesByRange(allSeries, range) {
+  if (!range || range === '0' || range === 0) return allSeries;
+  const lastDate = new Date(allSeries[allSeries.length - 1].date + 'T00:00:00');
+  let cutoff;
+  if (range === 'ytd') {
+    cutoff = new Date(lastDate.getFullYear(), 0, 1);
+  } else {
+    cutoff = new Date(lastDate);
+    cutoff.setDate(cutoff.getDate() - parseInt(range));
+  }
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  return allSeries.filter(s => s.date >= cutoffStr);
+}
+
 async function loadHistoryChart(days) {
   const canvas  = document.getElementById('history-chart');
   const loading = document.getElementById('history-loading');
@@ -297,8 +312,8 @@ async function loadHistoryChart(days) {
       loading.classList.remove('hidden'); return;
     }
 
-    // ── Filter by range ──
-    const series = days > 0 ? allSeries.slice(-days) : allSeries;
+    // ── Filter by range (calendar days, not entry count) ──
+    const series = filterSeriesByRange(allSeries, days);
 
     // ── Rebase to filtered window start ──
     const baseFund = series[0].fund;
@@ -551,17 +566,17 @@ function renderUpsideChart() {
   });
 }
 
-async function loadCharts(days) {
-  currentDays = days;
+async function loadCharts(range) {
+  currentDays = range;
   renderSectorChart(); renderUpsideChart();
-  await loadHistoryChart(days);
+  await loadHistoryChart(range);
 }
 
 document.querySelectorAll('.range-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    loadHistoryChart(parseInt(btn.dataset.days));
+    loadHistoryChart(btn.dataset.range);
   });
 });
 
