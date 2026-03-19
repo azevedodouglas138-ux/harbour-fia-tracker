@@ -620,9 +620,11 @@ def load_cdi_map():
     url = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados"
            f"?formato=json&dataInicial={start_str}&dataFinal={end_str}")
     try:
-        resp = req.get(url, timeout=15)
+        resp = req.get(url, timeout=20)
         resp.raise_for_status()
         raw = resp.json()
+        if not isinstance(raw, list):
+            raise ValueError("resposta inesperada do BCB")
         cdi_map = {}
         for item in raw:
             d = datetime.strptime(item["data"], "%d/%m/%Y").strftime("%Y-%m-%d")
