@@ -550,6 +550,99 @@ def api_performance_chart():
               for e in history]
     return jsonify({"series": series, "base_date": history[0]["data"]})
 
+@app.route("/api/monthly-returns")
+def api_monthly_returns():
+    history = load_quota_history()
+    if not history:
+        return jsonify({"years": []})
+
+    # Load IBOV history (reuse from performance-chart cache)
+    cache = load_cache()
+    now   = time.time()
+    ibov_key = "ibov_history_full"
+
+    ibov_map = {}
+    if cache.get(ibov_key) and now < cache[ibov_key].get("expires_at", 0):
+        ibov_map = cache[ibov_key]["data"]
+    else:
+        start  = history[0]["data"]
+        end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+        try:
+            df = yf.download("^BVSP", start=start, end=end_dt.strftime("%Y-%m-%d"),
+                             progress=False, auto_adjust=True)
+            if not df.empty:
+                close = df["Close"]
+                if hasattr(close, "squeeze"):
+                    close = close.squeeze()
+                ibov_map = {str(d.date()): round(float(v), 2) for d, v in close.items()}
+        except Exception:
+            ibov_map = {}
+        cache[ibov_key] = {"data": ibov_map, "expires_at": now + HISTORY_TTL}
+        save_cache(cache)
+
+    # Build month-end maps: "YYYY-MM" -> last closing value of that month
+    month_map_fund = {}
+    for e in sorted(history, key=lambda x: x["data"]):
+        month_map_fund[e["data"][:7]] = e["cota_fechamento"]
+
+    month_map_ibov = {}
+    for date_str in sorted(ibov_map):
+        month_map_ibov[date_str[:7]] = ibov_map[date_str]
+
+    inception_date = history[0]["data"]
+    inception_cota = history[0]["cota_fechamento"]
+
+    # IBOV value on or before inception date
+    inception_ibov = None
+    for d in sorted(ibov_map):
+        if d <= inception_date:
+            inception_ibov = ibov_map[d]
+
+    all_ym = sorted(month_map_fund.keys())
+    years  = sorted(set(ym[:4] for ym in all_ym))
+    mnums  = ["01","02","03","04","05","06","07","08","09","10","11","12"]
+
+    result = []
+    for year in years:
+        fund_months = {}
+        ibov_months = {}
+
+        for mn in mnums:
+            ym      = f"{year}-{mn}"
+            m       = int(mn)
+            prev_ym = f"{int(year)-1}-12" if m == 1 else f"{year}-{str(m-1).zfill(2)}"
+
+            fc = month_map_fund.get(ym)
+            fp = month_map_fund.get(prev_ym)
+            ic = month_map_ibov.get(ym)
+            ip = month_map_ibov.get(prev_ym)
+
+            fund_months[mn] = round((fc / fp - 1) * 100, 2) if fc and fp else None
+            ibov_months[mn] = round((ic / ip - 1) * 100, 2) if ic and ip else None
+
+        # Annual return: last December of previous year as base (inception for first year)
+        prev_dec      = f"{int(year)-1}-12"
+        fund_yr_start = month_map_fund.get(prev_dec) or inception_cota
+        ibov_yr_start = month_map_ibov.get(prev_dec) or inception_ibov
+
+        last_ym     = max((ym for ym in all_ym if ym.startswith(year)), default=None)
+        fund_yr_end = month_map_fund.get(last_ym)
+        ibov_yr_end = month_map_ibov.get(last_ym)
+
+        fund_year  = round((fund_yr_end / fund_yr_start - 1) * 100, 2) if fund_yr_end and fund_yr_start else None
+        ibov_year  = round((ibov_yr_end / ibov_yr_start - 1) * 100, 2) if ibov_yr_end and ibov_yr_start else None
+        fund_accum = round((fund_yr_end / inception_cota - 1) * 100, 2) if fund_yr_end else None
+        ibov_accum = round((ibov_yr_end / inception_ibov - 1) * 100, 2) if ibov_yr_end and inception_ibov else None
+
+        result.append({
+            "year": year,
+            "fund_months": fund_months, "ibov_months": ibov_months,
+            "fund_year": fund_year, "ibov_year": ibov_year,
+            "fund_accum": fund_accum, "ibov_accum": ibov_accum,
+        })
+
+    return jsonify({"years": result, "inception_date": inception_date})
+
 @app.route("/api/quota-history", methods=["GET"])
 def api_get_quota_history():
     return jsonify(load_quota_history())

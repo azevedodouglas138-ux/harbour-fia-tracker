@@ -570,6 +570,7 @@ async function loadCharts(range) {
   currentDays = range;
   renderSectorChart(); renderUpsideChart();
   await loadHistoryChart(range);
+  loadMonthlyReturnsTable();
 }
 
 document.querySelectorAll('.range-btn').forEach(btn => {
@@ -581,6 +582,65 @@ document.querySelectorAll('.range-btn').forEach(btn => {
 });
 
 function invalidatePerfCache() { _perfCache = null; }
+
+// ── Monthly Returns Table ─────────────────────────────────────────
+let _monthlyRetCache = null;
+
+async function loadMonthlyReturnsTable() {
+  const wrap    = document.getElementById('monthly-ret-wrap');
+  const loading = document.getElementById('monthly-ret-loading');
+  if (!wrap || !loading) return;
+  if (_monthlyRetCache) return; // already rendered
+
+  loading.classList.remove('hidden');
+  loading.textContent = 'CARREGANDO RENTABILIDADE HISTÓRICA...';
+
+  try {
+    const res = await fetch('/api/monthly-returns');
+    _monthlyRetCache = await res.json();
+    const years = _monthlyRetCache.years || [];
+
+    if (!years.length) {
+      loading.textContent = 'SEM DADOS DE HISTÓRICO.';
+      return;
+    }
+
+    const MONTHS   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const MNUMS    = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+    const fmtPct   = v => v == null ? '-' : (v >= 0 ? '+' : '') + fmt(v, 2) + '%';
+    const clsPct   = v => v == null ? '' : v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+
+    let html = `<table class="monthly-ret-table">
+      <thead><tr>
+        <th colspan="2" class="mrt-th-ano">ANO</th>
+        ${MONTHS.map(m => `<th class="mrt-th-num">${m}</th>`).join('')}
+        <th class="mrt-th-num mrt-th-year">No ano</th>
+        <th class="mrt-th-num mrt-th-accum">Acumulado</th>
+      </tr></thead><tbody>`;
+
+    [...years].reverse().forEach(row => {
+      html += `<tr class="mrt-fund-row">
+        <td class="mrt-year-num" rowspan="2">${row.year}</td>
+        <td class="mrt-fund-name">HARBOUR IAT FIF AÇÕES RL</td>
+        ${MNUMS.map(mn => { const v = row.fund_months[mn]; return `<td class="mrt-num ${clsPct(v)}">${fmtPct(v)}</td>`; }).join('')}
+        <td class="mrt-num mrt-year ${clsPct(row.fund_year)}">${fmtPct(row.fund_year)}</td>
+        <td class="mrt-num mrt-accum ${clsPct(row.fund_accum)}">${fmtPct(row.fund_accum)}</td>
+      </tr><tr class="mrt-ibov-row">
+        <td class="mrt-ibov-name">IBOV</td>
+        ${MNUMS.map(mn => { const v = row.ibov_months[mn]; return `<td class="mrt-num ${clsPct(v)}">${fmtPct(v)}</td>`; }).join('')}
+        <td class="mrt-num mrt-year ${clsPct(row.ibov_year)}">${fmtPct(row.ibov_year)}</td>
+        <td class="mrt-num mrt-accum ${clsPct(row.ibov_accum)}">${fmtPct(row.ibov_accum)}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+    loading.classList.add('hidden');
+    wrap.classList.remove('hidden');
+  } catch(e) {
+    loading.textContent = 'ERRO: ' + e.message;
+  }
+}
 
 // ── Export ───────────────────────────────────────────────────────
 document.getElementById('btn-export-csv').addEventListener('click',   () => { window.location.href = '/api/export/csv'; });

@@ -412,6 +412,68 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 }
 .btn-hist-delete:hover { background: var(--red-dim); border-color: var(--red); }
 
+/* ═══════════════ RENTABILIDADE HISTÓRICA MENSAL ════════════════ */
+.monthly-ret-wrap { overflow-x: auto; }
+.monthly-ret-wrap.hidden { display: none; }
+
+.monthly-ret-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 11px; white-space: nowrap; font-family: var(--mono);
+}
+
+.monthly-ret-table thead tr {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--orange);
+}
+
+.monthly-ret-table th {
+  position: static;
+  padding: 5px 10px; text-align: left;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px;
+  color: var(--orange-text);
+  border-bottom: 1px solid var(--orange);
+  border-right: 1px solid var(--border);
+  background: var(--surface2);
+}
+.monthly-ret-table .mrt-th-num  { text-align: right; }
+.monthly-ret-table .mrt-th-year,
+.monthly-ret-table .mrt-th-accum {
+  color: var(--orange); background: var(--surface3);
+}
+
+.mrt-year-num {
+  font-size: 14px; font-weight: 700; color: var(--orange);
+  text-align: center; vertical-align: middle;
+  padding: 6px 14px; border-right: 1px solid var(--border);
+}
+
+.mrt-fund-name {
+  font-size: 10px; font-weight: 700; color: var(--text);
+  padding: 4px 10px; border-right: 1px solid var(--border);
+}
+.mrt-ibov-name {
+  font-size: 9px; color: var(--cyan);
+  padding: 3px 10px; border-right: 1px solid var(--border);
+}
+
+.monthly-ret-table td {
+  padding: 3px 8px; border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--surface3);
+}
+.monthly-ret-table td.mrt-num { text-align: right; }
+.monthly-ret-table td.mrt-year,
+.monthly-ret-table td.mrt-accum {
+  background: rgba(255,140,0,0.04); font-weight: 700;
+}
+
+.mrt-fund-row { border-top: 1px solid var(--border); }
+.mrt-ibov-row td { font-size: 10px; }
+
+.monthly-ret-table td.positive { color: var(--green); }
+.monthly-ret-table td.negative { color: var(--red); }
+.mrt-ibov-row td.positive { color: #00aa33; }
+.mrt-ibov-row td.negative { color: #cc2222; }
+
 @media (max-width: 900px) {
   .charts-grid, .cfg-grid { grid-template-columns: 1fr; }
   .chart-card.wide { grid-column: 1; }
