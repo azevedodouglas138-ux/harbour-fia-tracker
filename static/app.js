@@ -570,6 +570,7 @@ async function loadCharts(range) {
   currentDays = range;
   renderSectorChart(); renderUpsideChart();
   await loadHistoryChart(range);
+  loadPerfIndicators();
   loadMonthlyReturnsTable();
 }
 
@@ -582,6 +583,64 @@ document.querySelectorAll('.range-btn').forEach(btn => {
 });
 
 function invalidatePerfCache() { _perfCache = null; }
+
+// ── Performance Indicators Table ─────────────────────────────────
+let _perfIndCache = null;
+
+async function loadPerfIndicators() {
+  const wrap    = document.getElementById('perf-ind-wrap');
+  const loading = document.getElementById('perf-ind-loading');
+  if (!wrap || !loading || _perfIndCache) return;
+
+  loading.classList.remove('hidden');
+  try {
+    const res = await fetch('/api/performance-indicators');
+    _perfIndCache = (await res.json()).data || {};
+
+    const WINDOWS = ['no_mes','no_ano','3m','6m','12m','24m','36m','48m','60m','total'];
+    const LABELS  = ['No Mês','No Ano','3 Meses','6 Meses','12 Meses','24 Meses','36 Meses','48 Meses','60 Meses','Total'];
+
+    const fmtV = (v, isRet=false) => {
+      if (v == null) return '<span class="pi-dash">-</span>';
+      const cls = v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+      const txt = isRet
+        ? (v >= 0 ? '+' : '') + fmt(v, 2) + '%'
+        : fmt(Math.abs(v), 2) + (isRet === 'sharpe' ? '' : '%');
+      return `<span class="${cls}">${txt}</span>`;
+    };
+    const fmtRet    = v => fmtV(v, true);
+    const fmtVol    = v => v == null ? '<span class="pi-dash">-</span>' : `<span>${fmt(v,2)}%</span>`;
+    const fmtSharpe = v => {
+      if (v == null) return '<span class="pi-dash">-</span>';
+      const cls = v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+      return `<span class="${cls}">${fmt(v, 2)}</span>`;
+    };
+
+    const th = LABELS.map((l, i) =>
+      `<th class="pi-th${i === WINDOWS.length - 1 ? ' pi-th-total' : ''}">${l}</th>`
+    ).join('');
+
+    const makeRow = (label, key, fmtFn) =>
+      `<tr><td class="pi-row-label">${label}</td>` +
+      WINDOWS.map((w, i) =>
+        `<td class="pi-td${i === WINDOWS.length - 1 ? ' pi-td-total' : ''}">${fmtFn(_perfIndCache[w]?.[key])}</td>`
+      ).join('') + '</tr>';
+
+    wrap.innerHTML = `<div class="perf-ind-scroll"><table class="perf-ind-table">
+      <thead><tr><th class="pi-th-label"></th>${th}</tr></thead>
+      <tbody>
+        ${makeRow('Rentabilidade',   'ret',    fmtRet)}
+        ${makeRow('Volatilidade',    'vol',    fmtVol)}
+        ${makeRow('Índice de Sharpe','sharpe', fmtSharpe)}
+      </tbody>
+    </table></div>`;
+
+    loading.classList.add('hidden');
+    wrap.classList.remove('hidden');
+  } catch(e) {
+    loading.textContent = 'ERRO: ' + e.message;
+  }
+}
 
 // ── Monthly Returns Table ─────────────────────────────────────────
 let _monthlyRetCache = null;

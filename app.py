@@ -550,6 +550,65 @@ def api_performance_chart():
               for e in history]
     return jsonify({"series": series, "base_date": history[0]["data"]})
 
+@app.route("/api/performance-indicators")
+def api_performance_indicators():
+    import math
+    history = load_quota_history()
+    if len(history) < 2:
+        return jsonify({"data": {}})
+
+    entries = [(datetime.strptime(e["data"], "%Y-%m-%d"), e["cota_fechamento"]) for e in history]
+    last_date = entries[-1][0]
+
+    def compute_metrics(sl):
+        if len(sl) < 2:
+            return {"ret": None, "vol": None, "sharpe": None}
+        cotas = [c for _, c in sl]
+        ret_cum = (cotas[-1] / cotas[0] - 1) * 100
+        daily = [(cotas[i] / cotas[i-1] - 1) for i in range(1, len(cotas))]
+        if len(daily) < 2:
+            return {"ret": round(ret_cum, 2), "vol": None, "sharpe": None}
+        n = len(daily)
+        mean_r = sum(daily) / n
+        var = sum((r - mean_r) ** 2 for r in daily) / n
+        std_d = math.sqrt(var) if var > 0 else 0
+        vol_ann = std_d * math.sqrt(252) * 100
+        ret_ann = ((cotas[-1] / cotas[0]) ** (252 / n) - 1) * 100
+        sharpe = round(ret_ann / vol_ann, 2) if vol_ann > 0 else None
+        return {
+            "ret": round(ret_cum, 2),
+            "vol": round(vol_ann, 2) if std_d > 0 else None,
+            "sharpe": sharpe,
+        }
+
+    def get_window(months_back=None, ytd=False, no_mes=False):
+        if no_mes:
+            cutoff = datetime(last_date.year, last_date.month, 1)
+        elif ytd:
+            cutoff = datetime(last_date.year, 1, 1)
+        elif months_back:
+            cutoff = last_date - timedelta(days=int(months_back * 365.25 / 12))
+        else:
+            return entries
+        before = [(d, c) for d, c in entries if d < cutoff]
+        after  = [(d, c) for d, c in entries if d >= cutoff]
+        return ([before[-1]] if before else []) + after
+
+    windows = [
+        ("no_mes", get_window(no_mes=True)),
+        ("no_ano", get_window(ytd=True)),
+        ("3m",     get_window(months_back=3)),
+        ("6m",     get_window(months_back=6)),
+        ("12m",    get_window(months_back=12)),
+        ("24m",    get_window(months_back=24)),
+        ("36m",    get_window(months_back=36)),
+        ("48m",    get_window(months_back=48)),
+        ("60m",    get_window(months_back=60)),
+        ("total",  entries),
+    ]
+
+    return jsonify({"data": {k: compute_metrics(sl) for k, sl in windows}})
+
 @app.route("/api/monthly-returns")
 def api_monthly_returns():
     history = load_quota_history()

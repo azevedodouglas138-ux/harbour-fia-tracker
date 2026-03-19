@@ -412,6 +412,49 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 }
 .btn-hist-delete:hover { background: var(--red-dim); border-color: var(--red); }
 
+/* ═══════════════ ÍNDICES DE RENTABILIDADE ══════════════════════ */
+.chart-subtitle {
+  font-size: 9px; color: var(--text-dim); letter-spacing: 0.5px;
+}
+.perf-ind-wrap.hidden { display: none; }
+.perf-ind-scroll { overflow-x: auto; }
+
+.perf-ind-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 11px; white-space: nowrap; font-family: var(--mono);
+}
+.perf-ind-table thead tr { background: var(--surface2); }
+.perf-ind-table th {
+  position: static;
+  padding: 6px 14px; text-align: right;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px;
+  color: var(--orange-text);
+  border-bottom: 1px solid var(--orange);
+  border-right: 1px solid var(--border);
+  background: var(--surface2);
+}
+.pi-th-label { text-align: left; min-width: 140px; }
+.pi-th-total { color: var(--orange); background: var(--surface3) !important; }
+
+.perf-ind-table tbody tr { border-bottom: 1px solid var(--border); }
+.perf-ind-table tbody tr:hover { background: var(--surface2); }
+.perf-ind-table tbody tr:nth-child(even) { background: var(--surface); }
+.perf-ind-table tbody tr:nth-child(even):hover { background: var(--surface2); }
+
+.pi-row-label {
+  padding: 7px 14px; font-size: 11px;
+  color: var(--text-muted); border-right: 1px solid var(--border);
+  font-weight: 600; letter-spacing: 0.3px;
+}
+.pi-td {
+  padding: 7px 14px; text-align: right;
+  border-right: 1px solid var(--border); font-weight: 600;
+}
+.pi-td-total { background: rgba(255,140,0,0.04); }
+.pi-dash { color: var(--text-dim); }
+.perf-ind-table .positive { color: var(--green); }
+.perf-ind-table .negative { color: var(--red); }
+
 /* ═══════════════ RENTABILIDADE HISTÓRICA MENSAL ════════════════ */
 .monthly-ret-wrap { overflow-x: auto; }
 .monthly-ret-wrap.hidden { display: none; }
