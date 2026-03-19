@@ -483,28 +483,47 @@ const CHART_COLORS = ['#ff8c00','#00aacc','#00cc44','#ff3333','#ffcc00','#9b59b6
 function renderSectorChart() {
   if (!portfolioData) return;
   const canvas = document.getElementById('sector-chart');
-  const smap = {};
-  portfolioData.rows.forEach(r => {
-    const s = r.sector || r.categoria || 'Outros';
-    smap[s] = (smap[s] || 0) + (r.valor_liquido || 0);
-  });
-  const total = Object.values(smap).reduce((a,b) => a+b, 0);
-  const entries = Object.entries(smap).sort((a,b) => b[1]-a[1]);
-  const labels = entries.map(([s]) => s);
-  const values = entries.map(([,v]) => total > 0 ? Math.round(v/total*1000)/10 : 0);
-  const colors = labels.map((_,i) => CHART_COLORS[i % CHART_COLORS.length]);
+  const rows   = [...portfolioData.rows]
+    .filter(r => r.valor_liquido)
+    .sort((a, b) => b.valor_liquido - a.valor_liquido);
+  const total  = rows.reduce((s, r) => s + r.valor_liquido, 0);
+  const labels = rows.map(r => r.ticker);
+  const values = rows.map(r => total > 0 ? Math.round(r.valor_liquido / total * 1000) / 10 : 0);
+  const colors = labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
   if (sectorChart) sectorChart.destroy();
   sectorChart = new Chart(canvas, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#000', borderWidth: 2, hoverOffset: 5 }] },
-    options: { responsive: true, cutout: '60%',
-      plugins: { legend: { display: false },
-        tooltip: { backgroundColor: '#0d0d0d', borderColor: '#2a2a2a', borderWidth: 1,
-          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(1)}%` } } } },
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#000', borderWidth: 2, hoverOffset: 6 }] },
+    options: {
+      responsive: true,
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10,10,10,0.95)',
+          borderColor: '#333', borderWidth: 1,
+          titleColor: '#ff8c00',
+          titleFont: { size: 10, weight: '700', family: "'Cascadia Code','Courier New',monospace" },
+          bodyFont:  { size: 11, family: "'Cascadia Code','Courier New',monospace" },
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              const row = rows[ctx.dataIndex];
+              return [
+                `  ${ctx.parsed.toFixed(1)}% do portfólio`,
+                `  ${fmtBRL(row.valor_liquido)}`,
+              ];
+            },
+          },
+        },
+      },
+    },
   });
-  document.getElementById('sector-legend').innerHTML = entries.map(([s,v],i) =>
-    `<div class="sector-legend-item"><div class="sector-legend-dot" style="background:${colors[i]}"></div>
-     <span>${s} <strong style="color:#e8e8e8">${(v/total*100).toFixed(1)}%</strong></span></div>`
+  document.getElementById('sector-legend').innerHTML = rows.map((r, i) =>
+    `<div class="sector-legend-item">
+       <div class="sector-legend-dot" style="background:${colors[i]}"></div>
+       <span>${r.ticker} <strong style="color:#e8e8e8">${(r.valor_liquido / total * 100).toFixed(1)}%</strong></span>
+     </div>`
   ).join('');
 }
 

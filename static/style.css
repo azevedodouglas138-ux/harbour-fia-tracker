@@ -245,6 +245,7 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 .charts-grid {
   display: grid; grid-template-columns: 1fr 1fr;
   gap: 12px; padding: 12px; max-width: 1600px; margin: 0 auto;
+  align-items: start;
 }
 .chart-card {
   background: var(--surface); border: 1px solid var(--border);
@@ -252,6 +253,7 @@ tr.flash-down { animation: flash-down 0.8s ease; }
   padding: 12px; display: flex; flex-direction: column; gap: 10px;
 }
 .chart-card.wide { grid-column: 1 / -1; }
+.chart-card:not(.wide) canvas { max-height: 240px; }
 
 .chart-card-header {
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
