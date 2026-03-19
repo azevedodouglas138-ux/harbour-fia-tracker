@@ -1,7 +1,9 @@
+import base64
 import csv
 import io
 import json
 import os
+import threading
 import time
 from datetime import datetime, timedelta
 
@@ -12,6 +14,43 @@ app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
+
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GITHUB_REPO  = os.environ.get("GITHUB_REPO", "")   # "owner/repo"
+GITHUB_BRANCH = os.environ.get("GITHUB_BRANCH", "main")
+
+def _github_push(relative_path, content_str, commit_msg):
+    """Push a single file to GitHub. Called in a background thread."""
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+        return
+    try:
+        import requests as req
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{relative_path}"
+        r   = req.get(api_url, headers=headers, timeout=10)
+        sha = r.json().get("sha") if r.ok else None
+        payload = {
+            "message": commit_msg,
+            "content": base64.b64encode(content_str.encode("utf-8")).decode(),
+            "branch":  GITHUB_BRANCH,
+        }
+        if sha:
+            payload["sha"] = sha
+        resp = req.put(api_url, json=payload, headers=headers, timeout=15)
+        if not resp.ok:
+            print(f"[github_push] {relative_path} → {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        print(f"[github_push] error: {e}")
+
+def github_push_async(relative_path, content_str, commit_msg):
+    """Fire-and-forget GitHub file push (non-blocking)."""
+    t = threading.Thread(target=_github_push,
+                         args=(relative_path, content_str, commit_msg),
+                         daemon=True)
+    t.start()
 PORTFOLIO_FILE      = os.path.join(DATA_DIR, "portfolio.json")
 CACHE_FILE          = os.path.join(DATA_DIR, "cache.json")
 FUND_CONFIG_FILE    = os.path.join(DATA_DIR, "fund_config.json")
@@ -39,8 +78,10 @@ def load_portfolio():
         return json.load(f)
 
 def save_portfolio(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
     with open(PORTFOLIO_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write(content)
+    github_push_async("data/portfolio.json", content, "chore: update portfolio.json via UI")
 
 def load_cache():
     if not os.path.exists(CACHE_FILE):
@@ -66,8 +107,10 @@ def load_fund_config():
     return {**defaults, **data}
 
 def save_fund_config(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
     with open(FUND_CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write(content)
+    github_push_async("data/fund_config.json", content, "chore: update fund_config.json via UI")
 
 def load_quota_history():
     if not os.path.exists(QUOTA_HISTORY_FILE):
@@ -76,8 +119,10 @@ def load_quota_history():
         return json.load(f)
 
 def save_quota_history(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
     with open(QUOTA_HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write(content)
+    github_push_async("data/quota_history.json", content, "chore: update quota_history.json via auto-close")
 
 def get_effective_fund_config():
     """Returns fund_config, overriding quota_fechamento/data_fechamento with the last history entry."""
