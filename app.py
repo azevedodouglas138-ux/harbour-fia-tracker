@@ -483,6 +483,39 @@ def api_delete_position(ticker):
     save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
     return jsonify({"ok": True})
 
+@app.route("/api/quota-history/auto-close", methods=["POST"])
+def api_auto_close():
+    """Called by GitHub Actions at 17:35 BRT on weekdays to auto-register the closing NAV."""
+    # Optional secret token check
+    secret = os.environ.get("AUTO_CLOSE_SECRET", "")
+    if secret:
+        token = request.headers.get("X-Secret", "") or request.json.get("secret", "") if request.is_json else ""
+        if token != secret:
+            return jsonify({"error": "unauthorized"}), 401
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    portfolio = load_portfolio()
+    tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    invalidate_price_cache()
+    prices    = fetch_prices(tickers)           # fresh, no cache
+    funds     = get_cached_fundamentals(tickers)
+    data      = build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    quota     = calculate_quota(data["rows"], fund_config, prices)
+
+    cota_est = quota.get("cota_estimada")
+    if not cota_est:
+        return jsonify({"error": "cota estimada indisponível — preços não carregados"}), 500
+
+    history = load_quota_history()
+    history = [h for h in history if h["data"] != today]
+    history.append({"data": today, "cota_fechamento": round(cota_est, 8)})
+    history.sort(key=lambda x: x["data"])
+    save_quota_history(history)
+
+    return jsonify({"ok": True, "data": today, "cota_fechamento": round(cota_est, 8)})
+
 @app.route("/api/quota-history", methods=["GET"])
 def api_get_quota_history():
     return jsonify(load_quota_history())

@@ -1,0 +1,26 @@
+name: Auto-registrar fechamento da cota
+
+on:
+  schedule:
+    # 17:35 BRT = 20:35 UTC, segunda a sexta
+    - cron: '35 20 * * 1-5'
+  workflow_dispatch:  # permite disparar manualmente pelo GitHub
+
+jobs:
+  register-close:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Registrar fechamento do dia
+        run: |
+          echo "Disparando auto-close em $(date)..."
+          response=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Secret: ${{ secrets.AUTO_CLOSE_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/quota-history/auto-close")
+          echo "HTTP $response"
+          cat /tmp/resp.json
+          if [ "$response" != "200" ]; then
+            echo "ERRO: resposta HTTP $response"
+            exit 1
+          fi
