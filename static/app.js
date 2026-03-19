@@ -264,8 +264,9 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'tab-charts') loadCharts(currentDays);
-    if (btn.dataset.tab === 'tab-config') loadConfig();
+    if (btn.dataset.tab === 'tab-charts')  loadCharts(currentDays);
+    if (btn.dataset.tab === 'tab-config')  loadConfig();
+    if (btn.dataset.tab === 'tab-history') loadHistoryTab();
   });
 });
 
@@ -500,6 +501,94 @@ function showAddError(msg) {
 // ── Loading ──────────────────────────────────────────────────────
 const showLoading = () => document.getElementById('loading-overlay').classList.remove('hidden');
 const hideLoading = () => document.getElementById('loading-overlay').classList.add('hidden');
+
+// ── Histórico de Cotas ───────────────────────────────────────────
+async function loadHistoryTab() {
+  // Pre-fill date with today and cota with current estimated value
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('hist-reg-data').value = today;
+  const cota = portfolioData?.quota?.cota_estimada;
+  if (cota) document.getElementById('hist-reg-cota').value = cota.toFixed(8);
+
+  await renderQuotaHistoryTable();
+}
+
+async function renderQuotaHistoryTable() {
+  const tbody = document.getElementById('history-body');
+  tbody.innerHTML = '<tr><td colspan="5" class="empty-state">CARREGANDO...</td></tr>';
+  try {
+    const res     = await fetch('/api/quota-history');
+    const history = await res.json();
+
+    if (!history.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">NENHUM FECHAMENTO REGISTRADO.</td></tr>';
+      return;
+    }
+
+    const base = history[0].cota_fechamento;
+    tbody.innerHTML = '';
+
+    // Render newest first for better UX
+    [...history].reverse().forEach((entry, idx, arr) => {
+      const prev = arr[idx + 1];  // previous in reversed = next in original
+      const varDia = prev
+        ? (entry.cota_fechamento - prev.cota_fechamento) / prev.cota_fechamento * 100
+        : null;
+      const retAcum = (entry.cota_fechamento / base - 1) * 100;
+
+      const varCls  = varDia  == null ? '' : varDia  >= 0 ? 'positive' : 'negative';
+      const accumCls = retAcum >= 0 ? 'positive' : 'negative';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${entry.data}</td>
+        <td class="num" style="color:var(--cyan);font-weight:700">${entry.cota_fechamento.toFixed(8)}</td>
+        <td class="num ${varCls}">${varDia != null ? (varDia >= 0 ? '+' : '') + fmt(varDia, 4) + '%' : '—'}</td>
+        <td class="num ${accumCls}">${(retAcum >= 0 ? '+' : '') + fmt(retAcum, 4)}%</td>
+        <td><button class="btn-hist-delete" data-date="${entry.data}" title="Remover">✕</button></td>
+      `;
+      tr.querySelector('.btn-hist-delete').addEventListener('click', deleteQuotaEntry);
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">ERRO: ${e.message}</td></tr>`;
+  }
+}
+
+async function deleteQuotaEntry(e) {
+  const date = e.currentTarget.dataset.date;
+  if (!confirm(`REMOVER FECHAMENTO DE ${date}?`)) return;
+  const res = await fetch(`/api/quota-history/${date}`, { method: 'DELETE' });
+  if (res.ok) await renderQuotaHistoryTable();
+  else alert('ERRO AO REMOVER.');
+}
+
+document.getElementById('hist-reg-save').addEventListener('click', async () => {
+  const data = document.getElementById('hist-reg-data').value.trim();
+  const cota = document.getElementById('hist-reg-cota').value.trim();
+  if (!data || !cota) { alert('PREENCHA DATA E COTA.'); return; }
+  const btn = document.getElementById('hist-reg-save');
+  btn.disabled = true;
+  const res = await fetch('/api/quota-history', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data, cota_fechamento: parseFloat(cota) }),
+  });
+  btn.disabled = false;
+  const status = document.getElementById('hist-reg-status');
+  if (res.ok) {
+    status.textContent = '✔ FECHAMENTO REGISTRADO';
+    status.style.color = '#00cc44';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+    await renderQuotaHistoryTable();
+    // Refresh portfolio so cota base is updated
+    await fetchPortfolio();
+  } else {
+    const err = await res.json();
+    status.textContent = '✖ ' + (err.error || 'ERRO');
+    status.style.color = '#ff3333';
+  }
+});
 
 // ── Init ─────────────────────────────────────────────────────────
 (async () => {

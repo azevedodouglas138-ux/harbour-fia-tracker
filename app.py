@@ -12,9 +12,10 @@ app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
-PORTFOLIO_FILE   = os.path.join(DATA_DIR, "portfolio.json")
-CACHE_FILE       = os.path.join(DATA_DIR, "cache.json")
-FUND_CONFIG_FILE = os.path.join(DATA_DIR, "fund_config.json")
+PORTFOLIO_FILE      = os.path.join(DATA_DIR, "portfolio.json")
+CACHE_FILE          = os.path.join(DATA_DIR, "cache.json")
+FUND_CONFIG_FILE    = os.path.join(DATA_DIR, "fund_config.json")
+QUOTA_HISTORY_FILE  = os.path.join(DATA_DIR, "quota_history.json")
 
 _price_cache = {"data": {}, "expires_at": 0}
 FUNDAMENTALS_TTL = 7 * 24 * 3600
@@ -67,6 +68,26 @@ def load_fund_config():
 def save_fund_config(data):
     with open(FUND_CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def load_quota_history():
+    if not os.path.exists(QUOTA_HISTORY_FILE):
+        return []
+    with open(QUOTA_HISTORY_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_quota_history(data):
+    with open(QUOTA_HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def get_effective_fund_config():
+    """Returns fund_config, overriding quota_fechamento/data_fechamento with the last history entry."""
+    config = load_fund_config()
+    history = load_quota_history()
+    if history:
+        last = history[-1]
+        config["quota_fechamento"] = last["cota_fechamento"]
+        config["data_fechamento"]  = last["data"]
+    return config
 
 # ---------------------------------------------------------------------------
 # Price fetching — always includes ^BVSP
@@ -334,8 +355,8 @@ def api_portfolio():
     prices    = get_cached_prices(tickers)
     funds     = get_cached_fundamentals(tickers)
     data      = build_portfolio_response(portfolio, prices, funds)
-    # Attach quota data
-    fund_config  = load_fund_config()
+    # Attach quota data — always uses last closing from history as base
+    fund_config  = get_effective_fund_config()
     data["quota"] = calculate_quota(data["rows"], fund_config, prices)
     return jsonify(data)
 
@@ -460,6 +481,37 @@ def api_delete_position(ticker):
     portfolio["positions"] = [p for p in portfolio["positions"] if p["ticker"] != ticker.upper()]
     if len(portfolio["positions"]) == before: return jsonify({"error": "ticker not found"}), 404
     save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
+    return jsonify({"ok": True})
+
+@app.route("/api/quota-history", methods=["GET"])
+def api_get_quota_history():
+    return jsonify(load_quota_history())
+
+@app.route("/api/quota-history", methods=["POST"])
+def api_add_quota_history():
+    payload = request.json
+    data_str = payload.get("data", "").strip()
+    cota     = payload.get("cota_fechamento")
+    if not data_str or cota is None:
+        return jsonify({"error": "data e cota_fechamento são obrigatórios"}), 400
+    try:
+        cota = float(cota)
+    except (TypeError, ValueError):
+        return jsonify({"error": "cota_fechamento inválida"}), 400
+    history = load_quota_history()
+    history = [h for h in history if h["data"] != data_str]
+    history.append({"data": data_str, "cota_fechamento": cota})
+    history.sort(key=lambda x: x["data"])
+    save_quota_history(history)
+    return jsonify({"ok": True})
+
+@app.route("/api/quota-history/<date>", methods=["DELETE"])
+def api_delete_quota_history(date):
+    history = load_quota_history()
+    new_history = [h for h in history if h["data"] != date]
+    if len(new_history) == len(history):
+        return jsonify({"error": "entrada não encontrada"}), 404
+    save_quota_history(new_history)
     return jsonify({"ok": True})
 
 if __name__ == "__main__":

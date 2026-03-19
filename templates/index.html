@@ -88,6 +88,7 @@
   <button class="bbg-fn active" data-tab="tab-table"><span class="fn-num">200)</span> TABELA</button>
   <button class="bbg-fn" data-tab="tab-charts"><span class="fn-num">201)</span> GRÁFICOS</button>
   <button class="bbg-fn" data-tab="tab-config"><span class="fn-num">202)</span> CONFIGURAÇÕES</button>
+  <button class="bbg-fn" data-tab="tab-history"><span class="fn-num">203)</span> HISTÓRICO DE COTAS</button>
 </div>
 
 <!-- Loading -->
@@ -294,6 +295,44 @@
       <button class="bbg-btn" id="add-modal-cancel">CANCELAR</button>
       <button class="bbg-btn bbg-btn-primary" id="add-modal-save">ADICIONAR</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     203) HISTÓRICO DE COTAS
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="tab-history" class="tab-content">
+  <div class="hist-register-bar">
+    <span class="hist-bar-title">◆ REGISTRAR FECHAMENTO</span>
+    <div class="hist-bar-fields">
+      <div class="cfg-field">
+        <label>DATA</label>
+        <input type="date" id="hist-reg-data" />
+      </div>
+      <div class="cfg-field">
+        <label>COTA FECHAMENTO</label>
+        <input type="number" id="hist-reg-cota" step="0.00000001" placeholder="2.71660881" />
+      </div>
+    </div>
+    <button class="bbg-btn bbg-btn-primary" id="hist-reg-save">&#128190; REGISTRAR FECHAMENTO</button>
+    <span class="cfg-status" id="hist-reg-status"></span>
+  </div>
+
+  <div class="table-wrapper" style="max-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 72px);">
+    <table id="history-table">
+      <thead>
+        <tr>
+          <th>DATA</th>
+          <th class="num">COTA FECHAMENTO</th>
+          <th class="num">VAR. DIA %</th>
+          <th class="num">RETORNO ACUM. %</th>
+          <th class="actions-col"></th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="5" class="empty-state">CARREGANDO...</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 

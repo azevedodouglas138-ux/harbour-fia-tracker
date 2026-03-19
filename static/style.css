@@ -363,6 +363,35 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 }
 .error-msg.hidden { display: none; }
 
+/* ═══════════════ HISTÓRICO DE COTAS ════════════════════════════ */
+.hist-register-bar {
+  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.hist-bar-title {
+  font-size: 10px; font-weight: 700; color: var(--orange);
+  letter-spacing: 1px; white-space: nowrap; align-self: center;
+}
+.hist-bar-fields {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.hist-bar-fields .cfg-field { min-width: 160px; }
+.hist-bar-fields input {
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  padding: 5px 8px; outline: none; border-radius: 2px;
+  transition: border-color .12s; width: 100%;
+}
+.hist-bar-fields input:focus { border-color: var(--orange); }
+
+.btn-hist-delete {
+  background: none; border: 1px solid var(--border);
+  color: var(--red); cursor: pointer; font-size: 10px;
+  padding: 2px 6px; border-radius: 2px; font-family: var(--mono);
+}
+.btn-hist-delete:hover { background: var(--red-dim); border-color: var(--red); }
+
 @media (max-width: 900px) {
   .charts-grid, .cfg-grid { grid-template-columns: 1fr; }
   .chart-card.wide { grid-column: 1; }
