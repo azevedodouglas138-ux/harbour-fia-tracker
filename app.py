@@ -550,6 +550,44 @@ def api_performance_chart():
               for e in history]
     return jsonify({"series": series, "base_date": history[0]["data"]})
 
+CDI_TTL = 24 * 3600
+
+def load_cdi_map():
+    """Returns {YYYY-MM-DD: daily_rate_pct} from cache or BCB API."""
+    import math, requests as req
+    cache    = load_cache()
+    now      = time.time()
+    cdi_key  = "cdi_daily"
+    history  = load_quota_history()
+    if not history:
+        return {}
+
+    start_date = history[0]["data"]
+    end_date   = history[-1]["data"]
+
+    cached = cache.get(cdi_key, {})
+    # Serve from cache if fresh AND covers the full range
+    if cached.get("expires_at", 0) > now and cached.get("end_date") == end_date:
+        return cached["data"]
+
+    start_str = datetime.strptime(start_date, "%Y-%m-%d").strftime("%d/%m/%Y")
+    end_str   = datetime.strptime(end_date,   "%Y-%m-%d").strftime("%d/%m/%Y")
+    url = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados"
+           f"?formato=json&dataInicial={start_str}&dataFinal={end_str}")
+    try:
+        resp = req.get(url, timeout=15)
+        resp.raise_for_status()
+        raw = resp.json()
+        cdi_map = {}
+        for item in raw:
+            d = datetime.strptime(item["data"], "%d/%m/%Y").strftime("%Y-%m-%d")
+            cdi_map[d] = float(item["valor"])
+        cache[cdi_key] = {"data": cdi_map, "end_date": end_date, "expires_at": now + CDI_TTL}
+        save_cache(cache)
+        return cdi_map
+    except Exception:
+        return cached.get("data", {})
+
 @app.route("/api/performance-indicators")
 def api_performance_indicators():
     import math
@@ -557,27 +595,45 @@ def api_performance_indicators():
     if len(history) < 2:
         return jsonify({"data": {}})
 
-    entries = [(datetime.strptime(e["data"], "%Y-%m-%d"), e["cota_fechamento"]) for e in history]
+    entries   = [(datetime.strptime(e["data"], "%Y-%m-%d"), e["cota_fechamento"]) for e in history]
     last_date = entries[-1][0]
+    cdi_map   = load_cdi_map()
+
+    def cdi_ann_for_window(start_dt, end_dt):
+        """Annualized CDI for the date window (exclusive start, inclusive end)."""
+        rates = [v for d, v in cdi_map.items()
+                 if start_dt < datetime.strptime(d, "%Y-%m-%d") <= end_dt]
+        if not rates:
+            return None
+        compound = 1.0
+        for r in rates:
+            compound *= (1 + r / 100)
+        n = len(rates)
+        return ((compound) ** (252 / n) - 1) * 100
 
     def compute_metrics(sl):
         if len(sl) < 2:
             return {"ret": None, "vol": None, "sharpe": None}
+        dates = [d for d, _ in sl]
         cotas = [c for _, c in sl]
         ret_cum = (cotas[-1] / cotas[0] - 1) * 100
         daily = [(cotas[i] / cotas[i-1] - 1) for i in range(1, len(cotas))]
         if len(daily) < 2:
             return {"ret": round(ret_cum, 2), "vol": None, "sharpe": None}
-        n = len(daily)
+        n      = len(daily)
         mean_r = sum(daily) / n
-        var = sum((r - mean_r) ** 2 for r in daily) / n
-        std_d = math.sqrt(var) if var > 0 else 0
+        var    = sum((r - mean_r) ** 2 for r in daily) / n
+        std_d  = math.sqrt(var) if var > 0 else 0
         vol_ann = std_d * math.sqrt(252) * 100
         ret_ann = ((cotas[-1] / cotas[0]) ** (252 / n) - 1) * 100
-        sharpe = round(ret_ann / vol_ann, 2) if vol_ann > 0 else None
+        if vol_ann > 0:
+            cdi = cdi_ann_for_window(dates[0], dates[-1])
+            sharpe = round((ret_ann - (cdi or 0)) / vol_ann, 2)
+        else:
+            sharpe = None
         return {
-            "ret": round(ret_cum, 2),
-            "vol": round(vol_ann, 2) if std_d > 0 else None,
+            "ret":    round(ret_cum, 2),
+            "vol":    round(vol_ann, 2) if std_d > 0 else None,
             "sharpe": sharpe,
         }
 
