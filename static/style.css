@@ -413,6 +413,15 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 .btn-hist-delete:hover { background: var(--red-dim); border-color: var(--red); }
 
 /* ═══════════════ ÍNDICES DE RENTABILIDADE ══════════════════════ */
+.chart-badge {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  padding: 2px 8px; border-radius: 2px;
+  background: var(--surface3);
+}
+.chart-badge.positive { color: var(--green); }
+.chart-badge.negative { color: var(--red); }
+.chart-badge.neutral  { color: var(--cyan); }
+
 .chart-subtitle {
   font-size: 9px; color: var(--text-dim); letter-spacing: 0.5px;
 }

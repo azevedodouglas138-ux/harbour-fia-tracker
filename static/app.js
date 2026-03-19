@@ -570,6 +570,7 @@ async function loadCharts(range) {
   currentDays = range;
   renderSectorChart(); renderUpsideChart();
   await loadHistoryChart(range);
+  loadDrawdownVolatility();
   loadPerfIndicators();
   loadMonthlyReturnsTable();
 }
@@ -583,6 +584,154 @@ document.querySelectorAll('.range-btn').forEach(btn => {
 });
 
 function invalidatePerfCache() { _perfCache = null; }
+
+// ── Drawdown & Volatility Charts ─────────────────────────────────
+let ddChart  = null;
+let volChart = null;
+let _ddVolCache = null;
+
+async function loadDrawdownVolatility() {
+  if (_ddVolCache) { renderDDVol(_ddVolCache); return; }
+  try {
+    const res = await fetch('/api/drawdown-volatility');
+    _ddVolCache = (await res.json()).series || [];
+    renderDDVol(_ddVolCache);
+  } catch(e) {
+    ['dd-loading','vol-loading'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = 'ERRO: ' + e.message;
+    });
+  }
+}
+
+function renderDDVol(series) {
+  if (!series.length) return;
+
+  const labels = series.map(s => s.date);
+  const ddData = series.map(s => s.drawdown);
+  const vData  = series.map(s => s.vol);
+
+  const n = labels.length;
+  const tickStep = n <= 60 ? 7 : n <= 180 ? 20 : n <= 400 ? 45 : n <= 800 ? 90 : 180;
+  const xTick = (_, i) => { if (i % tickStep !== 0) return ''; return labels[i]?.slice(0,7) ?? ''; };
+
+  const baseOpts = (yFmt) => ({
+    responsive: true,
+    animation: { duration: 350 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(10,10,10,0.95)',
+        borderColor: '#333', borderWidth: 1,
+        titleColor: '#ff8c00',
+        titleFont: { size: 10, weight: '700', family: "'Cascadia Code','Courier New',monospace" },
+        bodyFont:  { size: 11, family: "'Cascadia Code','Courier New',monospace" },
+        padding: 10,
+      },
+    },
+    scales: {
+      x: {
+        grid: { color: '#161616' },
+        ticks: { color: '#555', maxRotation: 0, font: { size: 9 }, callback: xTick },
+        border: { color: '#2a2a2a' },
+      },
+      y: {
+        position: 'right',
+        grid: { color: '#161616' },
+        ticks: { color: '#555', font: { size: 9 }, callback: yFmt },
+        border: { color: '#2a2a2a', dash: [3,3] },
+      },
+    },
+  });
+
+  // ── Drawdown chart ──
+  const ddCanvas  = document.getElementById('dd-chart');
+  const ddLoading = document.getElementById('dd-loading');
+  ddLoading.classList.add('hidden');
+  ddCanvas.style.display = '';
+
+  const ddCtx  = ddCanvas.getContext('2d');
+  const ddGrad = ddCtx.createLinearGradient(0, 0, 0, ddCanvas.clientHeight || 200);
+  ddGrad.addColorStop(0, 'rgba(0,204,68,0.0)');
+  ddGrad.addColorStop(1, 'rgba(0,204,68,0.22)');
+
+  if (ddChart) ddChart.destroy();
+  const ddOpts = baseOpts(v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%');
+  ddOpts.plugins.tooltip.callbacks = {
+    title: items => items[0]?.label ?? '',
+    label: ctx => `  Drawdown  ${ctx.parsed.y >= 0 ? '+' : ''}${fmt(ctx.parsed.y, 2)}%`,
+  };
+
+  const curDD = ddData.filter(v => v != null).at(-1);
+  const ddBadge = document.getElementById('dd-current');
+  if (ddBadge && curDD != null) {
+    ddBadge.textContent = `Atual  ${curDD >= 0 ? '+' : ''}${fmt(curDD, 2)}%`;
+    ddBadge.className = 'chart-badge ' + (curDD < 0 ? 'negative' : 'positive');
+  }
+
+  ddChart = new Chart(ddCanvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: ddData,
+        borderColor: '#00cc44',
+        backgroundColor: ddGrad,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: { target: { value: 0 } },
+        tension: 0.1,
+      }],
+    },
+    options: ddOpts,
+  });
+
+  // ── Volatility chart ──
+  const volCanvas  = document.getElementById('vol-chart');
+  const volLoading = document.getElementById('vol-loading');
+  volLoading.classList.add('hidden');
+  volCanvas.style.display = '';
+
+  const volCtx  = volCanvas.getContext('2d');
+  const volGrad = volCtx.createLinearGradient(0, 0, 0, volCanvas.clientHeight || 200);
+  volGrad.addColorStop(0, 'rgba(0,204,68,0.18)');
+  volGrad.addColorStop(1, 'rgba(0,204,68,0.0)');
+
+  if (volChart) volChart.destroy();
+  const volOpts = baseOpts(v => v.toFixed(0) + '%');
+  volOpts.plugins.tooltip.callbacks = {
+    title: items => items[0]?.label ?? '',
+    label: ctx => `  Volatilidade  ${fmt(ctx.parsed.y, 2)}%`,
+  };
+
+  const curVol = vData.filter(v => v != null).at(-1);
+  const volBadge = document.getElementById('vol-current');
+  if (volBadge && curVol != null) {
+    volBadge.textContent = `Atual  ${fmt(curVol, 2)}%`;
+    volBadge.className = 'chart-badge neutral';
+  }
+
+  volChart = new Chart(volCanvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: vData,
+        borderColor: '#00cc44',
+        backgroundColor: volGrad,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: true,
+        tension: 0.2,
+        spanGaps: true,
+      }],
+    },
+    options: volOpts,
+  });
+}
 
 // ── Performance Indicators Table ─────────────────────────────────
 let _perfIndCache = null;

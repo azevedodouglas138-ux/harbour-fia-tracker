@@ -633,6 +633,41 @@ def load_cdi_map():
     except Exception:
         return cached.get("data", {})
 
+@app.route("/api/drawdown-volatility")
+def api_drawdown_volatility():
+    import math
+    history = load_quota_history()
+    if not history:
+        return jsonify({"series": []})
+
+    dates = [e["data"] for e in history]
+    cotas = [e["cota_fechamento"] for e in history]
+
+    # Drawdown: (cota / peak_so_far - 1) * 100
+    peak = cotas[0]
+    drawdown = []
+    for c in cotas:
+        if c > peak:
+            peak = c
+        drawdown.append(round((c / peak - 1) * 100, 2))
+
+    # Rolling annualized volatility (21-day window)
+    vol_window = 21
+    rolling_vol = [None] * min(vol_window, len(cotas))
+    for i in range(vol_window, len(cotas)):
+        sl = cotas[i - vol_window: i + 1]
+        daily = [(sl[j] / sl[j-1] - 1) for j in range(1, len(sl))]
+        n = len(daily)
+        mean_r = sum(daily) / n
+        var = sum((r - mean_r) ** 2 for r in daily) / n
+        std_d = math.sqrt(var) if var > 0 else 0
+        rolling_vol.append(round(std_d * math.sqrt(252) * 100, 2))
+
+    series = [{"date": d, "drawdown": dd, "vol": v}
+              for d, dd, v in zip(dates, drawdown, rolling_vol)]
+
+    return jsonify({"series": series})
+
 @app.route("/api/performance-indicators")
 def api_performance_indicators():
     import math
