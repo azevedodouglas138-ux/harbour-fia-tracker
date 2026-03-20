@@ -8,12 +8,16 @@ import time
 from datetime import datetime, timedelta
 
 import yfinance as yf
-from flask import Flask, Response, jsonify, render_template, request, send_file
+from flask import Flask, Response, jsonify, render_template, request, send_file, session, redirect, url_for
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
+
+LOGIN_USER = os.environ.get("LOGIN_USER", "admin")
+LOGIN_PASS = os.environ.get("LOGIN_PASSWORD", "")
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO  = os.environ.get("GITHUB_REPO", "")   # "owner/repo"
@@ -388,6 +392,44 @@ def get_export_data():
 
 # ---------------------------------------------------------------------------
 # Routes
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+
+_PUBLIC = {"/login", "/logout"}
+
+@app.before_request
+def require_login():
+    if request.path in _PUBLIC:
+        return
+    if request.path.startswith("/static/"):
+        return
+    if request.path == "/api/quota-history/auto-close":
+        return
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        u = request.form.get("username", "").strip()
+        p = request.form.get("password", "")
+        if LOGIN_PASS and u == LOGIN_USER and p == LOGIN_PASS:
+            session["logged_in"] = True
+            return redirect("/")
+        error = "Usuário ou senha incorretos."
+    return render_template("login.html", error=error)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+# ---------------------------------------------------------------------------
+# Main app
 # ---------------------------------------------------------------------------
 
 @app.route("/")

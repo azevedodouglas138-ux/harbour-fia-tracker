@@ -96,6 +96,11 @@ html, body {
 .bbg-btn-primary:hover { background: var(--orange-text); border-color: var(--orange-text); color: #000; }
 .bbg-btn-danger { border-color: var(--red); color: var(--red); }
 .bbg-btn-danger:hover { background: var(--red); color: #fff; }
+.bbg-btn-logout {
+  display: inline-flex; align-items: center; text-decoration: none;
+  border-color: var(--border2); color: var(--text-muted);
+}
+.bbg-btn-logout:hover { border-color: var(--red); color: var(--red); background: rgba(255,51,51,0.08); }
 
 /* ═══════════════ STATS BAR ═════════════════════════════════════ */
 .bbg-statsbar {

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IAT TERMINAL</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #000000;
+      --surface: #0d0d0d;
+      --border:  #2a2a2a;
+      --border2: #3a3a3a;
+      --orange:  #ff8c00;
+      --orange2: #ffaa33;
+      --text:    #ffffff;
+      --muted:   #555555;
+      --red:     #ff3333;
+      --mono: 'Cascadia Code', 'Courier New', 'Consolas', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+    }
+
+    /* ── Layout: form top-right, title centered ── */
+    body {
+      display: grid;
+      grid-template-rows: 1fr;
+      grid-template-columns: 1fr;
+      position: relative;
+    }
+
+    /* Form — absolute top-right */
+    .login-form-wrap {
+      position: absolute;
+      top: 32px;
+      right: 40px;
+      width: 260px;
+    }
+
+    .login-form-label {
+      font-size: 8px;
+      letter-spacing: 1.5px;
+      color: var(--orange2);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .login-input {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 10px;
+      outline: none;
+      border-radius: 2px;
+      transition: border-color .12s;
+      width: 100%;
+    }
+    .login-input::placeholder { color: var(--muted); }
+    .login-input:focus { border-color: var(--orange); }
+
+    .login-btn {
+      background: var(--orange);
+      border: none;
+      color: #000;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 9px;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: background .12s;
+      width: 100%;
+    }
+    .login-btn:hover { background: var(--orange2); }
+
+    .login-error {
+      font-size: 10px;
+      color: var(--red);
+      letter-spacing: 0.3px;
+      margin-top: 4px;
+      padding: 6px 8px;
+      border: 1px solid rgba(255,51,51,0.3);
+      background: rgba(255,51,51,0.06);
+      border-radius: 2px;
+    }
+
+    /* ── Center title ── */
+    .login-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .login-title {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--orange);
+      text-transform: uppercase;
+    }
+
+    /* Scanline effect */
+    .login-center::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.04) 2px,
+        rgba(0,0,0,0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Bottom bar */
+    .login-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--orange);
+    }
+
+    /* ── Mobile: form below title ── */
+    @media (max-width: 600px) {
+      body { display: flex; flex-direction: column; align-items: center; padding: 24px 20px; }
+
+      .login-center {
+        height: auto;
+        padding: 60px 0 40px;
+        pointer-events: auto;
+      }
+
+      .login-form-wrap {
+        position: static;
+        width: 100%;
+        max-width: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-form-wrap">
+    <div class="login-form-label">◆ ACESSO AO SISTEMA</div>
+    <form class="login-form" method="POST" action="/login" autocomplete="off">
+      <input
+        class="login-input"
+        type="text"
+        name="username"
+        placeholder="USUÁRIO"
+        autocomplete="username"
+        spellcheck="false"
+        autofocus
+      />
+      <input
+        class="login-input"
+        type="password"
+        name="password"
+        placeholder="SENHA"
+        autocomplete="current-password"
+      />
+      <button class="login-btn" type="submit">ENTRAR</button>
+      {% if error %}
+      <div class="login-error">{{ error }}</div>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="login-center">
+    <span class="login-title">IAT TERMINAL</span>
+  </div>
+
+  <div class="login-bottom"></div>
+
+</body>
+</html>
