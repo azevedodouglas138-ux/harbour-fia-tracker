@@ -165,6 +165,10 @@ html, body {
 .table-wrapper {
   overflow: auto;
   max-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h));
+  -webkit-overflow-scrolling: touch;
+}
+.table-wrapper--history {
+  max-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 72px);
 }
 
 table {
@@ -548,8 +552,148 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 .mrt-ibov-row td.positive { color: #00aa33; }
 .mrt-ibov-row td.negative { color: #cc2222; }
 
+/* ═══════════════ RESPONSIVE ════════════════════════════════════ */
+
+/* ── Tablet (≤900px) ─────────────────────────────────────────── */
 @media (max-width: 900px) {
   .charts-grid, .cfg-grid { grid-template-columns: 1fr; }
   .chart-card.wide { grid-column: 1; }
+}
+
+/* ── Mobile landscape / small tablet (≤768px) ───────────────── */
+@media (max-width: 768px) {
+  :root {
+    --topbar-h: 96px;   /* stacked: name+cota row + actions row */
+    --fn-h:     40px;
+  }
+
+  /* Top bar: left+cota side-by-side, actions below */
+  .bbg-topbar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--topbar-h);
+  }
+  .bbg-topbar-left {
+    min-width: 0;
+    flex: 0 0 auto;
+    padding: 0 10px;
+    border-right: 1px solid var(--border2);
+    height: 58px;
+  }
+  .bbg-fund-ticker { font-size: 11px; }
+  .bbg-cota-block {
+    flex: 1;
+    padding: 4px 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border2);
+    height: 58px;
+  }
+  .bbg-cota-value  { font-size: 20px; }
+  .bbg-cota-change { font-size: 11px; }
+  .bbg-topbar-actions {
+    width: 100%;
+    padding: 4px 8px;
+    height: 38px;
+    gap: 4px;
+    border-top: 1px solid var(--border2);
+  }
+  .bbg-btn { font-size: 9px; padding: 4px 8px; }
+
+  /* Function bar: tabs fill the bar */
+  .bbg-fnbar { height: auto; overflow-x: auto; }
+  .bbg-fn    { font-size: 9px; padding: 0 10px; height: var(--fn-h); flex-shrink: 0; }
+
+  /* Stats bar */
   .bbg-statsbar { font-size: 10px; }
+  .bbg-stat     { padding: 0 6px; }
+
+  /* Table: full natural scroll on mobile */
+  .table-wrapper {
+    max-height: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Charts & config */
+  .charts-grid { padding: 8px; gap: 8px; }
+  .cfg-grid    { padding: 8px; gap: 8px; grid-template-columns: 1fr; }
+  .chart-card  { padding: 8px; }
+
+  /* Perf summary: 2 items per row */
+  .perf-summary { flex-wrap: wrap; }
+  .perf-item    { flex: 1 1 48%; border-right: 1px solid var(--border); }
+  .perf-item:nth-child(even) { border-right: none; }
+  .perf-item-val { font-size: 11px; }
+
+  /* History form */
+  .hist-register-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+
+  /* Range/bench buttons: smaller */
+  .range-selector { flex-wrap: wrap; }
+}
+
+/* ── Mobile portrait (≤480px) ───────────────────────────────── */
+@media (max-width: 480px) {
+  :root {
+    --topbar-h: 126px;  /* fund name row + cota row + actions row */
+    --fn-h:     36px;
+  }
+
+  /* Top bar: fully stacked */
+  .bbg-topbar-left {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border2);
+    height: auto;
+    padding: 6px 10px;
+  }
+  .bbg-cota-block {
+    width: 100%;
+    height: auto;
+    padding: 4px 10px 6px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .bbg-cota-value  { font-size: 22px; }
+  .bbg-cota-change { font-size: 12px; }
+  .bbg-topbar-actions {
+    height: auto;
+    padding: 5px 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Hide export buttons — use tabs instead */
+  #btn-export-csv, #btn-export-excel { display: none; }
+
+  /* Function bar: tabs fill width */
+  .bbg-fn  { flex: 1; justify-content: center; font-size: 8px; padding: 0 4px; }
+  .fn-num  { display: none; }
+
+  /* Range/bench: compact */
+  .range-btn  { font-size: 8px; padding: 3px 5px; }
+  .bench-btn  { font-size: 8px; padding: 3px 5px; }
+
+  /* Chart title: allow wrap */
+  .chart-card-header { flex-direction: column; align-items: flex-start; }
+  .range-selector    { flex-wrap: wrap; }
+  .chart-title       { font-size: 9px; }
+
+  /* Perf summary: 2 per row, smaller text */
+  .perf-item     { flex: 1 1 48%; }
+  .perf-item-val { font-size: 10px; }
+  .perf-item-lbl { font-size: 7px; }
+
+  /* Table: make it clearly scrollable on mobile */
+  .table-wrapper {
+    max-height: 75vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Cfg grid single col with less padding */
+  .charts-grid, .cfg-grid { padding: 6px; gap: 6px; }
+
+  /* Modal: full width */
+  .modal { width: 100%; max-width: 100vw; margin: 0; }
+  .modal-overlay { align-items: flex-end; }
+  .form-grid { grid-template-columns: 1fr; }
 }
