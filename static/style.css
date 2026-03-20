@@ -272,6 +272,28 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 .range-btn:hover { color: var(--orange-text); border-color: var(--orange); }
 .range-btn.active { background: var(--orange); border-color: var(--orange); color: #000; }
 
+.benchmark-selector {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 5px 0 2px 0; border-top: 1px solid var(--border2); margin-top: 4px;
+}
+.benchmark-label {
+  font-size: 8px; color: var(--text-muted); letter-spacing: 1px; font-weight: 700;
+  margin-right: 4px; white-space: nowrap;
+}
+.bench-btn {
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text-muted); font-family: var(--mono);
+  font-size: 9px; font-weight: 700; padding: 2px 7px;
+  cursor: pointer; transition: all .12s; border-radius: 2px;
+}
+.bench-btn:hover { border-color: #666; color: #ccc; }
+.bench-btn.active[data-bench="ibov"]   { color: #00aacc; background: rgba(0,170,204,0.12);   border-color: #00aacc; }
+.bench-btn.active[data-bench="smll"]   { color: #00cc88; background: rgba(0,204,136,0.12);   border-color: #00cc88; }
+.bench-btn.active[data-bench="idiv"]   { color: #ffcc00; background: rgba(255,204,0,0.12);   border-color: #ffcc00; }
+.bench-btn.active[data-bench="cdi"]    { color: #cc88ff; background: rgba(204,136,255,0.12); border-color: #cc88ff; }
+.bench-btn.active[data-bench="sp500"]  { color: #ff4488; background: rgba(255,68,136,0.12);  border-color: #ff4488; }
+.bench-btn.active[data-bench="nasdaq"] { color: #66bbff; background: rgba(102,187,255,0.12); border-color: #66bbff; }
+
 .sector-legend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .sector-legend-item { display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--text-muted); }
 .sector-legend-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }

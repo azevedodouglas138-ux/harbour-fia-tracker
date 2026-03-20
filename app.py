@@ -569,8 +569,10 @@ def api_performance_chart():
 
     cache = load_cache()
     now   = time.time()
-    ibov_key = "ibov_history_full"
+    ibov_key       = "ibov_history_full"
+    benchmarks_key = "benchmarks_history_full"
 
+    # ── IBOV (existing logic) ──
     ibov_map = {}
     if cache.get(ibov_key) and now < cache[ibov_key].get("expires_at", 0):
         ibov_map = cache[ibov_key]["data"]
@@ -591,9 +593,49 @@ def api_performance_chart():
         cache[ibov_key] = {"data": ibov_map, "expires_at": now + HISTORY_TTL}
         save_cache(cache)
 
+    # ── Additional benchmarks: SMLL, IDIV, S&P500, NASDAQ, CDI ──
+    benchmark_maps = {}
+    if cache.get(benchmarks_key) and now < cache[benchmarks_key].get("expires_at", 0):
+        benchmark_maps = cache[benchmarks_key]["data"]
+    else:
+        import pandas as pd
+        start  = history[0]["data"]
+        end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+        extra_tickers = ["^SMLL", "^IDIV", "^GSPC", "^IXIC"]
+        try:
+            df = yf.download(extra_tickers, start=start,
+                             end=end_dt.strftime("%Y-%m-%d"),
+                             progress=False, auto_adjust=True)
+            if not df.empty:
+                close = df["Close"] if isinstance(df.columns, pd.MultiIndex) else df
+                for ticker in extra_tickers:
+                    if ticker in close.columns:
+                        s = close[ticker].dropna()
+                        if not s.empty:
+                            benchmark_maps[ticker] = {
+                                str(d.date()): round(float(v), 2)
+                                for d, v in s.items()
+                            }
+        except Exception:
+            pass
+        # CDI cumulative index (starts at 100 on inception date, compounds daily)
+        try:
+            cdi_daily = load_cdi_map()
+            if cdi_daily:
+                cumulative = 100.0
+                cdi_cum = {}
+                for d in sorted(cdi_daily.keys()):
+                    cumulative *= (1 + cdi_daily[d] / 100)
+                    cdi_cum[d] = round(cumulative, 6)
+                benchmark_maps["cdi"] = cdi_cum
+        except Exception:
+            pass
+        cache[benchmarks_key] = {"data": benchmark_maps, "expires_at": now + HISTORY_TTL}
+        save_cache(cache)
+
     series = [{"date": e["data"], "fund": e["cota_fechamento"], "ibov": ibov_map.get(e["data"])}
               for e in history]
-    return jsonify({"series": series, "base_date": history[0]["data"]})
+    return jsonify({"series": series, "base_date": history[0]["data"], "benchmarks": benchmark_maps})
 
 CDI_TTL = 24 * 3600
 

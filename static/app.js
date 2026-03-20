@@ -14,6 +14,26 @@ let editingTicker = null;
 let currentDays   = '0';
 const REFRESH_SEC = 30;
 
+// ── Benchmark config ─────────────────────────────────────────────
+const BENCH_CONFIG = {
+  ibov:   { label: 'IBOV',      color: '#00aacc', dash: [5, 4] },
+  smll:   { label: 'SMLL',      color: '#00cc88', dash: [4, 3] },
+  idiv:   { label: 'IDIV',      color: '#ffcc00', dash: [4, 3] },
+  cdi:    { label: 'CDI',       color: '#cc88ff', dash: [3, 3] },
+  sp500:  { label: 'S&P500 $',  color: '#ff4488', dash: [4, 3] },
+  nasdaq: { label: 'NASDAQ $',  color: '#66bbff', dash: [4, 3] },
+};
+// Maps UI key → backend key in _perfCache.benchmarks
+const BENCH_BACKEND_KEY = {
+  ibov:   null,       // special: comes from series[].ibov
+  smll:   '^SMLL',
+  idiv:   '^IDIV',
+  cdi:    'cdi',
+  sp500:  '^GSPC',
+  nasdaq: '^IXIC',
+};
+let selectedBenchmarks = new Set(['ibov']);
+
 // Chart.js dark/Bloomberg defaults
 Chart.defaults.color       = '#888888';
 Chart.defaults.borderColor = '#2a2a2a';
@@ -315,18 +335,34 @@ async function loadHistoryChart(days) {
     // ── Filter by range (calendar days, not entry count) ──
     const series = filterSeriesByRange(allSeries, days);
 
+    // ── Helper: rebase a {date→value} map to the series window ──
+    function getBenchmarkData(backendKey, seriesDates, cache) {
+      const map = cache.benchmarks?.[backendKey];
+      if (!map) return null;
+      let baseVal = null;
+      for (const date of seriesDates) {
+        if (map[date] != null) { baseVal = map[date]; break; }
+      }
+      if (!baseVal) return null;
+      return seriesDates.map(date => {
+        const v = map[date];
+        return v != null ? +((v / baseVal - 1) * 100).toFixed(2) : null;
+      });
+    }
+
     // ── Rebase to filtered window start ──
     const baseFund = series[0].fund;
     const baseIbov = series.find(s => s.ibov != null)?.ibov ?? null;
 
     const labels   = series.map(s => s.date);
-    const fundData = series.map(s => s.fund  != null ? +((s.fund  / baseFund - 1) * 100).toFixed(2) : null);
-    const ibovData = series.map(s => s.ibov  != null && baseIbov ? +((s.ibov  / baseIbov - 1) * 100).toFixed(2) : null);
+    const fundData = series.map(s => s.fund != null ? +((s.fund / baseFund - 1) * 100).toFixed(2) : null);
+    const ibovData = series.map(s => s.ibov != null && baseIbov ? +((s.ibov / baseIbov - 1) * 100).toFixed(2) : null);
 
     // ── Summary stats ──
     const lastFund = fundData[fundData.length - 1];
     const lastIbov = ibovData.filter(v => v != null).at(-1);
-    const alpha    = lastFund != null && lastIbov != null ? +(lastFund - lastIbov).toFixed(2) : null;
+    const alpha    = lastFund != null && lastIbov != null && selectedBenchmarks.has('ibov')
+      ? +(lastFund - lastIbov).toFixed(2) : null;
 
     const maxDD = (() => {
       let peak = -Infinity, dd = 0;
@@ -334,7 +370,6 @@ async function loadHistoryChart(days) {
       return dd.toFixed(2);
     })();
 
-    const votlDays = fundData.filter(v => v != null).length;
     const dailyRets = [];
     for (let i = 1; i < series.length; i++) {
       if (series[i].fund && series[i-1].fund)
@@ -345,16 +380,23 @@ async function loadHistoryChart(days) {
       : null;
 
     // ── Render summary bar ──
-    const pc = v => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v, 2) + '%';
+    const pc  = v => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v, 2) + '%';
     const cls = v => v == null ? 'neutral' : v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
-    summary.innerHTML = [
-      ['HARBOUR IAT', pc(lastFund), cls(lastFund)],
-      ['IBOV', pc(lastIbov), cls(lastIbov)],
-      ['ALPHA', pc(alpha), cls(alpha)],
+    const summaryItems = [['HARBOUR IAT', pc(lastFund), cls(lastFund)]];
+    for (const bk of selectedBenchmarks) {
+      const cfg = BENCH_CONFIG[bk];
+      if (!cfg) continue;
+      const data = bk === 'ibov' ? ibovData : getBenchmarkData(BENCH_BACKEND_KEY[bk], labels, _perfCache);
+      const lastV = data ? data.filter(v => v != null).at(-1) : null;
+      summaryItems.push([cfg.label, pc(lastV), cls(lastV)]);
+    }
+    if (alpha != null) summaryItems.push(['ALPHA vs IBOV', pc(alpha), cls(alpha)]);
+    summaryItems.push(
       ['MAX DRAWDOWN', pc(+maxDD), 'negative'],
       ['VOLATILIDADE A.A.', vol != null ? fmt(vol, 2) + '%' : '—', 'neutral'],
       ['PERÍODO', labels[0] + ' → ' + labels[labels.length-1], 'neutral'],
-    ].map(([lbl, val, c]) =>
+    );
+    summary.innerHTML = summaryItems.map(([lbl, val, c]) =>
       `<div class="perf-item"><span class="perf-item-lbl">${lbl}</span><span class="perf-item-val ${c}">${val}</span></div>`
     ).join('');
     summary.classList.remove('hidden');
@@ -370,50 +412,61 @@ async function loadHistoryChart(days) {
     if (historyChart) historyChart.destroy();
 
     const lf = lastFund != null ? (lastFund >= 0 ? '+' : '') + fmt(lastFund, 2) + '%' : '';
-    const li = lastIbov != null ? (lastIbov >= 0 ? '+' : '') + fmt(lastIbov, 2) + '%' : '';
 
     // ── Smart x-axis ticks ──
     const n = labels.length;
     const tickStep = n <= 60 ? 7 : n <= 180 ? 20 : n <= 400 ? 45 : n <= 800 ? 90 : 180;
 
+    // ── Build datasets: fund + selected benchmarks ──
+    const datasets = [
+      {
+        label: `HARBOUR IAT  ${lf}`,
+        data: fundData,
+        borderColor: '#ff8c00',
+        backgroundColor: grad,
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#ff8c00',
+        pointHoverBorderColor: '#000',
+        pointHoverBorderWidth: 2,
+        fill: true,
+        tension: 0.15,
+        order: 1,
+      },
+    ];
+
+    let dsOrder = 2;
+    for (const bk of selectedBenchmarks) {
+      const cfg = BENCH_CONFIG[bk];
+      if (!cfg) continue;
+      const data = bk === 'ibov'
+        ? ibovData
+        : getBenchmarkData(BENCH_BACKEND_KEY[bk], labels, _perfCache);
+      if (!data) continue;
+      const lastV = data.filter(v => v != null).at(-1);
+      const lbl = lastV != null ? (lastV >= 0 ? '+' : '') + fmt(lastV, 2) + '%' : '';
+      datasets.push({
+        label: `${cfg.label}  ${lbl}`,
+        data,
+        borderColor: cfg.color,
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: cfg.color,
+        pointHoverBorderColor: '#000',
+        pointHoverBorderWidth: 2,
+        fill: false,
+        tension: 0.15,
+        borderDash: cfg.dash,
+        order: dsOrder++,
+      });
+    }
+
     historyChart = new Chart(canvas, {
       type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: `HARBOUR IAT  ${lf}`,
-            data: fundData,
-            borderColor: '#ff8c00',
-            backgroundColor: grad,
-            borderWidth: 2.5,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: '#ff8c00',
-            pointHoverBorderColor: '#000',
-            pointHoverBorderWidth: 2,
-            fill: true,
-            tension: 0.15,
-            order: 1,
-          },
-          {
-            label: `IBOV  ${li}`,
-            data: ibovData,
-            borderColor: '#00aacc',
-            backgroundColor: 'transparent',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointHoverBackgroundColor: '#00aacc',
-            pointHoverBorderColor: '#000',
-            pointHoverBorderWidth: 2,
-            fill: false,
-            tension: 0.15,
-            borderDash: [5, 4],
-            order: 2,
-          },
-        ],
-      },
+      data: { labels, datasets },
       options: {
         responsive: true,
         animation: { duration: 350 },
@@ -442,18 +495,20 @@ async function loadHistoryChart(days) {
               title: items => items[0]?.label ?? '',
               label: ctx => {
                 const v = ctx.parsed.y;
-                const sign = v >= 0 ? '+' : '';
-                const name = ctx.datasetIndex === 0 ? 'HARBOUR IAT' : 'IBOV      ';
-                return `  ${name}  ${sign}${fmt(v, 2)}%`;
+                const s = v >= 0 ? '+' : '';
+                const name = ctx.dataset.label.split('  ')[0].padEnd(12);
+                return `  ${name}  ${s}${fmt(v, 2)}%`;
               },
               afterBody: items => {
                 const f = items.find(i => i.datasetIndex === 0)?.parsed.y;
-                const ib = items.find(i => i.datasetIndex === 1)?.parsed.y;
-                if (f != null && ib != null) {
-                  const a = +(f - ib).toFixed(2);
-                  return [`  ALPHA        ${a >= 0 ? '+' : ''}${fmt(a, 2)}%`];
-                }
-                return [];
+                if (f == null || items.length < 2) return [];
+                return items.filter(i => i.datasetIndex > 0).map(i => {
+                  const v = i.parsed.y;
+                  if (v == null) return null;
+                  const a = +(f - v).toFixed(2);
+                  const bName = ('α ' + i.dataset.label.split('  ')[0]).padEnd(14);
+                  return `  ${bName}  ${a >= 0 ? '+' : ''}${fmt(a, 2)}%`;
+                }).filter(Boolean);
               },
             },
           },
@@ -580,6 +635,21 @@ document.querySelectorAll('.range-btn').forEach(btn => {
     document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     loadHistoryChart(btn.dataset.range);
+  });
+});
+
+document.querySelectorAll('.bench-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const bk = btn.dataset.bench;
+    if (selectedBenchmarks.has(bk)) {
+      selectedBenchmarks.delete(bk);
+      btn.classList.remove('active');
+    } else {
+      selectedBenchmarks.add(bk);
+      btn.classList.add('active');
+    }
+    const activeRange = document.querySelector('.range-btn.active')?.dataset.range ?? '0';
+    loadHistoryChart(activeRange);
   });
 });
 
