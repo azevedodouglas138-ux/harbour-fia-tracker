@@ -601,18 +601,25 @@ def api_performance_chart():
         import pandas as pd
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
-        extra_tickers = ["^SMLL", "^IDIV", "^GSPC", "^IXIC"]
+        # SMLL11.SA = iShares Small Cap ETF (proxy SMLL index)
+        # DIVO11.SA = iShares IDIV ETF (proxy IDIV index)
+        extra_tickers = {
+            "^SMLL":  "SMLL11.SA",
+            "^IDIV":  "DIVO11.SA",
+            "^GSPC":  "^GSPC",
+            "^IXIC":  "^IXIC",
+        }
         try:
-            df = yf.download(extra_tickers, start=start,
+            df = yf.download(list(extra_tickers.values()), start=start,
                              end=end_dt.strftime("%Y-%m-%d"),
                              progress=False, auto_adjust=True)
             if not df.empty:
                 close = df["Close"] if isinstance(df.columns, pd.MultiIndex) else df
-                for ticker in extra_tickers:
-                    if ticker in close.columns:
-                        s = close[ticker].dropna()
+                for out_key, yf_ticker in extra_tickers.items():
+                    if yf_ticker in close.columns:
+                        s = close[yf_ticker].dropna()
                         if not s.empty:
-                            benchmark_maps[ticker] = {
+                            benchmark_maps[out_key] = {
                                 str(d.date()): round(float(v), 2)
                                 for d, v in s.items()
                             }
