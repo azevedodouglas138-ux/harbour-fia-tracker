@@ -1,6 +1,6 @@
 {
-  "tab_table": true,
+  "tab_table": false,
   "tab_charts": true,
-  "tab_config": true,
-  "tab_history": true
+  "tab_config": false,
+  "tab_history": false
 }
