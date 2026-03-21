@@ -6,6 +6,7 @@ import os
 import threading
 import time
 from datetime import datetime, timedelta
+from functools import wraps
 
 import yfinance as yf
 from flask import Flask, Response, jsonify, render_template, request, send_file, session, redirect, url_for
@@ -16,8 +17,10 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
-LOGIN_USER = os.environ.get("LOGIN_USER", "admin")
-LOGIN_PASS = os.environ.get("LOGIN_PASSWORD", "")
+LOGIN_USER  = os.environ.get("LOGIN_USER", "admin")
+LOGIN_PASS  = os.environ.get("LOGIN_PASSWORD", "")
+VIEWER_USER = os.environ.get("VIEWER_USER", "")
+VIEWER_PASS = os.environ.get("VIEWER_PASSWORD", "")
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_REPO  = os.environ.get("GITHUB_REPO", "")   # "owner/repo"
@@ -59,6 +62,7 @@ PORTFOLIO_FILE      = os.path.join(DATA_DIR, "portfolio.json")
 CACHE_FILE          = os.path.join(DATA_DIR, "cache.json")
 FUND_CONFIG_FILE    = os.path.join(DATA_DIR, "fund_config.json")
 QUOTA_HISTORY_FILE  = os.path.join(DATA_DIR, "quota_history.json")
+VIEWER_CONFIG_FILE  = os.path.join(DATA_DIR, "viewer_config.json")
 
 _price_cache = {"data": {}, "expires_at": 0}
 FUNDAMENTALS_TTL = 7 * 24 * 3600
@@ -137,6 +141,26 @@ def get_effective_fund_config():
         config["quota_fechamento"] = last["cota_fechamento"]
         config["data_fechamento"]  = last["data"]
     return config
+
+_VIEWER_CONFIG_DEFAULTS = {
+    "tab_table": True,
+    "tab_charts": True,
+    "tab_config": True,
+    "tab_history": True,
+}
+
+def load_viewer_config():
+    if not os.path.exists(VIEWER_CONFIG_FILE):
+        return dict(_VIEWER_CONFIG_DEFAULTS)
+    with open(VIEWER_CONFIG_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return {**_VIEWER_CONFIG_DEFAULTS, **data}
+
+def save_viewer_config(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    with open(VIEWER_CONFIG_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    github_push_async("data/viewer_config.json", content, "chore: update viewer_config.json via UI")
 
 # ---------------------------------------------------------------------------
 # Price fetching — always includes ^BVSP
@@ -400,6 +424,14 @@ def get_export_data():
 
 _PUBLIC = {"/login", "/logout"}
 
+def require_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get("role") != "admin":
+            return jsonify({"error": "forbidden"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
 @app.before_request
 def require_login():
     if request.path in _PUBLIC:
@@ -408,7 +440,7 @@ def require_login():
         return
     if request.path == "/api/quota-history/auto-close":
         return
-    if not session.get("logged_in"):
+    if not session.get("role"):
         return redirect(url_for("login"))
 
 @app.route("/login", methods=["GET", "POST"])
@@ -418,7 +450,10 @@ def login():
         u = request.form.get("username", "").strip()
         p = request.form.get("password", "")
         if LOGIN_PASS and u == LOGIN_USER and p == LOGIN_PASS:
-            session["logged_in"] = True
+            session["role"] = "admin"
+            return redirect("/")
+        if VIEWER_PASS and u == VIEWER_USER and p == VIEWER_PASS:
+            session["role"] = "viewer"
             return redirect("/")
         error = "Usuário ou senha incorretos."
     return render_template("login.html", error=error)
@@ -433,7 +468,8 @@ def logout():
 # ---------------------------------------------------------------------------
 
 @app.route("/")
-def index(): return render_template("index.html")
+def index():
+    return render_template("index.html", role=session.get("role", "viewer"), viewer_config=load_viewer_config())
 
 @app.route("/api/portfolio")
 def api_portfolio():
@@ -470,6 +506,7 @@ def api_history():
 def api_get_fund_config(): return jsonify(load_fund_config())
 
 @app.route("/api/fund-config", methods=["POST"])
+@require_admin
 def api_update_fund_config():
     payload = request.json
     config  = load_fund_config()
@@ -489,6 +526,7 @@ def api_update_fund_config():
     return jsonify({"ok": True})
 
 @app.route("/api/export/csv")
+@require_admin
 def api_export_csv():
     data   = get_export_data()
     output = io.StringIO()
@@ -501,6 +539,7 @@ def api_export_csv():
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 @app.route("/api/export/excel")
+@require_admin
 def api_export_excel():
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -520,6 +559,7 @@ def api_export_excel():
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.route("/api/portfolio/update", methods=["POST"])
+@require_admin
 def api_update_position():
     payload = request.json
     ticker  = payload.get("ticker")
@@ -538,6 +578,7 @@ def api_update_position():
     return jsonify({"ok": True})
 
 @app.route("/api/portfolio/add", methods=["POST"])
+@require_admin
 def api_add_position():
     payload = request.json
     ticker  = payload.get("ticker","").upper().strip()
@@ -562,6 +603,7 @@ def api_add_position():
     return jsonify({"ok": True})
 
 @app.route("/api/portfolio/<ticker>", methods=["DELETE"])
+@require_admin
 def api_delete_position(ticker):
     portfolio = load_portfolio()
     before = len(portfolio["positions"])
@@ -936,6 +978,7 @@ def api_get_quota_history():
     return jsonify(load_quota_history())
 
 @app.route("/api/quota-history", methods=["POST"])
+@require_admin
 def api_add_quota_history():
     payload = request.json
     data_str = payload.get("data", "").strip()
@@ -954,12 +997,28 @@ def api_add_quota_history():
     return jsonify({"ok": True})
 
 @app.route("/api/quota-history/<date>", methods=["DELETE"])
+@require_admin
 def api_delete_quota_history(date):
     history = load_quota_history()
     new_history = [h for h in history if h["data"] != date]
     if len(new_history) == len(history):
         return jsonify({"error": "entrada não encontrada"}), 404
     save_quota_history(new_history)
+    return jsonify({"ok": True})
+
+@app.route("/api/viewer-config", methods=["GET"])
+def api_get_viewer_config():
+    return jsonify(load_viewer_config())
+
+@app.route("/api/viewer-config", methods=["POST"])
+@require_admin
+def api_save_viewer_config():
+    payload = request.json
+    config = load_viewer_config()
+    for key in _VIEWER_CONFIG_DEFAULTS:
+        if key in payload:
+            config[key] = bool(payload[key])
+    save_viewer_config(config)
     return jsonify({"ok": True})
 
 if __name__ == "__main__":

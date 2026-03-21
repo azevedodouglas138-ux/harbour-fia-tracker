@@ -181,9 +181,10 @@ function renderTable() {
       <td class="num">${fmt(row.pl_alvo_25,1)}</td>
       <td class="num">${fmtBRL(row.preco_alvo)}</td>
       <td class="num ${upsideCls(row.upside_pct)}">${row.upside_pct!=null?sign(row.upside_pct)+fmt(row.upside_pct,2)+'%':'—'}</td>
-      <td><button class="btn-edit" title="Editar">✎</button></td>
+      <td>${window.USER_ROLE === 'admin' ? '<button class="btn-edit" title="Editar">✎</button>' : ''}</td>
     `;
-    tr.querySelector('.btn-edit').addEventListener('click', () => openEditModal(row));
+    const editBtn = tr.querySelector('.btn-edit');
+    if (editBtn) editBtn.addEventListener('click', () => openEditModal(row));
     tbody.appendChild(tr);
   });
 
@@ -921,8 +922,8 @@ async function loadMonthlyReturnsTable() {
 }
 
 // ── Export ───────────────────────────────────────────────────────
-document.getElementById('btn-export-csv').addEventListener('click',   () => { window.location.href = '/api/export/csv'; });
-document.getElementById('btn-export-excel').addEventListener('click', () => { window.location.href = '/api/export/excel'; });
+document.getElementById('btn-export-csv')?.addEventListener('click',   () => { window.location.href = '/api/export/csv'; });
+document.getElementById('btn-export-excel')?.addEventListener('click', () => { window.location.href = '/api/export/excel'; });
 
 // ── Config tab ───────────────────────────────────────────────────
 async function loadConfig() {
@@ -938,7 +939,7 @@ async function loadConfig() {
   document.getElementById('cfg-prov-acum').value   = config.performance_fee_acumulada_rs ?? '';
 }
 
-document.getElementById('cfg-save').addEventListener('click', async () => {
+document.getElementById('cfg-save')?.addEventListener('click', async () => {
   const payload = {
     quota_fechamento:          document.getElementById('cfg-quota').value,
     data_fechamento:           document.getElementById('cfg-data').value,
@@ -998,7 +999,7 @@ document.getElementById('edit-modal-delete').addEventListener('click', async () 
 });
 
 // ── Add Modal ────────────────────────────────────────────────────
-document.getElementById('btn-add-stock').addEventListener('click', () => {
+document.getElementById('btn-add-stock')?.addEventListener('click', () => {
   ['add-ticker','add-quantidade','add-liq','add-lucro','add-pl-alvo','add-preco-alvo'].forEach(id => document.getElementById(id).value='');
   document.getElementById('add-error').classList.add('hidden');
   document.getElementById('add-modal').classList.remove('hidden');
@@ -1074,9 +1075,10 @@ async function renderQuotaHistoryTable() {
         <td class="num" style="color:var(--cyan);font-weight:700">${entry.cota_fechamento.toFixed(8)}</td>
         <td class="num ${varCls}">${varDia != null ? (varDia >= 0 ? '+' : '') + fmt(varDia, 4) + '%' : '—'}</td>
         <td class="num ${accumCls}">${(retAcum >= 0 ? '+' : '') + fmt(retAcum, 4)}%</td>
-        <td><button class="btn-hist-delete" data-date="${entry.data}" title="Remover">✕</button></td>
+        <td>${window.USER_ROLE === 'admin' ? `<button class="btn-hist-delete" data-date="${entry.data}" title="Remover">✕</button>` : ''}</td>
       `;
-      tr.querySelector('.btn-hist-delete').addEventListener('click', deleteQuotaEntry);
+      const delBtn = tr.querySelector('.btn-hist-delete');
+      if (delBtn) delBtn.addEventListener('click', deleteQuotaEntry);
       tbody.appendChild(tr);
     });
   } catch(e) {
@@ -1092,7 +1094,7 @@ async function deleteQuotaEntry(e) {
   else alert('ERRO AO REMOVER.');
 }
 
-document.getElementById('hist-reg-save').addEventListener('click', async () => {
+document.getElementById('hist-reg-save')?.addEventListener('click', async () => {
   const data = document.getElementById('hist-reg-data').value.trim();
   const cota = document.getElementById('hist-reg-cota').value.trim();
   if (!data || !cota) { alert('PREENCHA DATA E COTA.'); return; }
@@ -1118,6 +1120,39 @@ document.getElementById('hist-reg-save').addEventListener('click', async () => {
     status.style.color = '#ff3333';
   }
 });
+
+// ── Viewer Config (admin only) ───────────────────────────────────
+if (window.USER_ROLE === 'admin') {
+  document.querySelectorAll('.viewer-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isOn = btn.classList.contains('viewer-toggle--on');
+      btn.classList.toggle('viewer-toggle--on', !isOn);
+      btn.classList.toggle('viewer-toggle--off', isOn);
+      btn.textContent = isOn ? '○ BLOQUEADO' : '● LIBERADO';
+    });
+  });
+
+  document.getElementById('viewer-config-save')?.addEventListener('click', async () => {
+    const payload = {};
+    document.querySelectorAll('.viewer-toggle').forEach(btn => {
+      payload[btn.dataset.key] = btn.classList.contains('viewer-toggle--on');
+    });
+    const status = document.getElementById('viewer-config-status');
+    const res = await fetch('/api/viewer-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      status.textContent = '✔ ACESSO ATUALIZADO';
+      status.style.color = '';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    } else {
+      status.textContent = '✖ ERRO AO SALVAR';
+      status.style.color = '#ff3333';
+    }
+  });
+}
 
 // ── Init ─────────────────────────────────────────────────────────
 (async () => {

@@ -29,9 +29,11 @@
 
   <div class="bbg-topbar-actions">
     <button class="bbg-btn" id="btn-refresh">&#8635; REFRESH</button>
+    {% if role == 'admin' %}
     <button class="bbg-btn" id="btn-export-csv">&#8595; CSV</button>
     <button class="bbg-btn" id="btn-export-excel">&#8595; XLS</button>
     <button class="bbg-btn bbg-btn-primary" id="btn-add-stock">+ ATIVO</button>
+    {% endif %}
     <a href="/logout" class="bbg-btn bbg-btn-logout">&#10132; SAIR</a>
   </div>
 </div>
@@ -86,10 +88,23 @@
      FUNCTION BAR (tabs)
      ═══════════════════════════════════════════════════════════════════ -->
 <div class="bbg-fnbar">
-  <button class="bbg-fn active" data-tab="tab-table"><span class="fn-num">200)</span> TABELA</button>
-  <button class="bbg-fn" data-tab="tab-charts"><span class="fn-num">201)</span> GRÁFICOS</button>
-  <button class="bbg-fn" data-tab="tab-config"><span class="fn-num">202)</span> CONFIGURAÇÕES</button>
-  <button class="bbg-fn" data-tab="tab-history"><span class="fn-num">203)</span> HISTÓRICO DE COTAS</button>
+  {% set ns = namespace(first=true) %}
+  {% if role == 'admin' or viewer_config.tab_table %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-table"><span class="fn-num">200)</span> TABELA</button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_charts %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-charts"><span class="fn-num">201)</span> GRÁFICOS</button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_config %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-config"><span class="fn-num">202)</span> CONFIGURAÇÕES</button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_history %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-history"><span class="fn-num">203)</span> HISTÓRICO DE COTAS</button>
+  {% set ns.first = false %}
+  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -98,10 +113,13 @@
   <p class="loading-text">CARREGANDO DADOS DE MERCADO...</p>
 </div>
 
+{% set ns2 = namespace(first=true) %}
 <!-- ═══════════════════════════════════════════════════════════════════
      200) TABELA
      ═══════════════════════════════════════════════════════════════════ -->
-<div id="tab-table" class="tab-content active">
+{% if role == 'admin' or viewer_config.tab_table %}
+<div id="tab-table" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
   <div class="table-wrapper">
     <table id="portfolio-table">
       <thead>
@@ -136,11 +154,14 @@
     </table>
   </div>
 </div>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════════
      201) GRÁFICOS
      ═══════════════════════════════════════════════════════════════════ -->
-<div id="tab-charts" class="tab-content">
+{% if role == 'admin' or viewer_config.tab_charts %}
+<div id="tab-charts" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
   <div class="charts-grid">
     <div class="chart-card wide">
       <div class="chart-card-header">
@@ -226,11 +247,14 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════════
      202) CONFIGURAÇÕES
      ═══════════════════════════════════════════════════════════════════ -->
-<div id="tab-config" class="tab-content">
+{% if role == 'admin' or viewer_config.tab_config %}
+<div id="tab-config" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
   <div class="cfg-grid">
 
     <div class="cfg-panel">
@@ -287,11 +311,49 @@
     </div>
 
   </div>
+  {% if role == 'admin' %}
   <div class="cfg-footer">
     <button class="bbg-btn bbg-btn-primary" id="cfg-save">SALVAR CONFIGURAÇÕES</button>
     <span class="cfg-status" id="cfg-status"></span>
   </div>
+
+  <!-- ◆ ACESSO VIEWER — painel admin -->
+  <div class="cfg-panel viewer-access-panel">
+    <div class="cfg-panel-title">◆ ACESSO VIEWER</div>
+    <div class="viewer-access-list">
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">TABELA</span>
+        <button class="viewer-toggle {% if viewer_config.tab_table %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_table">
+          {% if viewer_config.tab_table %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">GRÁFICOS</span>
+        <button class="viewer-toggle {% if viewer_config.tab_charts %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_charts">
+          {% if viewer_config.tab_charts %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">CONFIGURAÇÕES</span>
+        <button class="viewer-toggle {% if viewer_config.tab_config %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_config">
+          {% if viewer_config.tab_config %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">HISTÓRICO DE COTAS</span>
+        <button class="viewer-toggle {% if viewer_config.tab_history %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_history">
+          {% if viewer_config.tab_history %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+    </div>
+    <div class="cfg-footer" style="margin-top:12px">
+      <button class="bbg-btn bbg-btn-primary" id="viewer-config-save">SALVAR ACESSO</button>
+      <span class="cfg-status" id="viewer-config-status"></span>
+    </div>
+  </div>
+  {% endif %}
 </div>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════════
      MODAL — Editar posição
@@ -357,7 +419,10 @@
 <!-- ═══════════════════════════════════════════════════════════════
      203) HISTÓRICO DE COTAS
      ═══════════════════════════════════════════════════════════════ -->
-<div id="tab-history" class="tab-content">
+{% if role == 'admin' or viewer_config.tab_history %}
+<div id="tab-history" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+  {% if role == 'admin' %}
   <div class="hist-register-bar">
     <span class="hist-bar-title">◆ REGISTRAR FECHAMENTO</span>
     <div class="hist-bar-fields">
@@ -373,6 +438,7 @@
     <button class="bbg-btn bbg-btn-primary" id="hist-reg-save">&#128190; REGISTRAR FECHAMENTO</button>
     <span class="cfg-status" id="hist-reg-status"></span>
   </div>
+  {% endif %}
 
   <div class="table-wrapper table-wrapper--history">
     <table id="history-table">
@@ -391,7 +457,9 @@
     </table>
   </div>
 </div>
+{% endif %}
 
+<script>window.USER_ROLE = "{{ role }}";</script>
 <script src="/static/app.js"></script>
 </body>
 </html>
