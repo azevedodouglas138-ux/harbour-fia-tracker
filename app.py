@@ -685,10 +685,10 @@ def api_performance_chart():
         import pandas as pd
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
-        # SMLL11.SA = iShares Small Cap ETF (proxy SMLL index)
+        # SMAL11.SA = iShares Small Cap Brasil ETF (proxy SMLL index, histórico desde 2015)
         # DIVO11.SA = iShares IDIV ETF (proxy IDIV index)
         extra_tickers = {
-            "^SMLL":  "^SMLL",
+            "^SMLL":  "SMAL11.SA",
             "^IDIV":  "DIVO11.SA",
             "^GSPC":  "^GSPC",
             "^IXIC":  "^IXIC",
