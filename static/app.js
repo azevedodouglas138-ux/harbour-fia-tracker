@@ -286,14 +286,16 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'tab-charts')  loadCharts(currentDays);
+    if (btn.dataset.tab === 'tab-charts')  requestAnimationFrame(() => loadCharts(currentDays));
     if (btn.dataset.tab === 'tab-config')  loadConfig();
     if (btn.dataset.tab === 'tab-history') loadHistoryTab();
   });
 });
 
 function renderChartsIfVisible() {
-  if (document.getElementById('tab-charts')?.classList.contains('active')) loadCharts(currentDays);
+  if (document.getElementById('tab-charts')?.classList.contains('active')) {
+    requestAnimationFrame(() => loadCharts(currentDays));
+  }
 }
 
 // ── Chart: Performance (cota history vs IBOV) ────────────────────
@@ -411,8 +413,6 @@ async function loadHistoryChart(days) {
     grad.addColorStop(0.6, 'rgba(255,140,0,0.04)');
     grad.addColorStop(1,   'rgba(255,140,0,0)');
 
-    if (historyChart) historyChart.destroy();
-
     const lf = lastFund != null ? (lastFund >= 0 ? '+' : '') + fmt(lastFund, 2) + '%' : '';
 
     // ── Smart x-axis ticks ──
@@ -466,6 +466,7 @@ async function loadHistoryChart(days) {
       });
     }
 
+    if (historyChart) { historyChart.destroy(); historyChart = null; }
     historyChart = new Chart(canvas, {
       type: 'line',
       data: { labels, datasets },
@@ -543,6 +544,7 @@ async function loadHistoryChart(days) {
         },
       },
     });
+    requestAnimationFrame(() => historyChart?.resize());
   } catch (e) {
     loading.textContent = 'ERRO: ' + e.message;
     loading.classList.remove('hidden'); canvas.style.display = 'none';
