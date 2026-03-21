@@ -128,6 +128,7 @@ function renderStatsBar() {
 // ── Table ────────────────────────────────────────────────────────
 function renderTable() {
   if (!portfolioData) return;
+  if (!document.getElementById('portfolio-body')) return; // tab-table bloqueado para este viewer
   const rows = [...portfolioData.rows].sort((a, b) => {
     let av = a[sortCol], bv = b[sortCol];
     if (av == null) av = sortDir === 'asc' ?  Infinity : -Infinity;
