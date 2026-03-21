@@ -1034,12 +1034,14 @@ const hideLoading = () => document.getElementById('loading-overlay').classList.a
 
 // ── Histórico de Cotas ───────────────────────────────────────────
 async function loadHistoryTab() {
-  // Pre-fill date with today and cota with current estimated value
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById('hist-reg-data').value = today;
-  const cota = portfolioData?.quota?.cota_estimada;
-  if (cota) document.getElementById('hist-reg-cota').value = cota.toFixed(8);
-
+  // Pre-fill date with today and cota with current estimated value (admin only)
+  const regData = document.getElementById('hist-reg-data');
+  if (regData) {
+    regData.value = new Date().toISOString().slice(0, 10);
+    const cota = portfolioData?.quota?.cota_estimada;
+    const regCota = document.getElementById('hist-reg-cota');
+    if (cota && regCota) regCota.value = cota.toFixed(8);
+  }
   await renderQuotaHistoryTable();
 }
 
