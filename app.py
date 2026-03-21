@@ -688,7 +688,7 @@ def api_performance_chart():
         # SMLL11.SA = iShares Small Cap ETF (proxy SMLL index)
         # DIVO11.SA = iShares IDIV ETF (proxy IDIV index)
         extra_tickers = {
-            "^SMLL":  "SMLL11.SA",
+            "^SMLL":  "^SMLL",
             "^IDIV":  "DIVO11.SA",
             "^GSPC":  "^GSPC",
             "^IXIC":  "^IXIC",
