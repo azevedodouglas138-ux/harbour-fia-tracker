@@ -2,6 +2,15 @@
    HARBOUR IAT FIA — Bloomberg Terminal JS
    ═══════════════════════════════════════════════════════════════ */
 
+// ── Market hours (BRT = UTC-3, seg-sex 10:00–17:30) ─────────────
+function isMarketOpen() {
+  const brt  = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const day  = brt.getUTCDay(); // 0=dom, 6=sab
+  if (day === 0 || day === 6) return false;
+  const mins = brt.getUTCHours() * 60 + brt.getUTCMinutes();
+  return mins >= 10 * 60 && mins < 17 * 60 + 30;
+}
+
 // ── State ────────────────────────────────────────────────────────
 let portfolioData = null;
 let historyChart  = null;
@@ -258,19 +267,34 @@ async function refreshPricesOnly() {
 
     // Recalculate quota
     if (portfolioData.quota) {
-      const valid = portfolioData.rows.filter(r => r.pct_total && r.var_dia_pct != null);
-      const retCart = valid.reduce((s,r) => s + (r.var_dia_pct/100) * (r.pct_total/100), 0);
-      const ibovRet = (portfolioData.quota.retorno_ibov_pct || 0) / 100;
-      const feeRate = (portfolioData.quota.performance_fee_rate || 20) / 100;
-      const qFech   = portfolioData.quota.quota_fechamento || 0;
-      portfolioData.quota.retorno_fundo_pct = Math.round(retCart * 10000) / 100;
-      portfolioData.quota.variacao_pct      = portfolioData.quota.retorno_fundo_pct;
-      portfolioData.quota.alpha_pct         = Math.round((retCart - ibovRet) * 10000) / 100;
-      portfolioData.quota.cota_estimada     = qFech ? parseFloat((qFech * (1 + retCart)).toFixed(8)) : null;
-      portfolioData.quota.variacao_rs_por_cota = portfolioData.quota.cota_estimada ? parseFloat((portfolioData.quota.cota_estimada - qFech).toFixed(8)) : null;
-      const alpha = retCart - ibovRet;
-      portfolioData.quota.provisao_performance_pct = Math.round(Math.max(0, alpha * feeRate) * 10000) / 100;
-      portfolioData.quota.provisao_performance_rs  = Math.round(Math.max(0, alpha * feeRate) * total * 100) / 100;
+      if (!isMarketOpen()) {
+        // Mercado fechado: congela na cota de fechamento, zera variações
+        const qFech = portfolioData.quota.quota_fechamento || 0;
+        portfolioData.quota.mercado_fechado          = true;
+        portfolioData.quota.cota_estimada            = qFech || null;
+        portfolioData.quota.variacao_pct             = 0;
+        portfolioData.quota.retorno_fundo_pct        = 0;
+        portfolioData.quota.retorno_ibov_pct         = 0;
+        portfolioData.quota.alpha_pct                = 0;
+        portfolioData.quota.variacao_rs_por_cota     = 0;
+        portfolioData.quota.provisao_performance_pct = 0;
+        portfolioData.quota.provisao_performance_rs  = 0;
+      } else {
+        const valid = portfolioData.rows.filter(r => r.pct_total && r.var_dia_pct != null);
+        const retCart = valid.reduce((s,r) => s + (r.var_dia_pct/100) * (r.pct_total/100), 0);
+        const ibovRet = (portfolioData.quota.retorno_ibov_pct || 0) / 100;
+        const feeRate = (portfolioData.quota.performance_fee_rate || 20) / 100;
+        const qFech   = portfolioData.quota.quota_fechamento || 0;
+        portfolioData.quota.mercado_fechado          = false;
+        portfolioData.quota.retorno_fundo_pct        = Math.round(retCart * 10000) / 100;
+        portfolioData.quota.variacao_pct             = portfolioData.quota.retorno_fundo_pct;
+        portfolioData.quota.alpha_pct                = Math.round((retCart - ibovRet) * 10000) / 100;
+        portfolioData.quota.cota_estimada            = qFech ? parseFloat((qFech * (1 + retCart)).toFixed(8)) : null;
+        portfolioData.quota.variacao_rs_por_cota     = portfolioData.quota.cota_estimada ? parseFloat((portfolioData.quota.cota_estimada - qFech).toFixed(8)) : null;
+        const alpha = retCart - ibovRet;
+        portfolioData.quota.provisao_performance_pct = Math.round(Math.max(0, alpha * feeRate) * 10000) / 100;
+        portfolioData.quota.provisao_performance_rs  = Math.round(Math.max(0, alpha * feeRate) * total * 100) / 100;
+      }
     }
 
     renderTable(); renderTopBar(); renderStatsBar();
