@@ -635,7 +635,7 @@ async function loadCharts(range) {
   currentDays = range;
   renderSectorChart(); renderUpsideChart();
   await loadHistoryChart(range);
-  loadDrawdownVolatility();
+  loadDrawdownVolatility(range);
   loadPerfIndicators();
   loadMonthlyReturnsTable();
 }
@@ -645,7 +645,9 @@ document.querySelectorAll('.range-btn:not(#range-custom-btn)').forEach(btn => {
     document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('range-custom-panel').classList.add('hidden');
+    currentDays = btn.dataset.range;
     loadHistoryChart(btn.dataset.range);
+    loadDrawdownVolatility(btn.dataset.range);
   });
 });
 
@@ -669,7 +671,10 @@ _customApply?.addEventListener('click', () => {
   const from = _customFrom.value;
   const to   = _customTo.value;
   if (!from && !to) return;
-  loadHistoryChart({ from, to: to || null });
+  const range = { from, to: to || null };
+  currentDays = range;
+  loadHistoryChart(range);
+  loadDrawdownVolatility(range);
 });
 
 document.querySelectorAll('.bench-btn').forEach(btn => {
@@ -697,12 +702,14 @@ let ddChart  = null;
 let volChart = null;
 let _ddVolCache = null;
 
-async function loadDrawdownVolatility() {
-  if (_ddVolCache) { renderDDVol(_ddVolCache); return; }
+async function loadDrawdownVolatility(range) {
   try {
-    const res = await fetch('/api/drawdown-volatility');
-    _ddVolCache = (await res.json()).series || [];
-    renderDDVol(_ddVolCache);
+    if (!_ddVolCache) {
+      const res = await fetch('/api/drawdown-volatility');
+      _ddVolCache = (await res.json()).series || [];
+    }
+    const series = filterSeriesByRange(_ddVolCache, range ?? currentDays ?? '0');
+    renderDDVol(series);
   } catch(e) {
     ['dd-loading','vol-loading'].forEach(id => {
       const el = document.getElementById(id);
