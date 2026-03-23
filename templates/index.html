@@ -264,15 +264,15 @@
       <div class="cfg-fields">
         <div class="cfg-field">
           <label>COTA DE FECHAMENTO</label>
-          <input type="number" id="cfg-quota" step="0.00000001" placeholder="2.71660881" />
+          <input type="number" id="cfg-quota" step="0.00000001" placeholder="2.71660881" {% if role != 'admin' %}readonly{% endif %} />
         </div>
         <div class="cfg-field">
           <label>DATA DE FECHAMENTO</label>
-          <input type="date" id="cfg-data" />
+          <input type="date" id="cfg-data" {% if role != 'admin' %}readonly{% endif %} />
         </div>
         <div class="cfg-field">
           <label>Nº DE COTAS (COTISTAS)</label>
-          <input type="number" id="cfg-num-cotas" step="1" placeholder="ex: 4580000" />
+          <input type="number" id="cfg-num-cotas" step="1" placeholder="ex: 4580000" {% if role != 'admin' %}readonly{% endif %} />
           <span class="cfg-hint">Necessário para calcular variação total R$</span>
         </div>
       </div>
@@ -283,15 +283,15 @@
       <div class="cfg-fields">
         <div class="cfg-field">
           <label>CAIXA</label>
-          <input type="number" id="cfg-caixa" step="0.01" placeholder="0" />
+          <input type="number" id="cfg-caixa" step="0.01" placeholder="0" {% if role != 'admin' %}readonly{% endif %} />
         </div>
         <div class="cfg-field">
           <label>PROVENTOS A RECEBER</label>
-          <input type="number" id="cfg-proventos" step="0.01" placeholder="0" />
+          <input type="number" id="cfg-proventos" step="0.01" placeholder="0" {% if role != 'admin' %}readonly{% endif %} />
         </div>
         <div class="cfg-field">
           <label>CUSTOS PROVISIONADOS</label>
-          <input type="number" id="cfg-custos" step="0.01" placeholder="0" />
+          <input type="number" id="cfg-custos" step="0.01" placeholder="0" {% if role != 'admin' %}readonly{% endif %} />
         </div>
       </div>
     </div>
@@ -301,12 +301,12 @@
       <div class="cfg-fields">
         <div class="cfg-field">
           <label>TAXA (%)</label>
-          <input type="number" id="cfg-fee-rate" step="0.1" placeholder="20" />
+          <input type="number" id="cfg-fee-rate" step="0.1" placeholder="20" {% if role != 'admin' %}readonly{% endif %} />
           <span class="cfg-hint">Padrão: 20% do que superar o IBOV</span>
         </div>
         <div class="cfg-field">
           <label>PROVISÃO ACUMULADA (R$)</label>
-          <input type="number" id="cfg-prov-acum" step="0.01" placeholder="0" />
+          <input type="number" id="cfg-prov-acum" step="0.01" placeholder="0" {% if role != 'admin' %}readonly{% endif %} />
           <span class="cfg-hint">Atualizar manualmente ao final de cada dia</span>
         </div>
       </div>

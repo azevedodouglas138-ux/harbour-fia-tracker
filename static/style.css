@@ -333,6 +333,8 @@ tr.flash-down { animation: flash-down 0.8s ease; }
   transition: border-color .12s;
 }
 .cfg-field input:focus { border-color: var(--orange); }
+.cfg-field input[readonly] { opacity: 0.55; cursor: not-allowed; border-color: var(--border2); }
+.cfg-field input[readonly]:focus { border-color: var(--border2); }
 .cfg-hint { font-size: 9px; color: var(--text-muted); }
 
 .cfg-footer {
