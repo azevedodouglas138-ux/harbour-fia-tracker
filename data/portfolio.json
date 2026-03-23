@@ -5,11 +5,11 @@
       "ticker": "PRIO3",
       "yahoo_ticker": "PRIO3.SA",
       "categoria": "Acao",
-      "quantidade": 45000,
-      "liq_diaria_mm": 30,
-      "lucro_mi_25": 6500,
-      "pl_alvo_25": 10,
-      "preco_alvo": 100
+      "quantidade": 42000.0,
+      "liq_diaria_mm": 30.0,
+      "lucro_mi_25": 6500.0,
+      "pl_alvo_25": 10.0,
+      "preco_alvo": 100.0
     },
     {
       "ticker": "MUTC34",
