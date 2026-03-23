@@ -65,7 +65,7 @@ QUOTA_HISTORY_FILE  = os.path.join(DATA_DIR, "quota_history.json")
 VIEWER_CONFIG_FILE  = os.path.join(DATA_DIR, "viewer_config.json")
 
 _price_cache = {"data": {}, "expires_at": 0}
-FUNDAMENTALS_TTL = 7 * 24 * 3600
+FUNDAMENTALS_TTL = 4 * 3600
 HISTORY_TTL      = 4 * 3600
 
 SECTOR_PT = {
@@ -210,8 +210,9 @@ def fetch_fundamentals(tickers):
             dy, roe, beta, ev_ebitda = info.get("dividendYield"), info.get("returnOnEquity"), info.get("beta"), info.get("enterpriseToEbitda")
             sector_en = info.get("sector")
             result[ticker] = {
-                "trailing_pe":         _round(info.get("trailingPE"), 1),
-                "forward_pe":          _round(info.get("forwardPE"), 1),
+                "trailing_pe":         _round(info.get("trailingPE"), 2),
+                "forward_pe":          _round(info.get("forwardPE"), 2),
+                "peg_ratio":           _round(info.get("pegRatio"), 2),
                 "price_to_book":       _round(info.get("priceToBook"), 1),
                 "dividend_yield":      round(dy * 100, 2) if dy else None,
                 "market_cap":          info.get("marketCap"),
@@ -405,6 +406,7 @@ def build_portfolio_response(portfolio, prices, fundamentals):
             "var_dia_pct": pd_.get("change_pct"),
             "valor_liquido": vl, "upside_pct": upside,
             "trailing_pe": fund.get("trailing_pe"), "forward_pe": fund.get("forward_pe"),
+            "peg_ratio": fund.get("peg_ratio"),
             "price_to_book": fund.get("price_to_book"), "dividend_yield": fund.get("dividend_yield"),
             "market_cap_bi": round(mc / 1e9, 1) if mc else None,
             "week_high": fund.get("fifty_two_week_high"), "week_low": fund.get("fifty_two_week_low"),
@@ -524,7 +526,10 @@ def api_prices():
     portfolio = load_portfolio()
     tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices    = get_cached_prices(tickers)
-    return jsonify({"prices": prices, "timestamp": datetime.now().isoformat()})
+    funds     = get_cached_fundamentals(tickers)
+    # Expose only the fields used in real-time refresh
+    fund_slim = {t: {k: funds[t].get(k) for k in ("trailing_pe","forward_pe","peg_ratio")} for t in tickers}
+    return jsonify({"prices": prices, "fundamentals": fund_slim, "timestamp": datetime.now().isoformat()})
 
 @app.route("/api/fundamentals")
 def api_fundamentals():

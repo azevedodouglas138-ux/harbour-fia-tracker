@@ -187,6 +187,7 @@ function renderTable() {
       <td class="num">${liqHtml}</td>
       <td class="num">${fmt(row.trailing_pe,1)}</td>
       <td class="num">${fmt(row.forward_pe,1)}</td>
+      <td class="num">${fmt(row.peg_ratio,2)}</td>
       <td class="num">${fmt(row.enterprise_to_ebitda,1)}</td>
       <td class="num ${colorCls(row.return_on_equity)}">${row.return_on_equity!=null?fmt(row.return_on_equity,1)+'%':'—'}</td>
       <td class="num">${fmt(row.beta,2)}</td>
@@ -243,12 +244,16 @@ async function refreshPricesOnly() {
       portfolioData.quota.retorno_ibov_pct = pm['^BVSP']?.change_pct ?? portfolioData.quota.retorno_ibov_pct;
     }
 
+    const fm = json.fundamentals || {};
     portfolioData.rows.forEach(row => {
       const p = pm[row.yahoo_ticker]; if (!p) return;
       const old = row.preco;
       row.preco = p.price; row.var_dia_pct = p.change_pct;
       if (row.preco && row.quantidade) row.valor_liquido = Math.round(row.preco * row.quantidade * 100) / 100;
       if (row.preco && row.preco_alvo)  row.upside_pct   = Math.round((row.preco_alvo / row.preco - 1) * 10000) / 100;
+      // Update fundamentals from fresh cache
+      const f = fm[row.yahoo_ticker];
+      if (f) { row.trailing_pe = f.trailing_pe; row.forward_pe = f.forward_pe; row.peg_ratio = f.peg_ratio; }
       if (old !== row.preco) {
         const tr = document.querySelector(`tr[data-ticker="${row.ticker}"]`);
         if (tr) { tr.classList.add(row.preco > old ? 'flash-up' : 'flash-down');
