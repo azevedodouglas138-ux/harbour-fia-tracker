@@ -965,9 +965,66 @@ async function loadMonthlyReturnsTable() {
     wrap.innerHTML = html;
     loading.classList.add('hidden');
     wrap.classList.remove('hidden');
+    renderConsistencyTable(_monthlyRetCache);
   } catch(e) {
     loading.textContent = 'ERRO: ' + e.message;
   }
+}
+
+// ── Consistência ─────────────────────────────────────────────────
+function renderConsistencyTable(monthlyData) {
+  const wrap    = document.getElementById('consistency-wrap');
+  const loading = document.getElementById('consistency-loading');
+  if (!wrap || !loading) return;
+
+  const MNUMS = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const allMonths = [];
+  (monthlyData.years || []).forEach(row => {
+    MNUMS.forEach(mn => {
+      const v = row.fund_months[mn];
+      if (v != null) allMonths.push(v);
+    });
+  });
+
+  if (!allMonths.length) { loading.textContent = 'SEM DADOS.'; return; }
+
+  const positivos = allMonths.filter(v => v > 0).length;
+  const negativos = allMonths.filter(v => v < 0).length;
+  const total     = allMonths.length;
+  const maior     = Math.max(...allMonths);
+  const menor     = Math.min(...allMonths);
+  const fmtPct    = v => (v >= 0 ? '+' : '') + fmt(v, 2) + '%';
+
+  wrap.innerHTML = `
+    <table class="consistency-table">
+      <thead>
+        <tr>
+          <th>FUNDO</th>
+          <th>MESES POSITIVOS</th>
+          <th>MESES NEGATIVOS</th>
+          <th>MAIOR RETORNO</th>
+          <th>MENOR RETORNO</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cons-name">HARBOUR IAT FIF AÇÕES RL</td>
+          <td class="cons-val positive">
+            ${positivos}
+            <span class="cons-sub">${fmt(positivos / total * 100, 2)}%</span>
+          </td>
+          <td class="cons-val negative">
+            ${negativos}
+            <span class="cons-sub">${fmt(negativos / total * 100, 2)}%</span>
+          </td>
+          <td class="cons-val positive">${fmtPct(maior)}</td>
+          <td class="cons-val negative">${fmtPct(menor)}</td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  loading.classList.add('hidden');
+  wrap.classList.remove('hidden');
 }
 
 // ── Export ───────────────────────────────────────────────────────

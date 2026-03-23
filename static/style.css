@@ -580,6 +580,32 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 .mrt-ibov-row td.positive { color: #00aa33; }
 .mrt-ibov-row td.negative { color: #cc2222; }
 
+/* ── Consistência ─────────────────────────────────────────────── */
+.consistency-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 11px;
+}
+.consistency-table thead tr {
+  background: var(--surface2);
+}
+.consistency-table th {
+  padding: 8px 14px; text-align: left;
+  font-size: 9px; font-weight: 700; color: var(--orange-text);
+  letter-spacing: 0.8px; border-bottom: 1px solid var(--border2);
+}
+.consistency-table tbody tr {
+  border-bottom: 1px solid var(--border2);
+}
+.consistency-table tbody tr:hover { background: rgba(255,140,0,0.04); }
+.cons-name { color: var(--text); padding: 10px 14px; white-space: nowrap; }
+.cons-val  {
+  padding: 10px 14px; font-size: 13px; font-weight: 700;
+  display: table-cell; vertical-align: middle;
+}
+.cons-val.positive { color: var(--green); }
+.cons-val.negative { color: var(--red); }
+.cons-sub { display: block; font-size: 9px; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+
 /* ═══════════════ RESPONSIVE ════════════════════════════════════ */
 
 /* ── Tablet (≤900px) ─────────────────────────────────────────── */
