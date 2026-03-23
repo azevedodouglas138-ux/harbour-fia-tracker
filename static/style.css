@@ -76,6 +76,7 @@ html, body {
 .bbg-cota-change { font-size: 14px; font-weight: 600; }
 .bbg-cota-change.positive { color: var(--green); }
 .bbg-cota-change.negative { color: var(--red); }
+.bbg-cota-change.neutral  { color: var(--text-muted); font-size: 10px; letter-spacing: 1px; }
 .bbg-cota-ref { font-size: 9px; color: var(--text-muted); }
 
 .bbg-topbar-actions {

@@ -76,12 +76,18 @@ function renderTopBar() {
 
   if (q.cota_estimada) {
     cotaEl.textContent = q.cota_estimada.toFixed(8);
-    const pct  = q.variacao_pct ?? 0;
-    const rCota = q.variacao_rs_por_cota ?? 0;
-    const arrow = pct >= 0 ? '▲' : '▼';
-    changeEl.textContent = `${arrow}${Math.abs(rCota).toFixed(8)}  ${sign(pct)}${fmt(pct,4)}%`;
-    changeEl.className = 'bbg-cota-change ' + (pct >= 0 ? 'positive' : 'negative');
-    refEl.textContent  = `FECH. ANT.: ${q.quota_fechamento?.toFixed(8) ?? '—'}`;
+    if (q.mercado_fechado) {
+      changeEl.textContent = 'MERCADO FECHADO';
+      changeEl.className = 'bbg-cota-change neutral';
+      refEl.textContent  = `FECH.: ${q.quota_fechamento?.toFixed(8) ?? '—'}`;
+    } else {
+      const pct   = q.variacao_pct ?? 0;
+      const rCota = q.variacao_rs_por_cota ?? 0;
+      const arrow = pct >= 0 ? '▲' : '▼';
+      changeEl.textContent = `${arrow}${Math.abs(rCota).toFixed(8)}  ${sign(pct)}${fmt(pct,4)}%`;
+      changeEl.className = 'bbg-cota-change ' + (pct >= 0 ? 'positive' : 'negative');
+      refEl.textContent  = `FECH. ANT.: ${q.quota_fechamento?.toFixed(8) ?? '—'}`;
+    }
   } else {
     cotaEl.textContent = '—';
     changeEl.textContent = '—';

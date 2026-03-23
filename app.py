@@ -295,6 +295,18 @@ def invalidate_history_cache():
     save_cache(cache)
 
 # ---------------------------------------------------------------------------
+# Market hours check (BRT = UTC-3, sem horário de verão desde 2019)
+# ---------------------------------------------------------------------------
+
+def is_market_open():
+    """B3: seg-sex, 10:00–17:30 BRT."""
+    brt = datetime.utcnow() - timedelta(hours=3)
+    if brt.weekday() >= 5:          # sábado=5, domingo=6
+        return False
+    t = brt.hour * 60 + brt.minute  # minutos desde meia-noite
+    return 10 * 60 <= t < 17 * 60 + 30
+
+# ---------------------------------------------------------------------------
 # Quota & Performance Fee calculation
 # ---------------------------------------------------------------------------
 
@@ -306,6 +318,31 @@ def calculate_quota(rows, fund_config, prices):
     custos     = fund_config.get("custos_provisionados") or 0
     fee_rate   = (fund_config.get("performance_fee_rate") or 20) / 100
 
+    nav_carteira = sum(r.get("valor_liquido") or 0 for r in rows)
+    nav_total    = nav_carteira + caixa + proventos - custos
+
+    # Fora do horário de mercado: exibe apenas o fechamento, sem variação intraday
+    if not is_market_open():
+        result = {
+            "quota_fechamento":         quota_fech,
+            "data_fechamento":          fund_config.get("data_fechamento", ""),
+            "cota_estimada":            quota_fech if quota_fech else None,
+            "variacao_pct":             0.0,
+            "variacao_rs_por_cota":     0.0,
+            "retorno_fundo_pct":        0.0,
+            "retorno_ibov_pct":         0.0,
+            "alpha_pct":                0.0,
+            "provisao_performance_pct": 0.0,
+            "provisao_performance_rs":  0.0,
+            "nav_total":                round(nav_total, 2),
+            "mercado_fechado":          True,
+            "caixa": caixa, "proventos_a_receber": proventos,
+            "custos_provisionados": custos, "num_cotas": num_cotas,
+        }
+        if num_cotas:
+            result["variacao_total_rs"] = 0.0
+        return result
+
     valid = [r for r in rows if r.get("pct_total") and r.get("var_dia_pct") is not None]
     retorno_carteira = sum((r["var_dia_pct"] / 100) * (r["pct_total"] / 100) for r in valid) if valid else 0.0
 
@@ -316,8 +353,6 @@ def calculate_quota(rows, fund_config, prices):
     alpha        = retorno_carteira - ibov_ret
     provisao_pct = max(0.0, alpha * fee_rate)
 
-    nav_carteira = sum(r.get("valor_liquido") or 0 for r in rows)
-    nav_total    = nav_carteira + caixa + proventos - custos
     provisao_rs  = provisao_pct * nav_total
 
     cota_est = quota_fech * (1 + retorno_carteira) if quota_fech else None
@@ -334,6 +369,7 @@ def calculate_quota(rows, fund_config, prices):
         "provisao_performance_pct": round(provisao_pct * 100, 4),
         "provisao_performance_rs": round(provisao_rs, 2),
         "nav_total":               round(nav_total, 2),
+        "mercado_fechado":         False,
         "caixa": caixa, "proventos_a_receber": proventos,
         "custos_provisionados": custos, "num_cotas": num_cotas,
     }
