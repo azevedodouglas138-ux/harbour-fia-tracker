@@ -280,6 +280,26 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 }
 .range-btn:hover { color: var(--orange-text); border-color: var(--orange); }
 .range-btn.active { background: var(--orange); border-color: var(--orange); color: #000; }
+.range-btn-cal { font-size: 11px; padding: 2px 6px; }
+.range-btn-cal.active { background: var(--orange); border-color: var(--orange); color: #000; }
+
+.range-custom-panel {
+  margin-top: 6px;
+  background: var(--surface2); border: 1px solid var(--orange);
+  border-radius: 2px; padding: 10px 12px;
+}
+.range-custom-panel.hidden { display: none; }
+.range-custom-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.range-custom-field { display: flex; flex-direction: column; gap: 3px; }
+.range-custom-field label { font-size: 9px; color: var(--orange-text); letter-spacing: 0.6px; }
+.range-custom-field input[type="date"] {
+  background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: 11px;
+  padding: 4px 7px; border-radius: 2px; outline: none;
+  color-scheme: dark;
+}
+.range-custom-field input[type="date"]:focus { border-color: var(--orange); }
+.range-custom-apply { padding: 4px 14px; font-size: 9px; }
 
 .benchmark-selector {
   display: flex; align-items: center; gap: 4px; flex-wrap: wrap;

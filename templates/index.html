@@ -178,6 +178,20 @@
           <button class="range-btn" data-range="1095">3A</button>
           <button class="range-btn" data-range="1825">5A</button>
           <button class="range-btn active" data-range="0">INÍCIO</button>
+          <button class="range-btn range-btn-cal" id="range-custom-btn" title="Período personalizado">&#128197;</button>
+        </div>
+        <div class="range-custom-panel hidden" id="range-custom-panel">
+          <div class="range-custom-row">
+            <div class="range-custom-field">
+              <label>DE</label>
+              <input type="date" id="range-custom-from" />
+            </div>
+            <div class="range-custom-field">
+              <label>ATÉ</label>
+              <input type="date" id="range-custom-to" />
+            </div>
+            <button class="bbg-btn bbg-btn-primary range-custom-apply" id="range-custom-apply">APLICAR</button>
+          </div>
         </div>
       </div>
       <div class="benchmark-selector">

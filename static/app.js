@@ -304,6 +304,12 @@ let _perfCache = null;
 // Filtra série por range usando datas de calendário, não contagem de entradas
 function filterSeriesByRange(allSeries, range) {
   if (!range || range === '0' || range === 0) return allSeries;
+  if (range && typeof range === 'object' && range.from) {
+    return allSeries.filter(s =>
+      (!range.from || s.date >= range.from) &&
+      (!range.to   || s.date <= range.to)
+    );
+  }
   const lastDate = new Date(allSeries[allSeries.length - 1].date + 'T00:00:00');
   let cutoff;
   if (range === 'ytd') {
@@ -634,12 +640,36 @@ async function loadCharts(range) {
   loadMonthlyReturnsTable();
 }
 
-document.querySelectorAll('.range-btn').forEach(btn => {
+document.querySelectorAll('.range-btn:not(#range-custom-btn)').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    document.getElementById('range-custom-panel').classList.add('hidden');
     loadHistoryChart(btn.dataset.range);
   });
+});
+
+// ── Custom date range ──
+const _customBtn   = document.getElementById('range-custom-btn');
+const _customPanel = document.getElementById('range-custom-panel');
+const _customFrom  = document.getElementById('range-custom-from');
+const _customTo    = document.getElementById('range-custom-to');
+const _customApply = document.getElementById('range-custom-apply');
+
+_customBtn?.addEventListener('click', () => {
+  const isOpen = !_customPanel.classList.contains('hidden');
+  _customPanel.classList.toggle('hidden', isOpen);
+  if (!isOpen) {
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    _customBtn.classList.add('active');
+  }
+});
+
+_customApply?.addEventListener('click', () => {
+  const from = _customFrom.value;
+  const to   = _customTo.value;
+  if (!from && !to) return;
+  loadHistoryChart({ from, to: to || null });
 });
 
 document.querySelectorAll('.bench-btn').forEach(btn => {
@@ -652,7 +682,10 @@ document.querySelectorAll('.bench-btn').forEach(btn => {
       selectedBenchmarks.add(bk);
       btn.classList.add('active');
     }
-    const activeRange = document.querySelector('.range-btn.active')?.dataset.range ?? '0';
+    const activeBtn = document.querySelector('.range-btn.active');
+    const activeRange = activeBtn?.id === 'range-custom-btn'
+      ? { from: _customFrom?.value || null, to: _customTo?.value || null }
+      : (activeBtn?.dataset.range ?? '0');
     loadHistoryChart(activeRange);
   });
 });
