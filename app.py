@@ -766,8 +766,10 @@ def api_performance_chart():
                     close = close.squeeze()
                 ibov_map = {str(d.date()): round(float(v), 2) for d, v in close.items()}
         except Exception as e:
+            print(f"[perf-chart] IBOV download error: {e}")
             ibov_map = {}
-        cache[ibov_key] = {"data": ibov_map, "expires_at": now + HISTORY_TTL}
+        ttl = HISTORY_TTL if ibov_map else 120
+        cache[ibov_key] = {"data": ibov_map, "expires_at": now + ttl}
         save_cache(cache)
 
     # ── Additional benchmarks: SMLL, IDIV, S&P500, NASDAQ, CDI ──
@@ -779,10 +781,10 @@ def api_performance_chart():
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
         # SMAL11.SA = iShares Small Cap Brasil ETF (proxy SMLL index, histórico desde 2015)
-        # DIVO11.SA = iShares IDIV ETF (proxy IDIV index)
+        # IDIV11.SA = iShares IDIV ETF (proxy IDIV index)
         extra_tickers = {
             "^SMLL":  "SMAL11.SA",
-            "^IDIV":  "DIVO11.SA",
+            "^IDIV":  "IDIV11.SA",
             "^GSPC":  "^GSPC",
             "^IXIC":  "^IXIC",
         }
@@ -800,8 +802,8 @@ def api_performance_chart():
                                 str(d.date()): round(float(v), 2)
                                 for d, v in s.items()
                             }
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[perf-chart] benchmarks download error: {e}")
         # CDI cumulative index (starts at 100 on inception date, compounds daily)
         try:
             cdi_daily = load_cdi_map()
@@ -812,9 +814,10 @@ def api_performance_chart():
                     cumulative *= (1 + cdi_daily[d] / 100)
                     cdi_cum[d] = round(cumulative, 6)
                 benchmark_maps["cdi"] = cdi_cum
-        except Exception:
-            pass
-        cache[benchmarks_key] = {"data": benchmark_maps, "expires_at": now + HISTORY_TTL}
+        except Exception as e:
+            print(f"[perf-chart] CDI error: {e}")
+        ttl = HISTORY_TTL if benchmark_maps else 120
+        cache[benchmarks_key] = {"data": benchmark_maps, "expires_at": now + ttl}
         save_cache(cache)
 
     series = [{"date": e["data"], "fund": e["cota_fechamento"], "ibov": ibov_map.get(e["data"])}
@@ -998,9 +1001,11 @@ def api_monthly_returns():
                 if hasattr(close, "squeeze"):
                     close = close.squeeze()
                 ibov_map = {str(d.date()): round(float(v), 2) for d, v in close.items()}
-        except Exception:
+        except Exception as e:
+            print(f"[monthly-returns] IBOV download error: {e}")
             ibov_map = {}
-        cache[ibov_key] = {"data": ibov_map, "expires_at": now + HISTORY_TTL}
+        ttl = HISTORY_TTL if ibov_map else 120
+        cache[ibov_key] = {"data": ibov_map, "expires_at": now + ttl}
         save_cache(cache)
 
     # Build month-end maps: "YYYY-MM" -> last closing value of that month
