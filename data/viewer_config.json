@@ -2,5 +2,8 @@
   "tab_table": true,
   "tab_charts": true,
   "tab_config": true,
-  "tab_history": true
+  "tab_history": true,
+  "tab_macro": true,
+  "tab_watchlist": true,
+  "tab_screener": true
 }
