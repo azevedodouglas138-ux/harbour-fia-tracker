@@ -1,0 +1,15 @@
+{
+  "items": [
+    {
+      "ticker": "MELI34",
+      "yahoo_ticker": "MELI34.SA",
+      "categoria": "BDR",
+      "tese": "",
+      "status": "Em análise",
+      "gatilho": "",
+      "preco_alvo": null,
+      "liq_diaria_mm": null,
+      "lucro_mi_26": null
+    }
+  ]
+}
