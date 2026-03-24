@@ -143,10 +143,13 @@ def get_effective_fund_config():
     return config
 
 _VIEWER_CONFIG_DEFAULTS = {
-    "tab_table": True,
-    "tab_charts": True,
-    "tab_config": True,
-    "tab_history": True,
+    "tab_table":     True,
+    "tab_charts":    True,
+    "tab_config":    True,
+    "tab_history":   True,
+    "tab_macro":     True,
+    "tab_watchlist": False,
+    "tab_screener":  False,
 }
 
 def load_viewer_config():
@@ -1110,6 +1113,469 @@ def api_save_viewer_config():
             config[key] = bool(payload[key])
     save_viewer_config(config)
     return jsonify({"ok": True})
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Watchlist & Screener — constants + helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+WATCHLIST_FILE      = os.path.join(DATA_DIR, "watchlist.json")
+SCREENER_CACHE_FILE = os.path.join(DATA_DIR, "screener_cache.json")
+SCREENER_TTL = 24 * 3600
+MACRO_TTL    = 3600
+
+IBOV_TICKERS = [
+    "PETR4.SA","PETR3.SA","VALE3.SA","ITUB4.SA","ITUB3.SA","BBDC4.SA","BBDC3.SA","BBAS3.SA",
+    "ABEV3.SA","WEGE3.SA","RENT3.SA","GGBR4.SA","USIM5.SA","CSAN3.SA","PRIO3.SA","CMIG4.SA",
+    "EGIE3.SA","SBSP3.SA","RADL3.SA","RAIL3.SA","LREN3.SA","HAPV3.SA","RDOR3.SA","FLRY3.SA",
+    "CYRE3.SA","MRVE3.SA","TIMS3.SA","VIVT3.SA","BRFS3.SA","MRFG3.SA","JBSS3.SA","SLCE3.SA",
+    "BEEF3.SA","GOLL4.SA","AZUL4.SA","TAEE11.SA","ENGI11.SA","CPFE3.SA","ALUP11.SA","ENEV3.SA",
+    "SAPR4.SA","PETZ3.SA","TOTVS3.SA","KLBN11.SA","SUZB3.SA","BBSE3.SA","SANB11.SA","BRSR6.SA",
+    "YDUQ3.SA","COGN3.SA","TTEN3.SA","SIMH3.SA","TEND3.SA","MDNE3.SA","BMEB4.SA","VTRU3.SA",
+    "CPLE6.SA","LOGG3.SA","SMTO3.SA","EQTL3.SA","ELET3.SA","ELET6.SA","HYPE3.SA","MULT3.SA",
+    "GGPS3.SA","BPAN4.SA","IRBR3.SA","CXSE3.SA","CCRO3.SA","CSNA3.SA","EMBR3.SA","B3SA3.SA",
+    "BRAV3.SA","CMIN3.SA","MGLU3.SA","CSMG3.SA","ARZZ3.SA","RAIZ4.SA","MRFG3.SA",
+]
+
+SMLL_EXTRA = [
+    "ARML3.SA","EVEN3.SA","DIRR3.SA","TRIS3.SA","LAVV3.SA","MOVI3.SA","SEER3.SA",
+    "BMGB4.SA","FRAS3.SA","POSI3.SA","CSMG3.SA","SEQL3.SA","GMAT3.SA","JHSF3.SA",
+    "EZTC3.SA","ORVR3.SA","MBLY3.SA","GRND3.SA","TUPY3.SA","VULC3.SA","PLPL3.SA",
+    "OMGE3.SA","INTB3.SA","PARD3.SA","MTRE3.SA","WEST3.SA","DESK3.SA","LAND3.SA",
+]
+
+_screener_state = {"running": False, "loaded": 0, "total": 0}
+_screener_lock  = threading.Lock()
+
+
+def load_watchlist():
+    if not os.path.exists(WATCHLIST_FILE):
+        return {"items": []}
+    with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_watchlist(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    github_push_async("data/watchlist.json", content, "chore: update watchlist.json via UI")
+
+
+def load_screener_cache():
+    if not os.path.exists(SCREENER_CACHE_FILE):
+        return {}
+    try:
+        with open(SCREENER_CACHE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_screener_cache(data):
+    with open(SCREENER_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _fetch_screener_bg(tickers):
+    global _screener_state
+    try:
+        now = time.time()
+        for ticker in tickers:
+            scache = load_screener_cache()
+            entry  = scache.get(ticker, {})
+            if now < entry.get("expires_at", 0):
+                with _screener_lock:
+                    _screener_state["loaded"] += 1
+                continue
+            try:
+                t     = yf.Ticker(ticker)
+                info  = t.info
+                fast  = t.fast_info
+                price = fast.last_price
+                prev  = fast.previous_close
+                var   = round((price - prev) / prev * 100, 2) if price and prev else None
+                dy    = info.get("dividendYield")
+                roe   = info.get("returnOnEquity")
+                mc    = info.get("marketCap")
+                sec   = info.get("sector")
+                scache[ticker] = {
+                    "ticker":               ticker.replace(".SA", ""),
+                    "yahoo_ticker":         ticker,
+                    "short_name":           info.get("shortName") or info.get("longName"),
+                    "sector":               SECTOR_PT.get(sec, sec) if sec else None,
+                    "preco":                round(price, 2) if price else None,
+                    "var_dia_pct":          var,
+                    "trailing_pe":          _round(info.get("trailingPE"), 2),
+                    "forward_pe":           _round(info.get("forwardPE"), 2),
+                    "enterprise_to_ebitda": _round(info.get("enterpriseToEbitda"), 1),
+                    "return_on_equity":     round(roe * 100, 1) if roe is not None else None,
+                    "price_to_book":        _round(info.get("priceToBook"), 1),
+                    "dividend_yield":       round(dy if dy > 1 else dy * 100, 2) if dy else None,
+                    "beta":                 _round(info.get("beta"), 2),
+                    "market_cap_bi":        round(mc / 1e9, 1) if mc else None,
+                    "expires_at":           now + SCREENER_TTL,
+                }
+                save_screener_cache(scache)
+            except Exception as e:
+                print(f"[screener] {ticker}: {e}")
+            with _screener_lock:
+                _screener_state["loaded"] += 1
+    finally:
+        with _screener_lock:
+            _screener_state["running"] = False
+
+
+def start_screener_if_needed(tickers):
+    with _screener_lock:
+        if _screener_state["running"]:
+            return
+        _screener_state["running"] = True
+        _screener_state["loaded"]  = 0
+        _screener_state["total"]   = len(tickers)
+    t = threading.Thread(target=_fetch_screener_bg, args=(tickers,), daemon=True)
+    t.start()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Attribution
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/attribution")
+def api_attribution():
+    import pandas as pd
+    period    = request.args.get("period", "month")
+    portfolio = load_portfolio()
+    positions = portfolio["positions"]
+    tickers   = [p["yahoo_ticker"] for p in positions]
+    prices    = get_cached_prices(tickers)
+
+    total_value = sum(
+        (prices.get(p["yahoo_ticker"], {}).get("price") or 0) * p["quantidade"]
+        for p in positions
+    )
+
+    ibov_ret = None
+    rows     = []
+
+    if period == "day":
+        ibov_ret = (prices.get("^BVSP", {}).get("change_pct") or 0)
+        for pos in positions:
+            t    = pos["yahoo_ticker"]
+            p    = prices.get(t, {}).get("price") or 0
+            vl   = p * pos["quantidade"]
+            ret  = prices.get(t, {}).get("change_pct") or 0
+            peso = vl / total_value * 100 if total_value > 0 else 0
+            rows.append({
+                "ticker":          pos["ticker"],
+                "retorno_pct":     round(ret, 2),
+                "peso_pct":        round(peso, 2),
+                "contribuicao_pct": round(ret * peso / 100, 3),
+                "contribuicao_bps": round(ret * peso, 1),
+            })
+    else:
+        now_dt = datetime.now()
+        if period == "week":
+            start_dt = now_dt - timedelta(days=8)
+        elif period == "month":
+            start_dt = datetime(now_dt.year, now_dt.month, 1) - timedelta(days=1)
+        elif period == "ytd":
+            start_dt = datetime(now_dt.year, 1, 1) - timedelta(days=1)
+        else:
+            start_dt = now_dt - timedelta(days=30)
+        try:
+            all_tick = tickers + ["^BVSP"]
+            df = yf.download(all_tick, start=start_dt.strftime("%Y-%m-%d"),
+                             end=(now_dt + timedelta(days=1)).strftime("%Y-%m-%d"),
+                             auto_adjust=True, progress=False)
+            if df.empty:
+                return jsonify({"rows": [], "error": "sem dados históricos"})
+            close = df["Close"] if isinstance(df.columns, pd.MultiIndex) else df
+            clean = close.dropna(how="all")
+            if len(clean) < 2:
+                return jsonify({"rows": [], "error": "dados insuficientes"})
+            first = clean.iloc[0]
+            last  = clean.iloc[-1]
+            ibov_s = float(first.get("^BVSP") or 0)
+            ibov_e = float(last.get("^BVSP") or 0)
+            ibov_ret = round((ibov_e / ibov_s - 1) * 100, 2) if ibov_s > 0 else None
+            for pos in positions:
+                t    = pos["yahoo_ticker"]
+                s    = float(first.get(t) or 0)
+                e    = float(last.get(t) or 0)
+                ret  = round((e / s - 1) * 100, 2) if s > 0 else 0
+                p    = prices.get(t, {}).get("price") or 0
+                vl   = p * pos["quantidade"]
+                peso = vl / total_value * 100 if total_value > 0 else 0
+                rows.append({
+                    "ticker":          pos["ticker"],
+                    "retorno_pct":     ret,
+                    "peso_pct":        round(peso, 2),
+                    "contribuicao_pct": round(ret * peso / 100, 3),
+                    "contribuicao_bps": round(ret * peso, 1),
+                })
+        except Exception as e:
+            return jsonify({"rows": [], "error": str(e)})
+
+    rows.sort(key=lambda x: x["contribuicao_pct"], reverse=True)
+    total_fundo = round(sum(r["contribuicao_pct"] for r in rows), 3)
+    alpha = round(total_fundo - ibov_ret, 2) if ibov_ret is not None else None
+    return jsonify({
+        "rows":            rows,
+        "total_fundo_pct": total_fundo,
+        "ibov_ret_pct":    round(ibov_ret, 2) if ibov_ret is not None else None,
+        "alpha_pct":       alpha,
+        "period":          period,
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Macro Dashboard
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/macro")
+def api_macro():
+    import requests as req
+    cache    = load_cache()
+    now      = time.time()
+    mkey     = "macro_data"
+    if cache.get(mkey) and now < cache[mkey].get("expires_at", 0):
+        return jsonify(cache[mkey]["data"])
+
+    result  = {}
+    today   = datetime.now()
+    s60     = (today - timedelta(days=60)).strftime("%d/%m/%Y")
+    s14m    = (today - timedelta(days=430)).strftime("%d/%m/%Y")
+    today_s = today.strftime("%d/%m/%Y")
+
+    def bcb_series(serie, start):
+        url = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{serie}/dados"
+               f"?formato=json&dataInicial={start}&dataFinal={today_s}")
+        r = req.get(url, timeout=12)
+        r.raise_for_status()
+        return r.json()
+
+    try:
+        data = bcb_series(432, s60)
+        if isinstance(data, list) and data:
+            result["selic_meta"] = {
+                "valor": float(data[-1]["valor"]),
+                "data":  data[-1]["data"],
+                "hist":  [{"data": d["data"], "valor": float(d["valor"])} for d in data[-30:]],
+            }
+    except Exception:
+        pass
+
+    try:
+        data = bcb_series(433, s14m)
+        if isinstance(data, list) and len(data) >= 12:
+            last12 = data[-12:]
+            acc = 1.0
+            for item in last12:
+                acc *= (1 + float(item["valor"]) / 100)
+            result["ipca_12m"] = {
+                "valor": round((acc - 1) * 100, 2),
+                "data":  data[-1]["data"],
+                "hist":  [{"data": d["data"], "valor": float(d["valor"])} for d in data[-24:]],
+            }
+    except Exception:
+        pass
+
+    for key, ticker in [("usdbrl", "BRL=X"), ("brent", "BZ=F"), ("sp500", "^GSPC")]:
+        try:
+            fi    = yf.Ticker(ticker).fast_info
+            price = fi.last_price
+            prev  = fi.previous_close
+            var   = round((price - prev) / prev * 100, 2) if price and prev else None
+            df_h  = yf.download(ticker, period="2mo", auto_adjust=True, progress=False)
+            hist  = []
+            if not df_h.empty:
+                close = df_h["Close"]
+                if hasattr(close, "squeeze"):
+                    close = close.squeeze()
+                hist = [{"data": str(d.date()), "valor": round(float(v), 2)}
+                        for d, v in close.items()][-30:]
+            result[key] = {"valor": round(price, 2) if price else None, "var_pct": var, "hist": hist}
+        except Exception:
+            pass
+
+    cache[mkey] = {"data": result, "expires_at": now + MACRO_TTL}
+    save_cache(cache)
+    return jsonify(result)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Watchlist
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _build_watchlist_rows(watchlist):
+    items = watchlist.get("items", [])
+    if not items:
+        return []
+    tickers = [i["yahoo_ticker"] for i in items]
+    prices  = get_cached_prices(tickers)
+    funds   = get_cached_fundamentals(tickers)
+    rows = []
+    for item in items:
+        t     = item["yahoo_ticker"]
+        pd_   = prices.get(t, {})
+        fund  = funds.get(t, {})
+        price = pd_.get("price")
+        pa    = item.get("preco_alvo")
+        mc    = fund.get("market_cap")
+        upside = round((pa / price - 1) * 100, 2) if price and pa and price > 0 else None
+        rows.append({
+            "ticker":               item["ticker"],
+            "yahoo_ticker":         t,
+            "categoria":            item.get("categoria", "Acao"),
+            "tese":                 item.get("tese", ""),
+            "status":               item.get("status", "Em análise"),
+            "gatilho":              item.get("gatilho", ""),
+            "preco_alvo":           pa,
+            "liq_diaria_mm":        item.get("liq_diaria_mm"),
+            "lucro_mi_26":          item.get("lucro_mi_26"),
+            "preco":                price,
+            "var_dia_pct":          pd_.get("change_pct"),
+            "trailing_pe":          fund.get("trailing_pe"),
+            "forward_pe":           fund.get("forward_pe"),
+            "enterprise_to_ebitda": fund.get("enterprise_to_ebitda"),
+            "return_on_equity":     fund.get("return_on_equity"),
+            "price_to_book":        fund.get("price_to_book"),
+            "dividend_yield":       fund.get("dividend_yield"),
+            "market_cap_bi":        round(mc / 1e9, 1) if mc else None,
+            "beta":                 fund.get("beta"),
+            "sector":               fund.get("sector"),
+            "upside_pct":           upside,
+        })
+    return rows
+
+
+@app.route("/api/watchlist")
+def api_get_watchlist():
+    return jsonify({"rows": _build_watchlist_rows(load_watchlist())})
+
+
+@app.route("/api/watchlist/add", methods=["POST"])
+@require_admin
+def api_add_watchlist():
+    payload = request.json
+    ticker  = payload.get("ticker", "").upper().strip()
+    if not ticker:
+        return jsonify({"error": "ticker required"}), 400
+    yahoo = ticker + ".SA"
+    try:
+        price = yf.Ticker(yahoo).fast_info.last_price
+        if price is None:
+            return jsonify({"error": f"Ticker {yahoo} não encontrado"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    wl = load_watchlist()
+    if any(i["ticker"] == ticker for i in wl.get("items", [])):
+        return jsonify({"error": "Ticker já está na watchlist"}), 409
+    def _f(k):
+        v = payload.get(k); return float(v) if v not in (None, "") else None
+    wl.setdefault("items", []).append({
+        "ticker":        ticker,
+        "yahoo_ticker":  yahoo,
+        "categoria":     payload.get("categoria", "Acao"),
+        "tese":          payload.get("tese", ""),
+        "status":        payload.get("status", "Em análise"),
+        "gatilho":       payload.get("gatilho", ""),
+        "preco_alvo":    _f("preco_alvo"),
+        "liq_diaria_mm": _f("liq_diaria_mm"),
+        "lucro_mi_26":   _f("lucro_mi_26"),
+    })
+    save_watchlist(wl)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/watchlist/update", methods=["PUT"])
+@require_admin
+def api_update_watchlist():
+    payload = request.json
+    ticker  = payload.get("ticker", "").upper().strip()
+    if not ticker:
+        return jsonify({"error": "ticker required"}), 400
+    wl = load_watchlist()
+    updated = False
+    for item in wl.get("items", []):
+        if item["ticker"] == ticker:
+            for f in ["tese", "status", "gatilho", "categoria"]:
+                if f in payload: item[f] = payload[f]
+            for f in ["preco_alvo", "liq_diaria_mm", "lucro_mi_26"]:
+                if f in payload:
+                    v = payload[f]; item[f] = float(v) if v not in (None, "") else None
+            updated = True; break
+    if not updated:
+        return jsonify({"error": "ticker não encontrado"}), 404
+    save_watchlist(wl)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/watchlist/<ticker>", methods=["DELETE"])
+@require_admin
+def api_delete_watchlist(ticker):
+    wl = load_watchlist()
+    before = len(wl.get("items", []))
+    wl["items"] = [i for i in wl.get("items", []) if i["ticker"] != ticker.upper()]
+    if len(wl["items"]) == before:
+        return jsonify({"error": "ticker não encontrado"}), 404
+    save_watchlist(wl)
+    return jsonify({"ok": True})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Screener
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route("/api/screener")
+def api_screener():
+    universo = request.args.get("universo", "ibov")
+    if universo in ("smll", "todos"):
+        tickers = list(dict.fromkeys(IBOV_TICKERS + SMLL_EXTRA))
+    else:
+        tickers = list(IBOV_TICKERS)
+
+    start_screener_if_needed(tickers)
+
+    scache = load_screener_cache()
+    rows   = []
+    for t in tickers:
+        entry = scache.get(t, {})
+        if not entry or not entry.get("preco"):
+            continue
+        rows.append({k: v for k, v in entry.items() if k != "expires_at"})
+
+    def _flt(key, mn=None, mx=None):
+        nonlocal rows
+        if mn not in (None, ""):
+            try: rows = [r for r in rows if r.get(key) is not None and r[key] >= float(mn)]
+            except Exception: pass
+        if mx not in (None, ""):
+            try: rows = [r for r in rows if r.get(key) is not None and r[key] <= float(mx)]
+            except Exception: pass
+
+    _flt("trailing_pe",          mn=request.args.get("pl_min"),       mx=request.args.get("pl_max"))
+    _flt("return_on_equity",     mn=request.args.get("roe_min"))
+    _flt("dividend_yield",       mn=request.args.get("dy_min"))
+    _flt("enterprise_to_ebitda", mx=request.args.get("evebitda_max"))
+    _flt("beta",                 mn=request.args.get("beta_min"),      mx=request.args.get("beta_max"))
+
+    setor = request.args.get("setor", "").strip()
+    if setor:
+        rows = [r for r in rows if r.get("sector") == setor]
+
+    rows.sort(key=lambda x: x.get("return_on_equity") or -9999, reverse=True)
+
+    with _screener_lock:
+        state = dict(_screener_state)
+
+    return jsonify({
+        "rows":    rows,
+        "loading": state["running"],
+        "loaded":  state["loaded"],
+        "total":   state["total"],
+    })
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

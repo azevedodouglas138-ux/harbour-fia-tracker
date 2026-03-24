@@ -6,6 +6,7 @@
   <title>HARBOUR IAT FIA</title>
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
 </head>
 <body>
 
@@ -105,6 +106,18 @@
   {% endif %}
   {% if role == 'admin' or viewer_config.tab_history %}
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-history"><span class="fn-num">203)</span> HISTÓRICO DE COTAS</button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_macro %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-macro"><span class="fn-num">204)</span> MACRO</button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_watchlist %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-watchlist"><span class="fn-num">205)</span> WATCHLIST</button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_screener %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-screener"><span class="fn-num">206)</span> SCREENER</button>
   {% set ns.first = false %}
   {% endif %}
 </div>
@@ -253,6 +266,25 @@
     </div>
   </div>
 
+  <!-- Atribuição de Retorno -->
+  <div class="charts-grid" style="padding-top:0">
+    <div class="chart-card wide">
+      <div class="chart-card-header">
+        <span class="chart-title">ATRIBUIÇÃO DE RETORNO — CONTRIBUIÇÃO POR ATIVO</span>
+        <div class="range-selector">
+          <button class="attrib-btn active" data-period="day">DIA</button>
+          <button class="attrib-btn" data-period="week">SEMANA</button>
+          <button class="attrib-btn" data-period="month">MÊS</button>
+          <button class="attrib-btn" data-period="ytd">YTD</button>
+        </div>
+      </div>
+      <div class="chart-loading" id="attrib-loading">CARREGANDO ATRIBUIÇÃO...</div>
+      <canvas id="attrib-chart" style="max-height:280px;display:none"></canvas>
+      <div id="attrib-summary" class="attrib-summary hidden"></div>
+      <div id="attrib-table-wrap" class="hidden"></div>
+    </div>
+  </div>
+
   <!-- Rentabilidade Histórica Mensal -->
   <div class="charts-grid" style="padding-top:0">
     <div class="chart-card wide">
@@ -373,6 +405,24 @@
           {% if viewer_config.tab_history %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">MACRO</span>
+        <button class="viewer-toggle {% if viewer_config.tab_macro %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_macro">
+          {% if viewer_config.tab_macro %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">WATCHLIST</span>
+        <button class="viewer-toggle {% if viewer_config.tab_watchlist %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_watchlist">
+          {% if viewer_config.tab_watchlist %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">SCREENER</span>
+        <button class="viewer-toggle {% if viewer_config.tab_screener %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_screener">
+          {% if viewer_config.tab_screener %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
     </div>
     <div class="cfg-footer" style="margin-top:12px">
       <button class="bbg-btn bbg-btn-primary" id="viewer-config-save">SALVAR ACESSO</button>
@@ -484,6 +534,225 @@
   </div>
 </div>
 {% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     204) MACRO
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.tab_macro %}
+<div id="tab-macro" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+  <div class="macro-grid" id="macro-cards-grid">
+    <div class="chart-loading" id="macro-loading" style="grid-column:1/-1">CARREGANDO DADOS MACRO...</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     205) WATCHLIST
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.tab_watchlist %}
+<div id="tab-watchlist" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+  {% if role == 'admin' %}
+  <div class="hist-register-bar">
+    <span class="hist-bar-title">◆ ADICIONAR À WATCHLIST</span>
+    <button class="bbg-btn bbg-btn-primary" id="btn-add-watchlist">+ ATIVO</button>
+  </div>
+  {% endif %}
+  <div class="table-wrapper table-wrapper--history">
+    <table id="watchlist-table">
+      <thead>
+        <tr>
+          <th>ATIVO</th>
+          <th>CATEG.</th>
+          <th>STATUS</th>
+          <th>SETOR</th>
+          <th class="num">PREÇO</th>
+          <th class="num">VAR. DIA</th>
+          <th class="num">P/L TRAIL.</th>
+          <th class="num">P/L FWD.</th>
+          <th class="num">EV/EBITDA</th>
+          <th class="num">ROE %</th>
+          <th class="num">P/VPA</th>
+          <th class="num">DIV. YIELD</th>
+          <th class="num">MKT CAP</th>
+          <th class="num">P. ALVO</th>
+          <th class="num">UPSIDE</th>
+          <th>GATILHO</th>
+          <th>TESE</th>
+          <th class="actions-col"></th>
+        </tr>
+      </thead>
+      <tbody id="watchlist-body">
+        <tr><td colspan="18" class="empty-state">AGUARDANDO DADOS...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     206) SCREENER
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.tab_screener %}
+<div id="tab-screener" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+  <!-- Heatmap -->
+  <div class="screener-heatmap-wrap">
+    <div class="screener-heatmap-header">
+      <span class="chart-title">HEATMAP B3 — VARIAÇÃO DO DIA POR SETOR</span>
+      <div style="display:flex;gap:4px">
+        <button class="screener-univ-btn active" data-univ="ibov">IBOV</button>
+        <button class="screener-univ-btn" data-univ="smll">IBOV+SMLL</button>
+      </div>
+    </div>
+    <div class="chart-loading" id="heatmap-loading">AGUARDANDO DADOS DO SCREENER...</div>
+    <canvas id="heatmap-chart" style="display:none;max-height:320px"></canvas>
+  </div>
+
+  <!-- Filtros -->
+  <div class="screener-filters">
+    <span class="screener-filter-title">◆ FILTROS</span>
+    <div class="screener-filter-row">
+      <div class="screener-filter-field">
+        <label>P/L MÁX</label>
+        <input type="number" id="flt-pl-max" placeholder="ex: 20" step="1">
+      </div>
+      <div class="screener-filter-field">
+        <label>P/L MÍN</label>
+        <input type="number" id="flt-pl-min" placeholder="ex: 0" step="1">
+      </div>
+      <div class="screener-filter-field">
+        <label>ROE MÍN %</label>
+        <input type="number" id="flt-roe-min" placeholder="ex: 15" step="1">
+      </div>
+      <div class="screener-filter-field">
+        <label>DIV YIELD MÍN %</label>
+        <input type="number" id="flt-dy-min" placeholder="ex: 3" step="0.5">
+      </div>
+      <div class="screener-filter-field">
+        <label>EV/EBITDA MÁX</label>
+        <input type="number" id="flt-ev-max" placeholder="ex: 10" step="1">
+      </div>
+      <div class="screener-filter-field">
+        <label>BETA MÍN</label>
+        <input type="number" id="flt-beta-min" placeholder="ex: 0" step="0.1">
+      </div>
+      <div class="screener-filter-field">
+        <label>BETA MÁX</label>
+        <input type="number" id="flt-beta-max" placeholder="ex: 2" step="0.1">
+      </div>
+      <div class="screener-filter-field">
+        <label>SETOR</label>
+        <select id="flt-setor">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="screener-filter-field screener-filter-btns">
+        <button class="bbg-btn bbg-btn-primary" id="btn-screener-filter">FILTRAR</button>
+        <button class="bbg-btn" id="btn-screener-clear">LIMPAR</button>
+      </div>
+    </div>
+    <div id="screener-status" class="screener-status"></div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="table-wrapper table-wrapper--history">
+    <table id="screener-table">
+      <thead>
+        <tr>
+          <th>ATIVO</th>
+          <th>SETOR</th>
+          <th class="num">PREÇO</th>
+          <th class="num">VAR. DIA</th>
+          <th class="num">P/L TRAIL.</th>
+          <th class="num">P/L FWD.</th>
+          <th class="num">EV/EBITDA</th>
+          <th class="num">ROE %</th>
+          <th class="num">P/VPA</th>
+          <th class="num">DIV. YIELD</th>
+          <th class="num">BETA</th>
+          <th class="num">MKT CAP</th>
+          <th class="actions-col"></th>
+        </tr>
+      </thead>
+      <tbody id="screener-body">
+        <tr><td colspan="13" class="empty-state">CLIQUE EM FILTRAR PARA CARREGAR O SCREENER</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL — Adicionar à Watchlist
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="wl-add-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title" id="wl-modal-title">ADICIONAR À WATCHLIST</span>
+      <button class="modal-close" id="wl-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="wl-add-error" class="error-msg hidden"></div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <label>TICKER *<input type="text" id="wl-ticker" placeholder="ex: VALE3" style="text-transform:uppercase"></label>
+        <label>CATEGORIA
+          <select id="wl-categoria">
+            <option value="Acao">Ação</option>
+            <option value="BDR">BDR</option>
+            <option value="FII">FII</option>
+          </select>
+        </label>
+        <label>STATUS
+          <select id="wl-status">
+            <option value="Em análise">Em análise</option>
+            <option value="Monitorando">Monitorando</option>
+            <option value="Descartado">Descartado</option>
+          </select>
+        </label>
+        <label>PREÇO ALVO (R$)<input type="number" id="wl-preco-alvo" step="0.01" min="0"></label>
+        <label style="grid-column:1/-1">GATILHO<input type="text" id="wl-gatilho" placeholder="ex: Resultado 1T26"></label>
+        <label style="grid-column:1/-1">TESE<textarea id="wl-tese" rows="3" placeholder="Tese de investimento..." style="width:100%;background:var(--surface3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px;resize:vertical"></textarea></label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="bbg-btn" id="wl-modal-cancel">CANCELAR</button>
+      <button class="bbg-btn bbg-btn-primary" id="wl-modal-save">ADICIONAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL — Editar Watchlist item
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="wl-edit-modal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title">EDITAR <span id="wl-edit-ticker-label"></span></span>
+      <button class="modal-close" id="wl-edit-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <label>STATUS
+          <select id="wl-edit-status">
+            <option value="Em análise">Em análise</option>
+            <option value="Monitorando">Monitorando</option>
+            <option value="Descartado">Descartado</option>
+          </select>
+        </label>
+        <label>PREÇO ALVO (R$)<input type="number" id="wl-edit-preco-alvo" step="0.01" min="0"></label>
+        <label style="grid-column:1/-1">GATILHO<input type="text" id="wl-edit-gatilho"></label>
+        <label style="grid-column:1/-1">TESE<textarea id="wl-edit-tese" rows="3" style="width:100%;background:var(--surface3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px;resize:vertical"></textarea></label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="bbg-btn" id="wl-edit-cancel">CANCELAR</button>
+      <button class="bbg-btn bbg-btn-danger" id="wl-edit-delete">REMOVER</button>
+      <button class="bbg-btn bbg-btn-primary" id="wl-edit-save">SALVAR</button>
+    </div>
+  </div>
+</div>
 
 <script>window.USER_ROLE = "{{ role }}";</script>
 <script src="/static/app.js"></script>

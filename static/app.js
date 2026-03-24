@@ -370,9 +370,12 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'tab-charts')  requestAnimationFrame(() => loadCharts(currentDays));
-    if (btn.dataset.tab === 'tab-config')  loadConfig();
-    if (btn.dataset.tab === 'tab-history') loadHistoryTab();
+    if (btn.dataset.tab === 'tab-charts')    requestAnimationFrame(() => loadCharts(currentDays));
+    if (btn.dataset.tab === 'tab-config')    loadConfig();
+    if (btn.dataset.tab === 'tab-history')   loadHistoryTab();
+    if (btn.dataset.tab === 'tab-macro')     loadMacroTab();
+    if (btn.dataset.tab === 'tab-watchlist') loadWatchlistTab();
+    if (btn.dataset.tab === 'tab-screener')  loadScreenerTab();
   });
 });
 
@@ -722,6 +725,7 @@ async function loadCharts(range) {
   loadDrawdownVolatility(range);
   loadPerfIndicators();
   loadMonthlyReturnsTable();
+  loadAttribution(_attribPeriod);
 }
 
 document.querySelectorAll('.range-btn:not(#range-custom-btn)').forEach(btn => {
@@ -1334,6 +1338,540 @@ if (window.USER_ROLE === 'admin') {
       status.textContent = '✖ ERRO AO SALVAR';
       status.style.color = '#ff3333';
     }
+  });
+}
+
+// ── Atribuição de Retorno ────────────────────────────────────────
+let attribChart = null;
+let _attribPeriod = 'day';
+
+document.querySelectorAll('.attrib-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.attrib-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _attribPeriod = btn.dataset.period;
+    loadAttribution(_attribPeriod);
+  });
+});
+
+async function loadAttribution(period) {
+  const loading  = document.getElementById('attrib-loading');
+  const canvas   = document.getElementById('attrib-chart');
+  const summary  = document.getElementById('attrib-summary');
+  const tableWrap = document.getElementById('attrib-table-wrap');
+  if (!loading) return;
+  loading.classList.remove('hidden');
+  loading.textContent = 'CARREGANDO ATRIBUIÇÃO...';
+  if (canvas) canvas.style.display = 'none';
+  if (summary) summary.classList.add('hidden');
+  if (tableWrap) tableWrap.classList.add('hidden');
+
+  try {
+    const res  = await fetch(`/api/attribution?period=${period}`);
+    const data = await res.json();
+    if (data.error) { loading.textContent = 'ERRO: ' + data.error; return; }
+    loading.classList.add('hidden');
+
+    const rows   = data.rows || [];
+    if (!rows.length) { loading.textContent = 'SEM DADOS.'; loading.classList.remove('hidden'); return; }
+
+    const labels = rows.map(r => r.ticker);
+    const values = rows.map(r => r.contribuicao_pct);
+    const colors = values.map(v => v > 0 ? 'rgba(0,204,68,0.75)' : v < 0 ? 'rgba(255,51,51,0.75)' : 'rgba(136,136,136,0.5)');
+    const borders = values.map(v => v > 0 ? '#00cc44' : v < 0 ? '#ff3333' : '#888');
+
+    canvas.style.display = '';
+    if (attribChart) attribChart.destroy();
+    attribChart = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Contribuição %',
+          data: values,
+          backgroundColor: colors,
+          borderColor: borders,
+          borderWidth: 1,
+          borderRadius: 2,
+        }],
+      },
+      options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0d0d0d', borderColor: '#2a2a2a', borderWidth: 1,
+            callbacks: {
+              label: ctx => {
+                const r = rows[ctx.dataIndex];
+                return [`  Contribuição: ${(ctx.parsed.x >= 0 ? '+' : '') + fmt(ctx.parsed.x, 3)}%`,
+                        `  Retorno ativo: ${(r.retorno_pct >= 0 ? '+' : '') + fmt(r.retorno_pct, 2)}%`,
+                        `  Peso: ${fmt(r.peso_pct, 2)}%`];
+              },
+            },
+          },
+        },
+        scales: {
+          x: { grid: { color: '#1c1c1c' }, ticks: { callback: v => (v >= 0 ? '+' : '') + fmt(v, 2) + '%' } },
+          y: { grid: { display: false } },
+        },
+      },
+    });
+
+    // Summary
+    const ptotal = data.total_fundo_pct;
+    const pibov  = data.ibov_ret_pct;
+    const alpha  = data.alpha_pct;
+    const PERIOD_LABEL = { day: 'NO DIA', week: 'NA SEMANA', month: 'NO MÊS', ytd: 'NO ANO' };
+    if (summary) {
+      summary.innerHTML = `
+        <span class="attrib-kpi">
+          <span class="attrib-kpi-lbl">FUNDO ${PERIOD_LABEL[period] || ''}</span>
+          <span class="attrib-kpi-val ${colorCls(ptotal)}">${ptotal != null ? (ptotal >= 0 ? '+' : '') + fmt(ptotal, 2) + '%' : '—'}</span>
+        </span>
+        <span class="attrib-sep">│</span>
+        <span class="attrib-kpi">
+          <span class="attrib-kpi-lbl">IBOV</span>
+          <span class="attrib-kpi-val ${colorCls(pibov)}">${pibov != null ? (pibov >= 0 ? '+' : '') + fmt(pibov, 2) + '%' : '—'}</span>
+        </span>
+        <span class="attrib-sep">│</span>
+        <span class="attrib-kpi">
+          <span class="attrib-kpi-lbl">ALPHA</span>
+          <span class="attrib-kpi-val ${colorCls(alpha)}">${alpha != null ? (alpha >= 0 ? '+' : '') + fmt(alpha, 2) + '%' : '—'}</span>
+        </span>`;
+      summary.classList.remove('hidden');
+    }
+
+    // Table
+    if (tableWrap) {
+      let th = `<table class="attrib-table"><thead><tr>
+        <th>ATIVO</th><th class="num">RETORNO %</th><th class="num">PESO %</th>
+        <th class="num">CONTRIB. %</th><th class="num">CONTRIB. BPS</th></tr></thead><tbody>`;
+      rows.forEach(r => {
+        th += `<tr>
+          <td class="ticker-cell">${r.ticker}</td>
+          <td class="num ${colorCls(r.retorno_pct)}">${(r.retorno_pct >= 0 ? '+' : '') + fmt(r.retorno_pct, 2)}%</td>
+          <td class="num">${fmt(r.peso_pct, 2)}%</td>
+          <td class="num ${colorCls(r.contribuicao_pct)}">${(r.contribuicao_pct >= 0 ? '+' : '') + fmt(r.contribuicao_pct, 3)}%</td>
+          <td class="num ${colorCls(r.contribuicao_bps)}">${(r.contribuicao_bps >= 0 ? '+' : '') + fmt(r.contribuicao_bps, 1)}</td>
+        </tr>`;
+      });
+      th += `<tr class="weighted-row"><td colspan="3" class="weighted-label">TOTAL FUNDO</td>
+        <td class="num ${colorCls(ptotal)}">${ptotal != null ? (ptotal >= 0 ? '+' : '') + fmt(ptotal, 3) + '%' : '—'}</td>
+        <td class="num ${colorCls(ptotal)}">${ptotal != null ? (ptotal >= 0 ? '+' : '') + fmt(ptotal * 100, 1) : '—'}</td></tr>`;
+      th += '</tbody></table>';
+      tableWrap.innerHTML = th;
+      tableWrap.classList.remove('hidden');
+    }
+  } catch(e) {
+    if (loading) { loading.textContent = 'ERRO: ' + e.message; loading.classList.remove('hidden'); }
+  }
+}
+
+// ── Macro Dashboard ──────────────────────────────────────────────
+let _macroCache = null;
+const _macroSparklines = {};
+
+async function loadMacroTab() {
+  if (_macroCache) { renderMacro(_macroCache); return; }
+  const loading = document.getElementById('macro-loading');
+  if (loading) { loading.classList.remove('hidden'); loading.textContent = 'CARREGANDO DADOS MACRO...'; }
+  try {
+    const res  = await fetch('/api/macro');
+    _macroCache = await res.json();
+    renderMacro(_macroCache);
+  } catch(e) {
+    if (loading) loading.textContent = 'ERRO: ' + e.message;
+  }
+}
+
+function renderMacro(data) {
+  const grid    = document.getElementById('macro-cards-grid');
+  const loading = document.getElementById('macro-loading');
+  if (!grid) return;
+  if (loading) loading.classList.add('hidden');
+
+  const CARDS = [
+    { key: 'selic_meta', label: 'SELIC META',  suffix: '%',  decimals: 2, color: '#ff8c00' },
+    { key: 'ipca_12m',   label: 'IPCA 12M',    suffix: '%',  decimals: 2, color: '#ffcc00' },
+    { key: 'usdbrl',     label: 'USD/BRL',      suffix: '',   decimals: 2, color: '#00aacc' },
+    { key: 'brent',      label: 'BRENT (USD)',  suffix: '',   decimals: 2, color: '#888888' },
+    { key: 'sp500',      label: 'S&P 500',      suffix: '',   decimals: 0, color: '#ff4488' },
+  ];
+
+  grid.innerHTML = '';
+  CARDS.forEach(card => {
+    const d = data[card.key];
+    if (!d) return;
+    const val    = d.valor;
+    const varPct = d.var_pct;
+    const div = document.createElement('div');
+    div.className = 'macro-card';
+    const canvasId = `macro-spark-${card.key}`;
+    div.innerHTML = `
+      <div class="macro-card-label">${card.label}</div>
+      <div class="macro-card-value">${val != null ? fmt(val, card.decimals) + card.suffix : '—'}</div>
+      <div class="macro-card-change ${colorCls(varPct)}">
+        ${varPct != null ? (varPct >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(varPct), 2) + '%' : ''}
+      </div>
+      <canvas id="${canvasId}" class="macro-spark" height="40"></canvas>`;
+    grid.appendChild(div);
+
+    // Sparkline
+    if (d.hist && d.hist.length) {
+      requestAnimationFrame(() => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        if (_macroSparklines[canvasId]) _macroSparklines[canvasId].destroy();
+        _macroSparklines[canvasId] = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: d.hist.map(h => h.data),
+            datasets: [{ data: d.hist.map(h => h.valor), borderColor: card.color,
+              borderWidth: 1.5, pointRadius: 0, tension: 0.2, fill: false }],
+          },
+          options: {
+            responsive: false, animation: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: {
+              x: { display: false },
+              y: { display: false },
+            },
+          },
+        });
+      });
+    }
+  });
+}
+
+// ── Watchlist ────────────────────────────────────────────────────
+let _wlEditingTicker = null;
+
+async function loadWatchlistTab() {
+  await renderWatchlistTable();
+}
+
+async function renderWatchlistTable() {
+  const tbody = document.getElementById('watchlist-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="18" class="empty-state">CARREGANDO...</td></tr>';
+  try {
+    const res  = await fetch('/api/watchlist');
+    const data = await res.json();
+    const rows = data.rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="18" class="empty-state">WATCHLIST VAZIA — ADICIONE ATIVOS PARA ACOMPANHAR.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    rows.forEach(row => {
+      const statusCls = row.status === 'Em análise' ? 'wl-status-analise'
+                      : row.status === 'Monitorando' ? 'wl-status-monitor'
+                      : 'wl-status-descartado';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="ticker-cell">${row.ticker}${row.short_name ? `<span class="name-sub">${row.short_name}</span>` : ''}</td>
+        <td>${row.categoria || '—'}</td>
+        <td><span class="wl-status ${statusCls}">${row.status || '—'}</span></td>
+        <td>${row.sector || '—'}</td>
+        <td class="num">${fmtBRL(row.preco)}</td>
+        <td class="num ${colorCls(row.var_dia_pct)}">${row.var_dia_pct != null ? sign(row.var_dia_pct) + fmt(row.var_dia_pct, 2) + '%' : '—'}</td>
+        <td class="num">${fmt(row.trailing_pe, 1)}</td>
+        <td class="num">${fmt(row.forward_pe, 1)}</td>
+        <td class="num">${fmt(row.enterprise_to_ebitda, 1)}</td>
+        <td class="num ${colorCls(row.return_on_equity)}">${row.return_on_equity != null ? fmt(row.return_on_equity, 1) + '%' : '—'}</td>
+        <td class="num">${fmt(row.price_to_book, 1)}</td>
+        <td class="num">${row.dividend_yield != null ? fmt(row.dividend_yield, 2) + '%' : '—'}</td>
+        <td class="num">${row.market_cap_bi != null ? 'R$' + fmt(row.market_cap_bi, 1) + 'B' : '—'}</td>
+        <td class="num">${fmtBRL(row.preco_alvo)}</td>
+        <td class="num ${upsideCls(row.upside_pct)}">${row.upside_pct != null ? sign(row.upside_pct) + fmt(row.upside_pct, 2) + '%' : '—'}</td>
+        <td class="wl-gatilho" title="${row.gatilho || ''}">${row.gatilho || '—'}</td>
+        <td class="wl-tese" title="${row.tese || ''}">${row.tese ? row.tese.slice(0, 40) + (row.tese.length > 40 ? '...' : '') : '—'}</td>
+        <td>${window.USER_ROLE === 'admin' ? '<button class="btn-edit wl-edit-btn" title="Editar">✎</button>' : ''}</td>`;
+      const editBtn = tr.querySelector('.wl-edit-btn');
+      if (editBtn) editBtn.addEventListener('click', () => openWlEditModal(row));
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="18" class="empty-state">ERRO: ${e.message}</td></tr>`;
+  }
+}
+
+// Watchlist — Add modal
+document.getElementById('btn-add-watchlist')?.addEventListener('click', () => {
+  ['wl-ticker','wl-preco-alvo','wl-gatilho','wl-tese'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('wl-add-error')?.classList.add('hidden');
+  document.getElementById('wl-status').value = 'Em análise';
+  document.getElementById('wl-add-modal')?.classList.remove('hidden');
+});
+const closeWlAddModal = () => document.getElementById('wl-add-modal')?.classList.add('hidden');
+document.getElementById('wl-modal-close')?.addEventListener('click', closeWlAddModal);
+document.getElementById('wl-modal-cancel')?.addEventListener('click', closeWlAddModal);
+document.getElementById('wl-add-modal')?.addEventListener('click', e => { if(e.target === document.getElementById('wl-add-modal')) closeWlAddModal(); });
+
+document.getElementById('wl-modal-save')?.addEventListener('click', async () => {
+  const ticker = document.getElementById('wl-ticker')?.value.trim().toUpperCase();
+  if (!ticker) { showWlAddError('TICKER OBRIGATÓRIO.'); return; }
+  const btn = document.getElementById('wl-modal-save');
+  btn.disabled = true; btn.textContent = 'VERIFICANDO...';
+  const res = await fetch('/api/watchlist/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ticker,
+      categoria:    document.getElementById('wl-categoria')?.value,
+      status:       document.getElementById('wl-status')?.value,
+      preco_alvo:   document.getElementById('wl-preco-alvo')?.value,
+      gatilho:      document.getElementById('wl-gatilho')?.value,
+      tese:         document.getElementById('wl-tese')?.value,
+    }),
+  });
+  btn.disabled = false; btn.textContent = 'ADICIONAR';
+  if (res.ok) { closeWlAddModal(); await renderWatchlistTable(); }
+  else { const err = await res.json(); showWlAddError(err.error || 'ERRO.'); }
+});
+function showWlAddError(msg) {
+  const el = document.getElementById('wl-add-error');
+  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+}
+
+// Watchlist — Edit modal
+function openWlEditModal(row) {
+  _wlEditingTicker = row.ticker;
+  document.getElementById('wl-edit-ticker-label').textContent = row.ticker;
+  document.getElementById('wl-edit-status').value     = row.status || 'Em análise';
+  document.getElementById('wl-edit-preco-alvo').value = row.preco_alvo ?? '';
+  document.getElementById('wl-edit-gatilho').value    = row.gatilho || '';
+  document.getElementById('wl-edit-tese').value       = row.tese || '';
+  document.getElementById('wl-edit-modal')?.classList.remove('hidden');
+}
+const closeWlEditModal = () => { document.getElementById('wl-edit-modal')?.classList.add('hidden'); _wlEditingTicker = null; };
+document.getElementById('wl-edit-close')?.addEventListener('click', closeWlEditModal);
+document.getElementById('wl-edit-cancel')?.addEventListener('click', closeWlEditModal);
+document.getElementById('wl-edit-modal')?.addEventListener('click', e => { if(e.target === document.getElementById('wl-edit-modal')) closeWlEditModal(); });
+
+document.getElementById('wl-edit-save')?.addEventListener('click', async () => {
+  if (!_wlEditingTicker) return;
+  const res = await fetch('/api/watchlist/update', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ticker:     _wlEditingTicker,
+      status:     document.getElementById('wl-edit-status')?.value,
+      preco_alvo: document.getElementById('wl-edit-preco-alvo')?.value,
+      gatilho:    document.getElementById('wl-edit-gatilho')?.value,
+      tese:       document.getElementById('wl-edit-tese')?.value,
+    }),
+  });
+  if (res.ok) { closeWlEditModal(); await renderWatchlistTable(); }
+  else alert('ERRO AO SALVAR.');
+});
+document.getElementById('wl-edit-delete')?.addEventListener('click', async () => {
+  if (!_wlEditingTicker || !confirm(`REMOVER ${_wlEditingTicker} DA WATCHLIST?`)) return;
+  const res = await fetch(`/api/watchlist/${_wlEditingTicker}`, { method: 'DELETE' });
+  if (res.ok) { closeWlEditModal(); await renderWatchlistTable(); }
+  else alert('ERRO AO REMOVER.');
+});
+
+// ── Screener B3 + Heatmap ────────────────────────────────────────
+let _screenerUniverso = 'ibov';
+let _heatmapChart = null;
+let _screenerLoaded = false;
+
+document.querySelectorAll('.screener-univ-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.screener-univ-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _screenerUniverso = btn.dataset.univ;
+    loadScreenerTab();
+  });
+});
+
+document.getElementById('btn-screener-filter')?.addEventListener('click', () => loadScreenerTab());
+document.getElementById('btn-screener-clear')?.addEventListener('click', () => {
+  ['flt-pl-max','flt-pl-min','flt-roe-min','flt-dy-min','flt-ev-max','flt-beta-min','flt-beta-max'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  const sel = document.getElementById('flt-setor'); if(sel) sel.value = '';
+  loadScreenerTab();
+});
+
+async function loadScreenerTab() {
+  const tbody  = document.getElementById('screener-body');
+  const status = document.getElementById('screener-status');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="13" class="empty-state">CARREGANDO SCREENER...</td></tr>';
+
+  const params = new URLSearchParams({ universo: _screenerUniverso });
+  const ids = [
+    ['pl_max','flt-pl-max'],['pl_min','flt-pl-min'],['roe_min','flt-roe-min'],
+    ['dy_min','flt-dy-min'],['evebitda_max','flt-ev-max'],
+    ['beta_min','flt-beta-min'],['beta_max','flt-beta-max'],
+  ];
+  ids.forEach(([k, id]) => {
+    const v = document.getElementById(id)?.value;
+    if (v) params.set(k, v);
+  });
+  const setor = document.getElementById('flt-setor')?.value;
+  if (setor) params.set('setor', setor);
+
+  try {
+    const res  = await fetch('/api/screener?' + params.toString());
+    const data = await res.json();
+    const rows = data.rows || [];
+
+    // Update loading status
+    if (status) {
+      if (data.loading) {
+        status.textContent = `⏳ CARREGANDO ${data.loaded}/${data.total} ATIVOS...`;
+        setTimeout(() => loadScreenerTab(), 3000);
+      } else {
+        status.textContent = `${rows.length} ATIVOS ENCONTRADOS`;
+        _screenerLoaded = true;
+      }
+    }
+
+    // Populate sector filter dropdown
+    const setores = [...new Set(rows.map(r => r.sector).filter(Boolean))].sort();
+    const selSetor = document.getElementById('flt-setor');
+    if (selSetor) {
+      const cur = selSetor.value;
+      selSetor.innerHTML = '<option value="">Todos</option>' + setores.map(s => `<option value="${s}">${s}</option>`).join('');
+      if (cur) selSetor.value = cur;
+    }
+
+    // Render heatmap
+    renderHeatmap(rows);
+
+    // Render table
+    if (!rows.length && !data.loading) {
+      tbody.innerHTML = '<tr><td colspan="13" class="empty-state">NENHUM ATIVO ENCONTRADO COM OS FILTROS APLICADOS.</td></tr>';
+      return;
+    }
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="13" class="empty-state">AGUARDANDO DADOS DO SCREENER...</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="ticker-cell">${row.ticker}${row.short_name ? `<span class="name-sub">${row.short_name}</span>` : ''}</td>
+        <td>${row.sector || '—'}</td>
+        <td class="num">${fmtBRL(row.preco)}</td>
+        <td class="num ${colorCls(row.var_dia_pct)}">${row.var_dia_pct != null ? sign(row.var_dia_pct) + fmt(row.var_dia_pct, 2) + '%' : '—'}</td>
+        <td class="num">${fmt(row.trailing_pe, 1)}</td>
+        <td class="num">${fmt(row.forward_pe, 1)}</td>
+        <td class="num">${fmt(row.enterprise_to_ebitda, 1)}</td>
+        <td class="num ${colorCls(row.return_on_equity)}">${row.return_on_equity != null ? fmt(row.return_on_equity, 1) + '%' : '—'}</td>
+        <td class="num">${fmt(row.price_to_book, 1)}</td>
+        <td class="num">${row.dividend_yield != null ? fmt(row.dividend_yield, 2) + '%' : '—'}</td>
+        <td class="num">${fmt(row.beta, 2)}</td>
+        <td class="num">${row.market_cap_bi != null ? 'R$' + fmt(row.market_cap_bi, 1) + 'B' : '—'}</td>
+        <td>${window.USER_ROLE === 'admin' ? `<button class="btn-edit wl-quick-add" data-ticker="${row.ticker}" title="Add Watchlist">+WL</button>` : ''}</td>`;
+      const wlBtn = tr.querySelector('.wl-quick-add');
+      if (wlBtn) wlBtn.addEventListener('click', () => quickAddToWatchlist(row.ticker));
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="empty-state">ERRO: ${e.message}</td></tr>`;
+  }
+}
+
+async function quickAddToWatchlist(ticker) {
+  const res = await fetch('/api/watchlist/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ticker, status: 'Em análise' }),
+  });
+  const btn = document.querySelector(`.wl-quick-add[data-ticker="${ticker}"]`);
+  if (res.ok) { if(btn) { btn.textContent = '✔'; btn.disabled = true; btn.style.color = '#00cc44'; } }
+  else { const err = await res.json(); alert(err.error || 'ERRO.'); }
+}
+
+// ── Heatmap (Treemap) ────────────────────────────────────────────
+function renderHeatmap(rows) {
+  const canvas  = document.getElementById('heatmap-chart');
+  const loading = document.getElementById('heatmap-loading');
+  if (!canvas) return;
+
+  if (!rows.length) {
+    canvas.style.display = 'none';
+    if (loading) { loading.textContent = 'AGUARDANDO DADOS DO SCREENER...'; loading.classList.remove('hidden'); }
+    return;
+  }
+
+  if (loading) loading.classList.add('hidden');
+  canvas.style.display = '';
+
+  const withMc = rows.filter(r => r.market_cap_bi && r.preco);
+  if (!withMc.length) { canvas.style.display = 'none'; return; }
+
+  const treeData = withMc.map(r => ({
+    ticker:  r.ticker,
+    sector:  r.sector || 'Outros',
+    v:       r.market_cap_bi,
+    var_pct: r.var_dia_pct || 0,
+  }));
+
+  function varColor(v) {
+    if (v > 2)    return 'rgba(0,180,80,0.75)';
+    if (v > 0.5)  return 'rgba(0,140,60,0.55)';
+    if (v > -0.5) return 'rgba(80,80,80,0.55)';
+    if (v > -2)   return 'rgba(200,50,50,0.55)';
+    return 'rgba(220,30,30,0.80)';
+  }
+
+  if (_heatmapChart) _heatmapChart.destroy();
+  _heatmapChart = new Chart(canvas.getContext('2d'), {
+    type: 'treemap',
+    data: {
+      datasets: [{
+        label: 'B3',
+        tree: treeData,
+        key: 'v',
+        backgroundColor(ctx) {
+          if (ctx.type !== 'data') return 'transparent';
+          return varColor(ctx.raw?.var_pct || 0);
+        },
+        borderColor: '#0a0a0a',
+        borderWidth: 1,
+        spacing: 1,
+        labels: {
+          display: true,
+          align: 'center',
+          position: 'middle',
+          formatter(ctx) {
+            if (ctx.type !== 'data') return '';
+            const d = ctx.raw;
+            const v = d?.var_pct || 0;
+            return [d?.ticker || '', (v >= 0 ? '+' : '') + fmt(v, 2) + '%'];
+          },
+          color: '#fff',
+          font: [{ size: 9, weight: '700' }, { size: 8 }],
+        },
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d0d0d', borderColor: '#333', borderWidth: 1,
+          callbacks: {
+            title: (items) => items[0]?.raw?.ticker || '',
+            label: (item) => {
+              const d = item.raw;
+              if (!d) return '';
+              return [
+                `  Setor: ${d.sector}`,
+                `  Variação: ${(d.var_pct >= 0 ? '+' : '') + fmt(d.var_pct, 2)}%`,
+                `  Mkt Cap: R$${fmt(d.v, 1)}B`,
+              ];
+            },
+          },
+        },
+      },
+    },
   });
 }
 
