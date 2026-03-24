@@ -242,7 +242,7 @@ def fetch_fundamentals(tickers):
                 "forward_pe":          forward_pe,
                 "peg_ratio":           peg_ratio,
                 "price_to_book":       _round(info.get("priceToBook"), 1),
-                "dividend_yield":      round(dy * 100, 2) if dy else None,
+                "dividend_yield":      round(dy if dy > 1 else dy * 100, 2) if dy else None,
                 "market_cap":          info.get("marketCap"),
                 "fifty_two_week_high": _round(info.get("fiftyTwoWeekHigh"), 2),
                 "fifty_two_week_low":  _round(info.get("fiftyTwoWeekLow"), 2),
