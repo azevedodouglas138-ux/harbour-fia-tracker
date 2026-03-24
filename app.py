@@ -749,25 +749,19 @@ def api_performance_chart():
     ibov_key       = "ibov_history_full"
     benchmarks_key = "benchmarks_history_full"
 
-    # ── IBOV (existing logic) ──
+    # ── IBOV ──
     ibov_map = {}
     if cache.get(ibov_key) and now < cache[ibov_key].get("expires_at", 0):
         ibov_map = cache[ibov_key]["data"]
     else:
-        import pandas as pd
-        start   = history[0]["data"]
-        end_dt  = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+        start  = history[0]["data"]
+        end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
         try:
-            df = yf.download("^BVSP", start=start, end=end_dt.strftime("%Y-%m-%d"),
-                             progress=False, auto_adjust=True)
-            if not df.empty:
-                close = df["Close"]
-                if hasattr(close, "squeeze"):
-                    close = close.squeeze()
-                ibov_map = {str(d.date()): round(float(v), 2) for d, v in close.items()}
+            hist = yf.Ticker("^BVSP").history(start=start, end=end_dt.strftime("%Y-%m-%d"))
+            if not hist.empty:
+                ibov_map = {str(d.date()): round(float(v), 2) for d, v in hist["Close"].items()}
         except Exception as e:
-            print(f"[perf-chart] IBOV download error: {e}")
-            ibov_map = {}
+            print(f"[perf-chart] IBOV error: {e}")
         ttl = HISTORY_TTL if ibov_map else 120
         cache[ibov_key] = {"data": ibov_map, "expires_at": now + ttl}
         save_cache(cache)
@@ -777,10 +771,9 @@ def api_performance_chart():
     if cache.get(benchmarks_key) and now < cache[benchmarks_key].get("expires_at", 0):
         benchmark_maps = cache[benchmarks_key]["data"]
     else:
-        import pandas as pd
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
-        # SMAL11.SA = iShares Small Cap Brasil ETF (proxy SMLL index, histórico desde 2015)
+        # SMAL11.SA = iShares Small Cap Brasil ETF (proxy SMLL index)
         # IDIV11.SA = iShares IDIV ETF (proxy IDIV index)
         extra_tickers = {
             "^SMLL":  "SMAL11.SA",
@@ -788,22 +781,16 @@ def api_performance_chart():
             "^GSPC":  "^GSPC",
             "^IXIC":  "^IXIC",
         }
-        try:
-            df = yf.download(list(extra_tickers.values()), start=start,
-                             end=end_dt.strftime("%Y-%m-%d"),
-                             progress=False, auto_adjust=True)
-            if not df.empty:
-                close = df["Close"] if isinstance(df.columns, pd.MultiIndex) else df
-                for out_key, yf_ticker in extra_tickers.items():
-                    if yf_ticker in close.columns:
-                        s = close[yf_ticker].dropna()
-                        if not s.empty:
-                            benchmark_maps[out_key] = {
-                                str(d.date()): round(float(v), 2)
-                                for d, v in s.items()
-                            }
-        except Exception as e:
-            print(f"[perf-chart] benchmarks download error: {e}")
+        for out_key, yf_ticker in extra_tickers.items():
+            try:
+                hist = yf.Ticker(yf_ticker).history(start=start, end=end_dt.strftime("%Y-%m-%d"))
+                if not hist.empty:
+                    benchmark_maps[out_key] = {
+                        str(d.date()): round(float(v), 2)
+                        for d, v in hist["Close"].items()
+                    }
+            except Exception as e:
+                print(f"[perf-chart] {yf_ticker} error: {e}")
         # CDI cumulative index (starts at 100 on inception date, compounds daily)
         try:
             cdi_daily = load_cdi_map()
@@ -994,15 +981,11 @@ def api_monthly_returns():
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
         try:
-            df = yf.download("^BVSP", start=start, end=end_dt.strftime("%Y-%m-%d"),
-                             progress=False, auto_adjust=True)
-            if not df.empty:
-                close = df["Close"]
-                if hasattr(close, "squeeze"):
-                    close = close.squeeze()
-                ibov_map = {str(d.date()): round(float(v), 2) for d, v in close.items()}
+            hist = yf.Ticker("^BVSP").history(start=start, end=end_dt.strftime("%Y-%m-%d"))
+            if not hist.empty:
+                ibov_map = {str(d.date()): round(float(v), 2) for d, v in hist["Close"].items()}
         except Exception as e:
-            print(f"[monthly-returns] IBOV download error: {e}")
+            print(f"[monthly-returns] IBOV error: {e}")
             ibov_map = {}
         ttl = HISTORY_TTL if ibov_map else 120
         cache[ibov_key] = {"data": ibov_map, "expires_at": now + ttl}

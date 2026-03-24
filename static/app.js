@@ -386,7 +386,9 @@ function renderChartsIfVisible() {
 }
 
 // ── Chart: Performance (cota history vs IBOV) ────────────────────
-let _perfCache = null;
+let _perfCache     = null;
+let _perfCacheTime = 0;
+const PERF_CACHE_TTL = 10 * 60 * 1000; // 10 min
 
 // Filtra série por range usando datas de calendário, não contagem de entradas
 function filterSeriesByRange(allSeries, range) {
@@ -419,9 +421,12 @@ async function loadHistoryChart(days) {
   summary.classList.add('hidden');
 
   try {
-    if (!_perfCache) {
+    // Re-fetch if cache is missing, stale, or ibov data was empty on last attempt
+    const ibovMissing = _perfCache && _perfCache.series?.every(s => s.ibov == null);
+    if (!_perfCache || ibovMissing || Date.now() - _perfCacheTime > PERF_CACHE_TTL) {
       const res  = await fetch('/api/performance-chart');
-      _perfCache = await res.json();
+      _perfCache     = await res.json();
+      _perfCacheTime = Date.now();
     }
     const allSeries = _perfCache.series || [];
     if (!allSeries.length) {
