@@ -36,6 +36,17 @@ html, body {
   height: 100%;
 }
 
+/* ═══════════════ SCROLLBARS ════════════════════════════════════ */
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: var(--orange) #1a1a1a; }
+
+/* Chrome / Edge / Safari */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: #1a1a1a; }
+::-webkit-scrollbar-thumb        { background: var(--orange); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: var(--orange-text); }
+::-webkit-scrollbar-corner       { background: #1a1a1a; }
+
 /* ═══════════════ TOP BAR ═══════════════════════════════════════ */
 .bbg-topbar {
   position: sticky; top: 0; z-index: 200;
