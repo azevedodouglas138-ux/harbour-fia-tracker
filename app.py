@@ -757,7 +757,9 @@ def api_performance_chart():
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
         try:
-            hist = yf.Ticker("^BVSP").history(start=start, end=end_dt.strftime("%Y-%m-%d"))
+            hist = yf.Ticker("^BVSP").history(
+                start=start, end=end_dt.strftime("%Y-%m-%d"), timeout=10
+            )
             if not hist.empty:
                 ibov_map = {str(d.date()): round(float(v), 2) for d, v in hist["Close"].items()}
         except Exception as e:
@@ -773,25 +775,7 @@ def api_performance_chart():
     else:
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
-        # SMAL11.SA = iShares Small Cap Brasil ETF (proxy SMLL index)
-        # IDIV11.SA = iShares IDIV ETF (proxy IDIV index)
-        extra_tickers = {
-            "^SMLL":  "SMAL11.SA",
-            "^IDIV":  "IDIV11.SA",
-            "^GSPC":  "^GSPC",
-            "^IXIC":  "^IXIC",
-        }
-        for out_key, yf_ticker in extra_tickers.items():
-            try:
-                hist = yf.Ticker(yf_ticker).history(start=start, end=end_dt.strftime("%Y-%m-%d"))
-                if not hist.empty:
-                    benchmark_maps[out_key] = {
-                        str(d.date()): round(float(v), 2)
-                        for d, v in hist["Close"].items()
-                    }
-            except Exception as e:
-                print(f"[perf-chart] {yf_ticker} error: {e}")
-        # CDI cumulative index (starts at 100 on inception date, compounds daily)
+        # CDI first — independent of yfinance, must not be blocked by hanging requests
         try:
             cdi_daily = load_cdi_map()
             if cdi_daily:
@@ -803,6 +787,27 @@ def api_performance_chart():
                 benchmark_maps["cdi"] = cdi_cum
         except Exception as e:
             print(f"[perf-chart] CDI error: {e}")
+
+        # SMAL11.SA = iShares Small Cap Brasil ETF (proxy SMLL index)
+        # DIVO11.SA = It Now IDIV ETF (proxy IDIV index)
+        extra_tickers = {
+            "^SMLL":  "SMAL11.SA",
+            "^IDIV":  "DIVO11.SA",
+            "^GSPC":  "^GSPC",
+            "^IXIC":  "^IXIC",
+        }
+        for out_key, yf_ticker in extra_tickers.items():
+            try:
+                hist = yf.Ticker(yf_ticker).history(
+                    start=start, end=end_dt.strftime("%Y-%m-%d"), timeout=10
+                )
+                if not hist.empty:
+                    benchmark_maps[out_key] = {
+                        str(d.date()): round(float(v), 2)
+                        for d, v in hist["Close"].items()
+                    }
+            except Exception as e:
+                print(f"[perf-chart] {yf_ticker} error: {e}")
         ttl = HISTORY_TTL if benchmark_maps else 120
         cache[benchmarks_key] = {"data": benchmark_maps, "expires_at": now + ttl}
         save_cache(cache)
@@ -981,7 +986,9 @@ def api_monthly_returns():
         start  = history[0]["data"]
         end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
         try:
-            hist = yf.Ticker("^BVSP").history(start=start, end=end_dt.strftime("%Y-%m-%d"))
+            hist = yf.Ticker("^BVSP").history(
+                start=start, end=end_dt.strftime("%Y-%m-%d"), timeout=10
+            )
             if not hist.empty:
                 ibov_map = {str(d.date()): round(float(v), 2) for d, v in hist["Close"].items()}
         except Exception as e:
