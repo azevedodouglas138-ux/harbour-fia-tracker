@@ -450,9 +450,30 @@ def build_portfolio_response(portfolio, prices, fundamentals):
     beta_rows = [r for r in rows if r["beta"] is not None and r["valor_liquido"]]
     weighted_beta = round(sum(r["beta"] * r["valor_liquido"] / total_value for r in beta_rows), 2) if beta_rows and total_value > 0 else None
 
+    def _wavg(field):
+        valid = [r for r in rows if r.get(field) is not None and r["valor_liquido"]]
+        wt = sum(r["valor_liquido"] for r in valid)
+        if not valid or wt == 0: return None
+        return round(sum(r[field] * r["valor_liquido"] / wt for r in valid), 2)
+
+    weighted_stats = {
+        "w_trailing_pe":          _wavg("trailing_pe"),
+        "w_forward_pe":           _wavg("forward_pe"),
+        "w_peg_ratio":            _wavg("peg_ratio"),
+        "w_enterprise_to_ebitda": _wavg("enterprise_to_ebitda"),
+        "w_return_on_equity":     _wavg("return_on_equity"),
+        "w_beta":                 weighted_beta,
+        "w_price_to_book":        _wavg("price_to_book"),
+        "w_dividend_yield":       _wavg("dividend_yield"),
+        "w_var_dia_pct":          _wavg("var_dia_pct"),
+        "w_upside_pct":           weighted_upside,
+        "w_lucro_mi_26":          sum(r["lucro_mi_26"] for r in rows if r.get("lucro_mi_26")) or None,
+    }
+
     return {
         "fund_name": portfolio["fund_name"], "total_value": round(total_value, 2),
         "weighted_upside": weighted_upside, "weighted_beta": weighted_beta,
+        "weighted_stats": weighted_stats,
         "last_price_update": datetime.now().isoformat(), "rows": rows,
     }
 

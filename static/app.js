@@ -208,6 +208,55 @@ function renderTable() {
     th.classList.remove('sorted-asc','sorted-desc');
     if (th.dataset.col === sortCol) th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
   });
+  renderWeightedRow();
+}
+
+function renderWeightedRow() {
+  const tfoot = document.getElementById('portfolio-foot');
+  if (!tfoot || !portfolioData?.weighted_stats) return;
+  const ws = portfolioData.weighted_stats;
+  tfoot.innerHTML = `
+    <tr class="weighted-row">
+      <td colspan="9" class="weighted-label">CARTEIRA (POND.)</td>
+      <td class="num">${fmt(ws.w_trailing_pe,1)}</td>
+      <td class="num">${fmt(ws.w_forward_pe,1)}</td>
+      <td class="num">${fmt(ws.w_peg_ratio,2)}</td>
+      <td class="num">${fmt(ws.w_enterprise_to_ebitda,1)}</td>
+      <td class="num ${colorCls(ws.w_return_on_equity)}">${ws.w_return_on_equity!=null?fmt(ws.w_return_on_equity,1)+'%':'—'}</td>
+      <td class="num">${fmt(ws.w_beta,2)}</td>
+      <td class="num">${fmt(ws.w_price_to_book,1)}</td>
+      <td class="num">${ws.w_dividend_yield!=null?fmt(ws.w_dividend_yield,2)+'%':'—'}</td>
+      <td class="num">—</td>
+      <td class="num">${ws.w_lucro_mi_26!=null?fmtInt(ws.w_lucro_mi_26):'—'}</td>
+      <td class="num">—</td>
+      <td class="num ${upsideCls(ws.w_upside_pct)}">${ws.w_upside_pct!=null?sign(ws.w_upside_pct)+fmt(ws.w_upside_pct,2)+'%':'—'}</td>
+      <td></td>
+    </tr>`;
+}
+
+function recalcWeightedStats() {
+  if (!portfolioData) return;
+  const rows = portfolioData.rows;
+  const total = portfolioData.total_value || 0;
+  function wavg(field) {
+    const valid = rows.filter(r => r[field] != null && r.valor_liquido);
+    const wt = valid.reduce((s,r) => s + r.valor_liquido, 0);
+    if (!valid.length || wt === 0) return null;
+    return Math.round(valid.reduce((s,r) => s + r[field] * r.valor_liquido / wt, 0) * 100) / 100;
+  }
+  portfolioData.weighted_stats = {
+    w_trailing_pe:          wavg('trailing_pe'),
+    w_forward_pe:           wavg('forward_pe'),
+    w_peg_ratio:            wavg('peg_ratio'),
+    w_enterprise_to_ebitda: wavg('enterprise_to_ebitda'),
+    w_return_on_equity:     wavg('return_on_equity'),
+    w_beta:                 portfolioData.weighted_beta,
+    w_price_to_book:        wavg('price_to_book'),
+    w_dividend_yield:       wavg('dividend_yield'),
+    w_var_dia_pct:          wavg('var_dia_pct'),
+    w_upside_pct:           portfolioData.weighted_upside,
+    w_lucro_mi_26:          rows.reduce((s,r) => s + (r.lucro_mi_26||0), 0) || null,
+  };
 }
 
 document.querySelectorAll('th[data-col]').forEach(th => {
@@ -301,6 +350,7 @@ async function refreshPricesOnly() {
       }
     }
 
+    recalcWeightedStats();
     renderTable(); renderTopBar(); renderStatsBar();
     secondsLeft = REFRESH_SEC;
   } catch(e) { console.error('Erro refresh:', e); }
