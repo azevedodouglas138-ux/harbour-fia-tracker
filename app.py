@@ -202,17 +202,45 @@ def _round(val, d):
     try: return round(float(val), d) if val is not None else None
     except: return None
 
+# BDRs: mapa ticker .SA → ticker americano subjacente (para buscar forwardPE/pegRatio)
+BDR_UNDERLYING = {
+    "MUTC34.SA": "MU",
+    "NVDC34.SA": "NVDA",
+    "A1MD34.SA": "AMD",
+    "MSFT34.SA": "MSFT",
+    "GOGL34.SA": "GOOGL",
+    "AAPL34.SA": "AAPL",
+    "AMZO34.SA": "AMZN",
+    "META34.SA": "META",
+    "TSLA34.SA": "TSLA",
+}
+
 def fetch_fundamentals(tickers):
+    # Busca fundamentals dos subjacentes americanos de BDRs de uma vez
+    us_tickers = list({BDR_UNDERLYING[t] for t in tickers if t in BDR_UNDERLYING})
+    us_info = {}
+    for ut in us_tickers:
+        try:
+            us_info[ut] = yf.Ticker(ut).info
+        except Exception:
+            us_info[ut] = {}
+
     result = {}
     for ticker in tickers:
         try:
             info = yf.Ticker(ticker).info
             dy, roe, beta, ev_ebitda = info.get("dividendYield"), info.get("returnOnEquity"), info.get("beta"), info.get("enterpriseToEbitda")
             sector_en = info.get("sector")
+
+            # Para BDRs: complementa forwardPE e pegRatio do ticker americano subjacente
+            us = us_info.get(BDR_UNDERLYING.get(ticker), {})
+            forward_pe = _round(info.get("forwardPE") or us.get("forwardPE"), 2)
+            peg_ratio  = _round(info.get("pegRatio")  or us.get("pegRatio"),  2)
+
             result[ticker] = {
                 "trailing_pe":         _round(info.get("trailingPE"), 2),
-                "forward_pe":          _round(info.get("forwardPE"), 2),
-                "peg_ratio":           _round(info.get("pegRatio"), 2),
+                "forward_pe":          forward_pe,
+                "peg_ratio":           peg_ratio,
                 "price_to_book":       _round(info.get("priceToBook"), 1),
                 "dividend_yield":      round(dy * 100, 2) if dy else None,
                 "market_cap":          info.get("marketCap"),
@@ -231,7 +259,8 @@ def fetch_fundamentals(tickers):
 def get_cached_fundamentals(tickers):
     cache = load_cache()
     now = time.time()
-    if any(now > cache.get(t, {}).get("expires_at", 0) for t in tickers):
+    # Invalida se expirado OU se peg_ratio ainda não está no cache (campo novo)
+    if any(now > cache.get(t, {}).get("expires_at", 0) or "peg_ratio" not in cache.get(t, {}) for t in tickers):
         fresh = fetch_fundamentals(tickers)
         for t, d in fresh.items():
             cache[t] = {**d, "expires_at": now + FUNDAMENTALS_TTL}
