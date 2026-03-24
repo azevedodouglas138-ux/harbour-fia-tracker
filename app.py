@@ -429,8 +429,7 @@ def build_portfolio_response(portfolio, prices, fundamentals):
             "ticker": pos["ticker"], "yahoo_ticker": yahoo,
             "categoria": pos.get("categoria", "Acao"), "quantidade": qtde,
             "liq_diaria_mm": pos.get("liq_diaria_mm"),
-            "lucro_mi_25":   pos.get("lucro_mi_25"),
-            "pl_alvo_25":    pos.get("pl_alvo_25"),
+            "lucro_mi_26":   pos.get("lucro_mi_26"),
             "preco_alvo": pa, "preco": price,
             "var_dia_pct": pd_.get("change_pct"),
             "valor_liquido": vl, "upside_pct": upside,
@@ -465,14 +464,14 @@ EXPORT_HEADERS = [
     "Ativo","Categoria","Setor","% Total","Valor Líquido (R$)","Preço (R$)",
     "Var. Dia %","Quantidade","Liq. Diária (mm)",
     "P/L Trailing","P/L Forward","EV/EBITDA","ROE %","Beta",
-    "Lucro mi 25","P/L Alvo 25","P/VPA","Div. Yield %","Mkt Cap (Bi R$)","Preço Alvo (R$)","Upside %",
+    "Lucro mi 26","P/VPA","Div. Yield %","Mkt Cap (Bi R$)","Preço Alvo (R$)","Upside %",
 ]
 
 def row_to_export(r):
     return [r["ticker"],r["categoria"],r.get("sector"),r["pct_total"],r["valor_liquido"],r["preco"],
             r["var_dia_pct"],r["quantidade"],r["liq_diaria_mm"],
             r["trailing_pe"],r["forward_pe"],r.get("enterprise_to_ebitda"),r.get("return_on_equity"),r.get("beta"),
-            r["lucro_mi_25"],r["pl_alvo_25"],r["price_to_book"],r["dividend_yield"],r["market_cap_bi"],r["preco_alvo"],r["upside_pct"]]
+            r["lucro_mi_26"],r["price_to_book"],r["dividend_yield"],r["market_cap_bi"],r["preco_alvo"],r["upside_pct"]]
 
 def get_export_data():
     portfolio = load_portfolio()
@@ -638,7 +637,7 @@ def api_update_position():
     updated = False
     for pos in portfolio["positions"]:
         if pos["ticker"] == ticker:
-            for field in ["quantidade","liq_diaria_mm","lucro_mi_25","pl_alvo_25","preco_alvo"]:
+            for field in ["quantidade","liq_diaria_mm","lucro_mi_26","preco_alvo"]:
                 if field in payload:
                     val = payload[field]
                     pos[field] = float(val) if val not in (None,"") else None
@@ -666,8 +665,8 @@ def api_add_position():
         "ticker": ticker, "yahoo_ticker": yahoo_ticker,
         "categoria": payload.get("categoria","Acao"),
         "quantidade": float(payload.get("quantidade",0)),
-        "liq_diaria_mm": _f("liq_diaria_mm"), "lucro_mi_25": _f("lucro_mi_25"),
-        "pl_alvo_25": _f("pl_alvo_25"), "preco_alvo": _f("preco_alvo"),
+        "liq_diaria_mm": _f("liq_diaria_mm"), "lucro_mi_26": _f("lucro_mi_26"),
+        "preco_alvo": _f("preco_alvo"),
     })
     save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
     return jsonify({"ok": True})

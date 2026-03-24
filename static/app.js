@@ -194,8 +194,7 @@ function renderTable() {
       <td class="num">${fmt(row.price_to_book,1)}</td>
       <td class="num">${row.dividend_yield!=null?fmt(row.dividend_yield,2)+'%':'—'}</td>
       <td class="num">${row.market_cap_bi!=null?'R$'+fmt(row.market_cap_bi,1)+'B':'—'}</td>
-      <td class="num">${row.lucro_mi_25!=null?fmtInt(row.lucro_mi_25):'—'}</td>
-      <td class="num">${fmt(row.pl_alvo_25,1)}</td>
+      <td class="num">${row.lucro_mi_26!=null?fmtInt(row.lucro_mi_26):'—'}</td>
       <td class="num">${fmtBRL(row.preco_alvo)}</td>
       <td class="num ${upsideCls(row.upside_pct)}">${row.upside_pct!=null?sign(row.upside_pct)+fmt(row.upside_pct,2)+'%':'—'}</td>
       <td>${window.USER_ROLE === 'admin' ? '<button class="btn-edit" title="Editar">✎</button>' : ''}</td>
@@ -1105,8 +1104,7 @@ function openEditModal(row) {
   document.getElementById('edit-modal-ticker').textContent = row.ticker;
   document.getElementById('edit-quantidade').value  = row.quantidade ?? '';
   document.getElementById('edit-liq').value         = row.liq_diaria_mm ?? '';
-  document.getElementById('edit-lucro').value       = row.lucro_mi_25 ?? '';
-  document.getElementById('edit-pl-alvo').value     = row.pl_alvo_25 ?? '';
+  document.getElementById('edit-lucro').value       = row.lucro_mi_26 ?? '';
   document.getElementById('edit-preco-alvo').value  = row.preco_alvo ?? '';
   document.getElementById('edit-modal').classList.remove('hidden');
 }
@@ -1120,8 +1118,7 @@ document.getElementById('edit-modal-save').addEventListener('click', async () =>
     body: JSON.stringify({ ticker: editingTicker,
       quantidade: document.getElementById('edit-quantidade').value,
       liq_diaria_mm: document.getElementById('edit-liq').value,
-      lucro_mi_25: document.getElementById('edit-lucro').value,
-      pl_alvo_25: document.getElementById('edit-pl-alvo').value,
+      lucro_mi_26: document.getElementById('edit-lucro').value,
       preco_alvo: document.getElementById('edit-preco-alvo').value }) });
   if (res.ok) { closeEditModal(); showLoading(); await fetchPortfolio(); }
   else alert('ERRO AO SALVAR.');
@@ -1135,7 +1132,7 @@ document.getElementById('edit-modal-delete').addEventListener('click', async () 
 
 // ── Add Modal ────────────────────────────────────────────────────
 document.getElementById('btn-add-stock')?.addEventListener('click', () => {
-  ['add-ticker','add-quantidade','add-liq','add-lucro','add-pl-alvo','add-preco-alvo'].forEach(id => document.getElementById(id).value='');
+  ['add-ticker','add-quantidade','add-liq','add-lucro','add-preco-alvo'].forEach(id => document.getElementById(id).value='');
   document.getElementById('add-error').classList.add('hidden');
   document.getElementById('add-modal').classList.remove('hidden');
 });
@@ -1152,8 +1149,7 @@ document.getElementById('add-modal-save').addEventListener('click', async () => 
   const res = await fetch('/api/portfolio/add', { method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({ ticker, quantidade, categoria: document.getElementById('add-categoria').value,
       liq_diaria_mm: document.getElementById('add-liq').value,
-      lucro_mi_25: document.getElementById('add-lucro').value,
-      pl_alvo_25: document.getElementById('add-pl-alvo').value,
+      lucro_mi_26: document.getElementById('add-lucro').value,
       preco_alvo: document.getElementById('add-preco-alvo').value }) });
   btn.disabled = false; btn.textContent = 'ADICIONAR';
   if (res.ok) { closeAddModal(); showLoading(); await fetchPortfolio(); }
