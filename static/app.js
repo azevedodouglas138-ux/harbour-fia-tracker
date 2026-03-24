@@ -1695,11 +1695,17 @@ document.getElementById('btn-screener-clear')?.addEventListener('click', () => {
   loadScreenerTab();
 });
 
-async function loadScreenerTab() {
+async function loadScreenerTab(isPoll = false) {
   const tbody  = document.getElementById('screener-body');
   const status = document.getElementById('screener-status');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="13" class="empty-state">CARREGANDO SCREENER...</td></tr>';
+
+  // Preserve scroll position — chart destroy/recreate causes browser to jump to top
+  const savedScroll = window.scrollY;
+
+  if (!isPoll) {
+    tbody.innerHTML = '<tr><td colspan="13" class="empty-state">CARREGANDO SCREENER...</td></tr>';
+  }
 
   const params = new URLSearchParams({ universo: _screenerUniverso });
   const ids = [
@@ -1723,7 +1729,10 @@ async function loadScreenerTab() {
     if (status) {
       if (data.loading) {
         status.textContent = `⏳ CARREGANDO ${data.loaded}/${data.total} ATIVOS...`;
-        setTimeout(() => loadScreenerTab(), 3000);
+        // Only continue polling if the screener tab is still visible
+        if (document.getElementById('tab-screener')?.classList.contains('active')) {
+          setTimeout(() => loadScreenerTab(true), 3000);
+        }
       } else {
         status.textContent = `${rows.length} ATIVOS ENCONTRADOS`;
         _screenerLoaded = true;
@@ -1739,16 +1748,18 @@ async function loadScreenerTab() {
       if (cur) selSetor.value = cur;
     }
 
-    // Render heatmap
-    renderHeatmap(rows);
+    // Render heatmap only when we have data (avoid destroy/recreate on empty poll)
+    if (rows.length) renderHeatmap(rows);
 
     // Render table
     if (!rows.length && !data.loading) {
       tbody.innerHTML = '<tr><td colspan="13" class="empty-state">NENHUM ATIVO ENCONTRADO COM OS FILTROS APLICADOS.</td></tr>';
+      window.scrollTo(0, savedScroll);
       return;
     }
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="13" class="empty-state">AGUARDANDO DADOS DO SCREENER...</td></tr>';
+      if (!isPoll) tbody.innerHTML = '<tr><td colspan="13" class="empty-state">AGUARDANDO DADOS DO SCREENER...</td></tr>';
+      window.scrollTo(0, savedScroll);
       return;
     }
 
@@ -1773,6 +1784,8 @@ async function loadScreenerTab() {
       if (wlBtn) wlBtn.addEventListener('click', () => quickAddToWatchlist(row.ticker));
       tbody.appendChild(tr);
     });
+    // Restore scroll after DOM updates to prevent page jumping to top
+    requestAnimationFrame(() => window.scrollTo(0, savedScroll));
   } catch(e) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="empty-state">ERRO: ${e.message}</td></tr>`;
   }

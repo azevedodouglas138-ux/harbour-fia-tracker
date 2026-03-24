@@ -1234,6 +1234,14 @@ def start_screener_if_needed(tickers):
     with _screener_lock:
         if _screener_state["running"]:
             return
+        # If all tickers are already cached and not expired, skip starting a thread
+        scache = load_screener_cache()
+        now = time.time()
+        stale = [t for t in tickers if now >= scache.get(t, {}).get("expires_at", 0)]
+        if not stale:
+            _screener_state["loaded"] = len(tickers)
+            _screener_state["total"]  = len(tickers)
+            return
         _screener_state["running"] = True
         _screener_state["loaded"]  = 0
         _screener_state["total"]   = len(tickers)
