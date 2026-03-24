@@ -1672,19 +1672,9 @@ document.getElementById('wl-edit-delete')?.addEventListener('click', async () =>
   else alert('ERRO AO REMOVER.');
 });
 
-// ── Screener B3 + Heatmap ────────────────────────────────────────
+// ── Screener B3 ──────────────────────────────────────────────────
 let _screenerUniverso = 'ibov';
-let _heatmapChart = null;
 let _screenerLoaded = false;
-
-document.querySelectorAll('.screener-univ-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.screener-univ-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    _screenerUniverso = btn.dataset.univ;
-    loadScreenerTab();
-  });
-});
 
 document.getElementById('btn-screener-filter')?.addEventListener('click', () => loadScreenerTab());
 document.getElementById('btn-screener-clear')?.addEventListener('click', () => {
@@ -1748,9 +1738,6 @@ async function loadScreenerTab(isPoll = false) {
       if (cur) selSetor.value = cur;
     }
 
-    // Render heatmap only when we have data (avoid destroy/recreate on empty poll)
-    if (rows.length) renderHeatmap(rows);
-
     // Render table
     if (!rows.length && !data.loading) {
       tbody.innerHTML = '<tr><td colspan="13" class="empty-state">NENHUM ATIVO ENCONTRADO COM OS FILTROS APLICADOS.</td></tr>';
@@ -1799,93 +1786,6 @@ async function quickAddToWatchlist(ticker) {
   const btn = document.querySelector(`.wl-quick-add[data-ticker="${ticker}"]`);
   if (res.ok) { if(btn) { btn.textContent = '✔'; btn.disabled = true; btn.style.color = '#00cc44'; } }
   else { const err = await res.json(); alert(err.error || 'ERRO.'); }
-}
-
-// ── Heatmap (Treemap) ────────────────────────────────────────────
-function renderHeatmap(rows) {
-  const canvas  = document.getElementById('heatmap-chart');
-  const loading = document.getElementById('heatmap-loading');
-  if (!canvas) return;
-
-  if (!rows.length) {
-    canvas.style.display = 'none';
-    if (loading) { loading.textContent = 'AGUARDANDO DADOS DO SCREENER...'; loading.classList.remove('hidden'); }
-    return;
-  }
-
-  if (loading) loading.classList.add('hidden');
-  canvas.style.display = '';
-
-  const withMc = rows.filter(r => r.market_cap_bi && r.preco);
-  if (!withMc.length) { canvas.style.display = 'none'; return; }
-
-  const treeData = withMc.map(r => ({
-    ticker:  r.ticker,
-    sector:  r.sector || 'Outros',
-    v:       r.market_cap_bi,
-    var_pct: r.var_dia_pct || 0,
-  }));
-
-  function varColor(v) {
-    if (v > 2)    return 'rgba(0,180,80,0.75)';
-    if (v > 0.5)  return 'rgba(0,140,60,0.55)';
-    if (v > -0.5) return 'rgba(80,80,80,0.55)';
-    if (v > -2)   return 'rgba(200,50,50,0.55)';
-    return 'rgba(220,30,30,0.80)';
-  }
-
-  if (_heatmapChart) _heatmapChart.destroy();
-  _heatmapChart = new Chart(canvas.getContext('2d'), {
-    type: 'treemap',
-    data: {
-      datasets: [{
-        label: 'B3',
-        tree: treeData,
-        key: 'v',
-        backgroundColor(ctx) {
-          if (ctx.type !== 'data') return 'transparent';
-          return varColor(ctx.raw?.var_pct || 0);
-        },
-        borderColor: '#0a0a0a',
-        borderWidth: 1,
-        spacing: 1,
-        labels: {
-          display: true,
-          align: 'center',
-          position: 'middle',
-          formatter(ctx) {
-            if (ctx.type !== 'data') return '';
-            const d = ctx.raw;
-            const v = d?.var_pct || 0;
-            return [d?.ticker || '', (v >= 0 ? '+' : '') + fmt(v, 2) + '%'];
-          },
-          color: '#fff',
-          font: [{ size: 9, weight: '700' }, { size: 8 }],
-        },
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#0d0d0d', borderColor: '#333', borderWidth: 1,
-          callbacks: {
-            title: (items) => items[0]?.raw?.ticker || '',
-            label: (item) => {
-              const d = item.raw;
-              if (!d) return '';
-              return [
-                `  Setor: ${d.sector}`,
-                `  Variação: ${(d.var_pct >= 0 ? '+' : '') + fmt(d.var_pct, 2)}%`,
-                `  Mkt Cap: R$${fmt(d.v, 1)}B`,
-              ];
-            },
-          },
-        },
-      },
-    },
-  });
 }
 
 // ── Init ─────────────────────────────────────────────────────────

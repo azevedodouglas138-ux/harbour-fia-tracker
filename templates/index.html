@@ -598,19 +598,6 @@
 {% if role == 'admin' or viewer_config.tab_screener %}
 <div id="tab-screener" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
-  <!-- Heatmap -->
-  <div class="screener-heatmap-wrap">
-    <div class="screener-heatmap-header">
-      <span class="chart-title">HEATMAP B3 — VARIAÇÃO DO DIA POR SETOR</span>
-      <div style="display:flex;gap:4px">
-        <button class="screener-univ-btn active" data-univ="ibov">IBOV</button>
-        <button class="screener-univ-btn" data-univ="smll">IBOV+SMLL</button>
-      </div>
-    </div>
-    <div class="chart-loading" id="heatmap-loading">AGUARDANDO DADOS DO SCREENER...</div>
-    <canvas id="heatmap-chart" style="display:none;max-height:320px"></canvas>
-  </div>
-
   <!-- Filtros -->
   <div class="screener-filters">
     <span class="screener-filter-title">◆ FILTROS</span>

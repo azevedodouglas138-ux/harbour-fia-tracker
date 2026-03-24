@@ -902,23 +902,6 @@ tr.flash-down { animation: flash-down 0.8s ease; }
 .wl-tese    { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 10px; cursor: help; }
 
 /* ══════════════ SCREENER ════════════════════════════════════════ */
-.screener-heatmap-wrap {
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  padding: 12px 14px;
-}
-.screener-heatmap-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 8px;
-}
-.screener-univ-btn {
-  background: var(--surface2); border: 1px solid var(--border2);
-  color: var(--text-muted); font-family: var(--mono);
-  font-size: 9px; font-weight: 700; padding: 3px 8px;
-  cursor: pointer; border-radius: 2px; transition: all .12s;
-}
-.screener-univ-btn:hover { color: var(--orange-text); border-color: var(--orange); }
-.screener-univ-btn.active { background: var(--orange); border-color: var(--orange); color: #000; }
-
 .screener-filters {
   background: var(--surface2); border-bottom: 1px solid var(--border);
   padding: 10px 14px;
