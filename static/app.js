@@ -1118,6 +1118,69 @@ function renderConsistencyTable(monthlyData) {
 document.getElementById('btn-export-csv')?.addEventListener('click',   () => { window.location.href = '/api/export/csv'; });
 document.getElementById('btn-export-excel')?.addEventListener('click', () => { window.location.href = '/api/export/excel'; });
 
+document.getElementById('btn-export-pdf')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-export-pdf');
+  const original = btn.textContent;
+  btn.textContent = 'GERANDO...';
+  btn.disabled = true;
+
+  try {
+    const el = document.getElementById('tab-charts');
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#0a0a0a',
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+      ignoreElements: el => el.id === 'btn-export-pdf' || el.closest?.('#btn-export-pdf')
+    });
+
+    const { jsPDF } = window.jspdf;
+    const imgW = canvas.width;
+    const imgH = canvas.height;
+    const ratio = imgH / imgW;
+    const pageW = 297; // A4 landscape mm
+    const pageH = 210;
+    const contentW = pageW - 20;
+    const contentH = contentW * ratio;
+
+    const orientation = ratio > (pageH / pageW) ? 'portrait' : 'landscape';
+    const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+    const pW = pdf.internal.pageSize.getWidth() - 20;
+    const pH = pW * ratio;
+    const pagesNeeded = Math.ceil(pH / (pdf.internal.pageSize.getHeight() - 20));
+
+    if (pagesNeeded <= 1) {
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 10, 10, pW, pH);
+    } else {
+      // Slice into pages
+      const pageHeightPx = canvas.width * ((pdf.internal.pageSize.getHeight() - 20) / pW);
+      let yOffset = 0;
+      let page = 0;
+      while (yOffset < canvas.height) {
+        if (page > 0) pdf.addPage();
+        const sliceH = Math.min(pageHeightPx, canvas.height - yOffset);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceH;
+        sliceCanvas.getContext('2d').drawImage(canvas, 0, yOffset, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+        const slicePH = pW * (sliceH / canvas.width);
+        pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 10, 10, pW, slicePH);
+        yOffset += sliceH;
+        page++;
+      }
+    }
+
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    pdf.save(`harbour-iat-graficos-${today}.pdf`);
+  } catch (err) {
+    console.error('PDF export error:', err);
+    alert('Erro ao gerar PDF. Tente novamente.');
+  } finally {
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+});
+
 // ── Config tab ───────────────────────────────────────────────────
 async function loadConfig() {
   const res    = await fetch('/api/fund-config');

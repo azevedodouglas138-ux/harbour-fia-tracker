@@ -263,6 +263,10 @@ tr.flash-up   { animation: flash-up   0.8s ease; }
 tr.flash-down { animation: flash-down 0.8s ease; }
 
 /* ═══════════════ CHARTS ═════════════════════════════════════════ */
+.charts-toolbar {
+  display: flex; justify-content: flex-end;
+  padding: 8px 12px 0;max-width: 1600px; margin: 0 auto;
+}
 .charts-grid {
   display: grid; grid-template-columns: 1fr 1fr;
   gap: 12px; padding: 12px; max-width: 1600px; margin: 0 auto;

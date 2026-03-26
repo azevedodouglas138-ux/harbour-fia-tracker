@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -179,6 +181,9 @@
 {% if role == 'admin' or viewer_config.tab_charts %}
 <div id="tab-charts" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
+  <div class="charts-toolbar">
+    <button class="bbg-btn" id="btn-export-pdf">&#8595; PDF</button>
+  </div>
   <div class="charts-grid">
     <div class="chart-card wide">
       <div class="chart-card-header">
