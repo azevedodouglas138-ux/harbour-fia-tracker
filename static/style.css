@@ -262,6 +262,126 @@ td.upside-neg  { color: var(--red); }
 tr.flash-up   { animation: flash-up   0.8s ease; }
 tr.flash-down { animation: flash-down 0.8s ease; }
 
+/* ═══════════════ INLINE STOCK CHART ════════════════════════════ */
+
+tr.row-expanded > td:first-child { border-left: 2px solid var(--orange); }
+
+tr.stock-expand-row            { background: var(--surface) !important; }
+tr.stock-expand-row:hover      { background: var(--surface) !important; }
+
+.stock-expand-td {
+  padding: 0 !important;
+  border-bottom: 1px solid var(--orange);
+}
+
+.stock-expand-inner {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+  animation: expand-in 0.18s ease-out;
+}
+
+@keyframes expand-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.stock-expand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.stock-expand-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange);
+  letter-spacing: 1px;
+}
+.stock-expand-name {
+  font-size: 9px;
+  color: var(--text-muted);
+  flex: 1;
+}
+.stock-expand-close {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  font-family: var(--mono);
+  margin-left: auto;
+}
+.stock-expand-close:hover { border-color: var(--red); color: var(--red); }
+
+.stock-range-selector { display: flex; gap: 3px; }
+.stock-range-btn { font-size: 9px; }
+
+.stock-expand-body {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.stock-chart-wrap {
+  flex: 1;
+  position: relative;
+  height: 200px;
+  min-height: 160px;
+}
+
+.stock-mini-chart {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.stock-chart-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.stock-stats-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 130px;
+  padding: 4px 0 4px 16px;
+  border-left: 1px solid var(--border);
+}
+.sstat { display: flex; flex-direction: column; gap: 1px; }
+.sstat-lbl {
+  font-size: 8px;
+  color: var(--orange-text);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.sstat-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.sstat-val.positive { color: var(--green); }
+.sstat-val.negative { color: var(--red); }
+
+.ticker-click {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border2);
+  transition: border-color 0.1s, color 0.1s;
+}
+.ticker-click:hover {
+  color: var(--orange);
+  border-bottom-color: var(--orange);
+}
+
 /* ═══════════════ CHARTS ═════════════════════════════════════════ */
 .charts-toolbar {
   display: flex; justify-content: flex-end;

@@ -23,6 +23,14 @@ let editingTicker = null;
 let currentDays   = '0';
 const REFRESH_SEC = 30;
 
+// ── Inline stock chart state ──────────────────────────────────────
+let expandedTicker      = null;
+let _currentExpandRange = '1M';
+const _inlineCharts     = new Map();
+const _stockHistCache   = new Map();
+const STOCK_HIST_CACHE_TTL = 5 * 60 * 1000;
+const TABLE_COL_COUNT   = 22;
+
 // ── Benchmark config ─────────────────────────────────────────────
 const BENCH_CONFIG = {
   ibov:   { label: 'IBOV',      color: '#00aacc', dash: [5, 4] },
@@ -176,7 +184,7 @@ function renderTable() {
     }
 
     tr.innerHTML = `
-      <td class="ticker-cell">${row.ticker}${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
+      <td class="ticker-cell"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
       <td>${row.categoria||'—'}</td>
       <td>${row.sector||'—'}</td>
       <td class="num">${row.pct_total!=null?fmt(row.pct_total,2)+'%':'—'}</td>
@@ -201,6 +209,13 @@ function renderTable() {
     `;
     const editBtn = tr.querySelector('.btn-edit');
     if (editBtn) editBtn.addEventListener('click', () => openEditModal(row));
+    const tickerSpan = tr.querySelector('.ticker-click');
+    if (tickerSpan) {
+      tickerSpan.addEventListener('click', e => {
+        e.stopPropagation();
+        toggleStockExpand(row.ticker, row.yahoo_ticker, row.short_name, tr);
+      });
+    }
     tbody.appendChild(tr);
   });
 
@@ -209,6 +224,19 @@ function renderTable() {
     if (th.dataset.col === sortCol) th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
   });
   renderWeightedRow();
+  // Re-inject expanded row if one was open before re-render
+  if (expandedTicker) {
+    const newDataRow = document.querySelector(`tr[data-ticker="${expandedTicker}"]`);
+    if (newDataRow) {
+      newDataRow.classList.add('row-expanded');
+      if (!document.querySelector(`.stock-expand-row[data-for="${expandedTicker}"]`)) {
+        const rowData = portfolioData.rows.find(r => r.ticker === expandedTicker);
+        if (rowData) injectExpandRow(expandedTicker, rowData.yahoo_ticker, rowData.short_name, newDataRow, _currentExpandRange);
+      }
+    } else {
+      collapseCurrentExpand();
+    }
+  }
 }
 
 function renderWeightedRow() {
@@ -233,6 +261,229 @@ function renderWeightedRow() {
       <td></td>
     </tr>`;
 }
+
+// ── Inline stock chart functions ─────────────────────────────────
+
+function toggleStockExpand(ticker, yahooTicker, shortName, dataRow) {
+  const alreadyOpen = expandedTicker === ticker;
+  collapseCurrentExpand();
+  if (alreadyOpen) return;
+  expandedTicker = ticker;
+  injectExpandRow(ticker, yahooTicker, shortName, dataRow, _currentExpandRange);
+}
+
+function collapseCurrentExpand() {
+  if (!expandedTicker) return;
+  const chart = _inlineCharts.get(expandedTicker);
+  if (chart) { chart.destroy(); _inlineCharts.delete(expandedTicker); }
+  const existing = document.querySelector(`.stock-expand-row[data-for="${expandedTicker}"]`);
+  if (existing) existing.remove();
+  const dataRow = document.querySelector(`tr[data-ticker="${expandedTicker}"]`);
+  if (dataRow) dataRow.classList.remove('row-expanded');
+  expandedTicker = null;
+}
+
+function injectExpandRow(ticker, yahooTicker, shortName, dataRow, range) {
+  document.querySelector(`.stock-expand-row[data-for="${ticker}"]`)?.remove();
+  dataRow.classList.add('row-expanded');
+  const expandRow = document.createElement('tr');
+  expandRow.className   = 'stock-expand-row';
+  expandRow.dataset.for = ticker;
+  const ranges = ['1S','1M','3M','6M','YTD','1A'];
+  expandRow.innerHTML = `
+    <td colspan="${TABLE_COL_COUNT}" class="stock-expand-td">
+      <div class="stock-expand-inner">
+        <div class="stock-expand-header">
+          <span class="stock-expand-title">${ticker}</span>
+          ${shortName ? `<span class="stock-expand-name">${shortName}</span>` : ''}
+          <div class="stock-range-selector">
+            ${ranges.map(r => `<button class="range-btn stock-range-btn${r === range ? ' active' : ''}" data-range="${r}">${r}</button>`).join('')}
+          </div>
+          <button class="stock-expand-close" title="Fechar">✕</button>
+        </div>
+        <div class="stock-expand-body">
+          <div class="stock-chart-wrap">
+            <canvas class="stock-mini-chart" id="mini-chart-${ticker}"></canvas>
+            <div class="stock-chart-loading" id="mini-loading-${ticker}">CARREGANDO...</div>
+          </div>
+          <div class="stock-stats-sidebar" id="mini-stats-${ticker}">
+            <div class="sstat"><span class="sstat-lbl">PERÍODO</span><span class="sstat-val" id="ss-ret-${ticker}">—</span></div>
+            <div class="sstat"><span class="sstat-lbl">VS IBOV</span><span class="sstat-val" id="ss-ibov-${ticker}">—</span></div>
+            <div class="sstat"><span class="sstat-lbl">MÁX 52S</span><span class="sstat-val" id="ss-hi-${ticker}">—</span></div>
+            <div class="sstat"><span class="sstat-lbl">MÍN 52S</span><span class="sstat-val" id="ss-lo-${ticker}">—</span></div>
+            <div class="sstat"><span class="sstat-lbl">P. ATUAL</span><span class="sstat-val" id="ss-px-${ticker}">—</span></div>
+          </div>
+        </div>
+      </div>
+    </td>`;
+  dataRow.after(expandRow);
+  expandRow.querySelectorAll('.stock-range-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      expandRow.querySelectorAll('.stock-range-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _currentExpandRange = btn.dataset.range;
+      loadStockChart(ticker, yahooTicker, shortName, btn.dataset.range);
+    });
+  });
+  expandRow.querySelector('.stock-expand-close').addEventListener('click', collapseCurrentExpand);
+  loadStockChart(ticker, yahooTicker, shortName, range);
+}
+
+async function loadStockChart(ticker, yahooTicker, shortName, range) {
+  const canvas  = document.getElementById(`mini-chart-${ticker}`);
+  const loading = document.getElementById(`mini-loading-${ticker}`);
+  if (!canvas || !loading) return;
+  canvas.style.display  = 'none';
+  loading.textContent   = 'CARREGANDO...';
+  loading.style.display = '';
+  try {
+    const cacheKey = `${yahooTicker}__${range}`;
+    let data;
+    const cached = _stockHistCache.get(cacheKey);
+    if (cached && (Date.now() - cached.ts) < STOCK_HIST_CACHE_TTL) {
+      data = cached.data;
+    } else {
+      const res = await fetch(`/api/stock-history/${encodeURIComponent(yahooTicker)}?range=${range}`);
+      data = await res.json();
+      _stockHistCache.set(cacheKey, { data, ts: Date.now() });
+    }
+    if (!data.series?.length) {
+      loading.textContent = 'SEM DADOS PARA O PERÍODO.';
+      return;
+    }
+    // Update stats sidebar
+    const pc  = v => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v, 2) + '%';
+    const cls = v => v == null ? '' : v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+    const setS = (id, val, c) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = val; el.className = 'sstat-val ' + c; }
+    };
+    setS(`ss-ret-${ticker}`,  pc(data.period_return), cls(data.period_return));
+    setS(`ss-ibov-${ticker}`, pc(data.vs_ibov), cls(data.vs_ibov));
+    setS(`ss-hi-${ticker}`,   data.w52_high ? fmtBRL(data.w52_high) : '—', '');
+    setS(`ss-lo-${ticker}`,   data.w52_low  ? fmtBRL(data.w52_low)  : '—', '');
+    setS(`ss-px-${ticker}`,   data.series.length ? fmtBRL(data.series.at(-1).price) : '—', '');
+    // Destroy previous instance for this ticker
+    const prev = _inlineCharts.get(ticker);
+    if (prev) { prev.destroy(); _inlineCharts.delete(ticker); }
+    const labels    = data.series.map(s => s.date);
+    const stockData = data.series.map(s => s.indexed);
+    const ibovData  = data.series.map(s => s.ibov);
+    const n = labels.length;
+    const tickStep = n <= 10 ? 1 : n <= 30 ? 5 : n <= 90 ? 10 : n <= 180 ? 20 : 30;
+    loading.style.display = 'none';
+    canvas.style.display  = '';
+    const ctx  = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 160);
+    grad.addColorStop(0,   'rgba(255,140,0,0.18)');
+    grad.addColorStop(0.7, 'rgba(255,140,0,0.04)');
+    grad.addColorStop(1,   'rgba(255,140,0,0)');
+    const pr = data.period_return;
+    const ir = data.ibov_return;
+    const stockLabel = `${ticker}  ${pr != null ? (pr >= 0 ? '+' : '') + fmt(pr, 2) + '%' : ''}`;
+    const ibovLabel  = `IBOV  ${ir != null ? (ir >= 0 ? '+' : '') + fmt(ir, 2) + '%' : ''}`;
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: stockLabel,
+            data:  stockData,
+            borderColor: '#ff8c00',
+            backgroundColor: grad,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            fill: true,
+            tension: 0.15,
+            order: 1,
+          },
+          {
+            label: ibovLabel,
+            data:  ibovData,
+            borderColor: '#00aacc',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            fill: false,
+            tension: 0.15,
+            borderDash: [5, 4],
+            order: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            align: 'end',
+            labels: {
+              color: '#888',
+              usePointStyle: true,
+              pointStyleWidth: 10,
+              padding: 12,
+              font: { size: 9, family: "'Cascadia Code','Courier New',monospace", weight: '700' },
+            },
+          },
+          tooltip: {
+            backgroundColor: 'rgba(10,10,10,0.95)',
+            borderColor: '#333',
+            borderWidth: 1,
+            titleColor: '#ff8c00',
+            titleFont:  { size: 9, weight: '700', family: "'Cascadia Code','Courier New',monospace" },
+            bodyFont:   { size: 10, family: "'Cascadia Code','Courier New',monospace" },
+            padding: 8,
+            callbacks: {
+              title: items => items[0]?.label ?? '',
+              label: ctx => {
+                const v = ctx.parsed.y;
+                if (v == null) return null;
+                const pct = (v - 100).toFixed(2);
+                const name = ctx.dataset.label.split('  ')[0].padEnd(10);
+                return `  ${name}  ${parseFloat(pct) >= 0 ? '+' : ''}${pct}%`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid:   { color: '#161616' },
+            border: { color: '#2a2a2a' },
+            ticks:  {
+              color: '#444',
+              maxRotation: 0,
+              font: { size: 8, family: "'Cascadia Code','Courier New',monospace" },
+              callback: (_, i) => i % tickStep !== 0 ? '' : (labels[i]?.slice(5) ?? ''),
+            },
+          },
+          y: {
+            position: 'right',
+            grid:     { color: '#161616' },
+            border:   { color: '#2a2a2a', dash: [3, 3] },
+            ticks:    {
+              color: '#444',
+              font: { size: 8, family: "'Cascadia Code','Courier New',monospace" },
+              callback: v => (v >= 100 ? '+' : '') + (v - 100).toFixed(0) + '%',
+            },
+          },
+        },
+      },
+    });
+    _inlineCharts.set(ticker, chart);
+  } catch(e) {
+    loading.textContent   = 'ERRO: ' + e.message;
+    loading.style.display = '';
+    canvas.style.display  = 'none';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
 
 function recalcWeightedStats() {
   if (!portfolioData) return;

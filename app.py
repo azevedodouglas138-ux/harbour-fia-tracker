@@ -67,6 +67,15 @@ VIEWER_CONFIG_FILE  = os.path.join(DATA_DIR, "viewer_config.json")
 _price_cache = {"data": {}, "expires_at": 0}
 FUNDAMENTALS_TTL = 4 * 3600
 HISTORY_TTL      = 4 * 3600
+STOCK_HIST_TTL   = 3600
+
+RANGE_TO_PERIOD = {
+    "1S": {"period": "5d"},
+    "1M": {"period": "1mo"},
+    "3M": {"period": "3mo"},
+    "6M": {"period": "6mo"},
+    "1A": {"period": "1y"},
+}
 
 SECTOR_PT = {
     "Energy": "Energia", "Financial Services": "Serv. Financeiros",
@@ -326,6 +335,79 @@ def invalidate_history_cache():
     for k in list(cache.keys()):
         if k.startswith("history_"): del cache[k]
     save_cache(cache)
+
+def compute_stock_history(yahoo_ticker, range_key):
+    """Fetch price history for a single ticker + ^BVSP comparison, indexed to 100."""
+    import pandas as pd
+    if range_key == "YTD":
+        kwargs = {"start": f"{datetime.now().year}-01-01"}
+    else:
+        kwargs = RANGE_TO_PERIOD.get(range_key, {"period": "1mo"})
+    try:
+        raw = yf.download(
+            [yahoo_ticker, "^BVSP"],
+            progress=False,
+            auto_adjust=True,
+            **kwargs,
+        )
+    except Exception as e:
+        return {"series": [], "error": str(e)}
+    if raw is None or (hasattr(raw, 'empty') and raw.empty):
+        return {"series": []}
+    close = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw
+    close = close.ffill()
+    if yahoo_ticker not in close.columns:
+        return {"series": [], "error": "ticker not found"}
+    stock = close[yahoo_ticker].dropna()
+    ibov  = close["^BVSP"] if "^BVSP" in close.columns else None
+    if stock.empty:
+        return {"series": []}
+    base_s = float(stock.iloc[0])
+    base_i = float(ibov.iloc[0]) if ibov is not None and not ibov.empty else None
+    try:
+        fi = yf.Ticker(yahoo_ticker).fast_info
+        w52_high = round(float(fi.fifty_two_week_high), 2) if fi.fifty_two_week_high else None
+        w52_low  = round(float(fi.fifty_two_week_low),  2) if fi.fifty_two_week_low  else None
+    except Exception:
+        w52_high = w52_low = None
+    series = []
+    for dt in stock.index:
+        sv = float(stock[dt])
+        iv = None
+        if ibov is not None and base_i and dt in ibov.index:
+            raw_iv = float(ibov[dt])
+            if raw_iv == raw_iv:  # not NaN
+                iv = round(raw_iv / base_i * 100, 2)
+        series.append({
+            "date":    dt.strftime("%Y-%m-%d"),
+            "price":   round(sv, 2),
+            "indexed": round(sv / base_s * 100, 2) if base_s else None,
+            "ibov":    iv,
+        })
+    period_return = round((float(stock.iloc[-1]) / base_s - 1) * 100, 2) if base_s else None
+    ibov_return   = round((series[-1]["ibov"] / 100 - 1) * 100, 2) if series and series[-1]["ibov"] else None
+    vs_ibov = round(period_return - ibov_return, 2) if period_return is not None and ibov_return is not None else None
+    return {
+        "series":        series,
+        "ticker":        yahoo_ticker,
+        "period_return": period_return,
+        "ibov_return":   ibov_return,
+        "vs_ibov":       vs_ibov,
+        "w52_high":      w52_high,
+        "w52_low":       w52_low,
+        "base_price":    round(base_s, 2),
+    }
+
+def get_cached_stock_history(yahoo_ticker, range_key):
+    cache = load_cache()
+    now   = time.time()
+    key   = f"stock_hist_{yahoo_ticker}_{range_key}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return cache[key]["data"]
+    data = compute_stock_history(yahoo_ticker, range_key)
+    cache[key] = {"data": data, "expires_at": now + STOCK_HIST_TTL}
+    save_cache(cache)
+    return data
 
 # ---------------------------------------------------------------------------
 # Market hours check (BRT = UTC-3, sem horário de verão desde 2019)
@@ -1060,6 +1142,14 @@ def api_monthly_returns():
         })
 
     return jsonify({"years": result, "inception_date": inception_date})
+
+@app.route("/api/stock-history/<path:ticker>")
+def api_stock_history(ticker):
+    """GET /api/stock-history/PRIO3.SA?range=1M"""
+    range_key = request.args.get("range", "1M").upper()
+    if range_key not in ("1S", "1M", "3M", "6M", "YTD", "1A"):
+        range_key = "1M"
+    return jsonify(get_cached_stock_history(ticker, range_key))
 
 @app.route("/api/quota-history", methods=["GET"])
 def api_get_quota_history():
