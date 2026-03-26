@@ -41,10 +41,10 @@
       "ticker": "TEND3",
       "yahoo_ticker": "TEND3.SA",
       "categoria": "Acao",
-      "quantidade": 40000,
-      "liq_diaria_mm": 30,
-      "lucro_mi_26": 400,
-      "preco_alvo": 46
+      "quantidade": 45000.0,
+      "liq_diaria_mm": 30.0,
+      "lucro_mi_26": 400.0,
+      "preco_alvo": 46.0
     },
     {
       "ticker": "VTRU3",
