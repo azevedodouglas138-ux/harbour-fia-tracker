@@ -1304,8 +1304,11 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .risk-liq-bar.bbg-orange { background: var(--orange); }
 
 /* ══════════════════════════════════════════════════════════════
-   208) FINANCIAIS
+   208) FINANCIALS
    ══════════════════════════════════════════════════════════════ */
+.fin-loading.hidden   { display: none; }
+.fin-unavailable.hidden { display: none; }
+.fin-table-wrap.hidden  { display: none; }
 
 /* Header toolbar */
 .fin-header {

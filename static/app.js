@@ -3275,11 +3275,11 @@ function _finPopulateTickers() {
   const sel = document.getElementById('fin-ticker-select');
   if (!sel) return;
   sel.innerHTML = '';
-  if (portfolioData && portfolioData.positions) {
-    portfolioData.positions.forEach(p => {
+  if (portfolioData && portfolioData.rows) {
+    portfolioData.rows.forEach(r => {
       const opt = document.createElement('option');
-      opt.value       = p.ticker;
-      opt.textContent = p.ticker;
+      opt.value       = r.ticker;
+      opt.textContent = r.ticker;
       sel.appendChild(opt);
     });
   }
