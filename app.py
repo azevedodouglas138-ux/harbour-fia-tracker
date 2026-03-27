@@ -2735,7 +2735,6 @@ def _df_to_rows(df, row_order=None):
 
 
 @app.route("/api/financials/<ticker>")
-@login_required
 def get_financials(ticker):
     period    = request.args.get("period",    "annual")    # annual | quarterly
     statement = request.args.get("statement", "income")    # income | balance | cashflow
