@@ -127,6 +127,10 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-risk"><span class="fn-num">207)</span> RISCO</button>
   {% set ns.first = false %}
   {% endif %}
+  {% if role == 'admin' or viewer_config.tab_financials %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-financials"><span class="fn-num">208)</span> FINANCIAIS</button>
+  {% set ns.first = false %}
+  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -437,6 +441,12 @@
         <span class="viewer-access-label">RISCO</span>
         <button class="viewer-toggle {% if viewer_config.tab_risk %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_risk">
           {% if viewer_config.tab_risk %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">FINANCIAIS</span>
+        <button class="viewer-toggle {% if viewer_config.tab_financials %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_financials">
+          {% if viewer_config.tab_financials %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
     </div>
@@ -895,6 +905,43 @@
       </div>
       <div id="risk-dist-stats" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 12px 0;font-size:10px"></div>
       <canvas id="risk-dist-chart" height="120"></canvas>
+    </div>
+  </div>
+
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     208) FINANCIAIS
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.tab_financials %}
+<div id="tab-financials" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <div class="fin-header">
+    <div class="fin-controls">
+      <select id="fin-ticker-select" class="fin-select"></select>
+      <div class="fin-period-toggle">
+        <button class="fin-period-btn active" data-period="annual">ANUAL</button>
+        <button class="fin-period-btn" data-period="quarterly">TRIMESTRAL</button>
+      </div>
+    </div>
+    <div class="fin-stmt-tabs">
+      <button class="fin-stmt-btn active" data-stmt="income">Income Statement</button>
+      <button class="fin-stmt-btn" data-stmt="balance">Balance Sheet</button>
+      <button class="fin-stmt-btn" data-stmt="cashflow">Cash Flow</button>
+    </div>
+    <div id="fin-currency-note" class="fin-currency-note">All numbers in thousands</div>
+  </div>
+
+  <div id="fin-table-container" class="fin-table-container">
+    <div id="fin-loading" class="fin-loading">CARREGANDO DADOS FINANCEIROS...</div>
+    <div id="fin-unavailable" class="fin-unavailable hidden">Dados financeiros não disponíveis para este ativo.</div>
+    <div id="fin-table-wrap" class="fin-table-wrap hidden">
+      <table id="fin-table" class="fin-table">
+        <thead><tr id="fin-thead-row"></tr></thead>
+        <tbody id="fin-tbody"></tbody>
+      </table>
     </div>
   </div>
 

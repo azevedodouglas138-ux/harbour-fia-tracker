@@ -627,7 +627,8 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-macro')     loadMacroTab();
     if (btn.dataset.tab === 'tab-watchlist') loadWatchlistTab();
     if (btn.dataset.tab === 'tab-screener')  loadScreenerTab();
-    if (btn.dataset.tab === 'tab-risk')      loadRiskTab();
+    if (btn.dataset.tab === 'tab-risk')        loadRiskTab();
+    if (btn.dataset.tab === 'tab-financials')  loadFinancialsTab();
   });
 });
 
@@ -3178,4 +3179,147 @@ async function _loadReturnDist() {
       },
     },
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  208) FINANCIAIS
+// ═══════════════════════════════════════════════════════════════════
+
+let _finCurrentTicker    = null;
+let _finCurrentPeriod    = 'annual';
+let _finCurrentStatement = 'income';
+let _finInitialized      = false;
+
+// Rows that should be visually highlighted (bold amber)
+const FIN_HIGHLIGHT_ROWS = new Set([
+  'Gross Profit', 'Operating Income', 'Net Income', 'EBITDA',
+  'Total Assets', 'Total Liabilities Net Minority Interest', 'Stockholders Equity',
+  'Free Cash Flow', 'Operating Cash Flow',
+]);
+
+// Rows that are inherently negative (no red colouring for them)
+const FIN_NEUTRAL_NEGATIVE = new Set([
+  'Cost Of Revenue', 'Tax Provision', 'Interest Expense Non Operating',
+  'Total Other Finance Cost', 'Selling General Administrative',
+  'General Administrative Expense', 'Selling Expense', 'Other Operating Expenses',
+  'Capital Expenditure', 'Repayment Of Debt',
+]);
+
+function _finFmtNumber(val) {
+  if (val === null || val === undefined) return '<span style="color:var(--text-muted)">—</span>';
+  const thousands = Math.round(val / 1000);
+  const abs = Math.abs(thousands);
+  const formatted = abs.toLocaleString('en-US');
+  return thousands < 0 ? `(${formatted})` : formatted;
+}
+
+function _finRenderTable(data) {
+  const wrap        = document.getElementById('fin-table-wrap');
+  const unavailable = document.getElementById('fin-unavailable');
+  const loading     = document.getElementById('fin-loading');
+
+  loading.classList.add('hidden');
+
+  if (!data.available) {
+    wrap.classList.add('hidden');
+    unavailable.classList.remove('hidden');
+    return;
+  }
+
+  unavailable.classList.add('hidden');
+  wrap.classList.remove('hidden');
+
+  // Header row
+  const thead = document.getElementById('fin-thead-row');
+  thead.innerHTML = '<th class="fin-th-label">Breakdown</th>' +
+    data.columns.map(c => `<th class="fin-th-val">${c}</th>`).join('');
+
+  // Body rows
+  const tbody = document.getElementById('fin-tbody');
+  tbody.innerHTML = data.rows.map(row => {
+    const isHighlight = FIN_HIGHLIGHT_ROWS.has(row.label);
+    const isNeutral   = FIN_NEUTRAL_NEGATIVE.has(row.label);
+    const cells = row.values.map(v => {
+      let cls = '';
+      if (v !== null && !isNeutral) {
+        cls = v >= 0 ? 'fin-positive' : 'fin-negative';
+      }
+      return `<td class="fin-td-val ${cls}">${_finFmtNumber(v)}</td>`;
+    }).join('');
+    const rowCls = isHighlight ? 'fin-row-highlight' : '';
+    return `<tr class="${rowCls}"><td class="fin-td-label">${row.label}</td>${cells}</tr>`;
+  }).join('');
+}
+
+async function _finFetch(ticker, period, statement) {
+  const loading     = document.getElementById('fin-loading');
+  const wrap        = document.getElementById('fin-table-wrap');
+  const unavailable = document.getElementById('fin-unavailable');
+
+  loading.classList.remove('hidden');
+  wrap.classList.add('hidden');
+  unavailable.classList.add('hidden');
+
+  try {
+    const res  = await fetch(`/api/financials/${encodeURIComponent(ticker)}?period=${period}&statement=${statement}`);
+    const data = await res.json();
+    _finRenderTable(data);
+  } catch (e) {
+    loading.classList.add('hidden');
+    unavailable.classList.remove('hidden');
+    unavailable.textContent = 'Erro ao carregar dados financeiros.';
+  }
+}
+
+function _finPopulateTickers() {
+  const sel = document.getElementById('fin-ticker-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  if (portfolioData && portfolioData.positions) {
+    portfolioData.positions.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value       = p.ticker;
+      opt.textContent = p.ticker;
+      sel.appendChild(opt);
+    });
+  }
+  _finCurrentTicker = sel.value || null;
+}
+
+function loadFinancialsTab() {
+  if (!_finInitialized) {
+    _finPopulateTickers();
+
+    const sel = document.getElementById('fin-ticker-select');
+    if (sel) {
+      sel.addEventListener('change', () => {
+        _finCurrentTicker = sel.value;
+        _finFetch(_finCurrentTicker, _finCurrentPeriod, _finCurrentStatement);
+      });
+    }
+
+    document.querySelectorAll('.fin-period-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.fin-period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _finCurrentPeriod = btn.dataset.period;
+        if (_finCurrentTicker) _finFetch(_finCurrentTicker, _finCurrentPeriod, _finCurrentStatement);
+      });
+    });
+
+    document.querySelectorAll('.fin-stmt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.fin-stmt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _finCurrentStatement = btn.dataset.stmt;
+        if (_finCurrentTicker) _finFetch(_finCurrentTicker, _finCurrentPeriod, _finCurrentStatement);
+      });
+    });
+
+    _finInitialized = true;
+  }
+
+  if (_finCurrentTicker) {
+    _finFetch(_finCurrentTicker, _finCurrentPeriod, _finCurrentStatement);
+  }
 }

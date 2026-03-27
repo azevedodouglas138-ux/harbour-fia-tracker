@@ -152,14 +152,15 @@ def get_effective_fund_config():
     return config
 
 _VIEWER_CONFIG_DEFAULTS = {
-    "tab_table":     True,
-    "tab_charts":    True,
-    "tab_config":    True,
-    "tab_history":   True,
-    "tab_macro":     True,
-    "tab_watchlist": False,
-    "tab_screener":  False,
-    "tab_risk":      True,
+    "tab_table":      True,
+    "tab_charts":     True,
+    "tab_config":     True,
+    "tab_history":    True,
+    "tab_macro":      True,
+    "tab_watchlist":  False,
+    "tab_screener":   False,
+    "tab_risk":       True,
+    "tab_financials": True,
 }
 
 def load_viewer_config():
@@ -2676,6 +2677,111 @@ def api_risk_return_distribution():
         "ibov_std_pct": ibov_std,
     }
     cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+    save_cache(cache)
+    return jsonify(result)
+
+
+FINANCIALS_TTL = 6 * 3600  # 6 hours
+
+_INCOME_ROWS = [
+    "Total Revenue",
+    "Cost Of Revenue",
+    "Gross Profit",
+    "Operating Expense",
+    "Selling General Administrative",
+    "General Administrative Expense",
+    "Selling Expense",
+    "Other Operating Expenses",
+    "Operating Income",
+    "Net Non Operating Interest Income Expense",
+    "Interest Income Non Operating",
+    "Interest Expense Non Operating",
+    "Total Other Finance Cost",
+    "Pretax Income",
+    "Tax Provision",
+    "Net Income",
+    "Basic EPS",
+    "Diluted EPS",
+    "EBITDA",
+]
+
+def _df_to_rows(df, row_order=None):
+    """Convert a yfinance financial DataFrame to JSON-serializable structure."""
+    if df is None or df.empty:
+        return None, None
+    # Columns are datetime objects → format as strings
+    cols = [c.strftime("%m/%d/%Y") if hasattr(c, "strftime") else str(c) for c in df.columns]
+    if row_order:
+        present = [r for r in row_order if r in df.index]
+        extra   = [r for r in df.index if r not in row_order]
+        ordered = present + extra
+    else:
+        ordered = list(df.index)
+    rows = []
+    for label in ordered:
+        if label not in df.index:
+            continue
+        values = []
+        for val in df.loc[label]:
+            if val is None or (isinstance(val, float) and (val != val)):  # NaN check
+                values.append(None)
+            else:
+                try:
+                    values.append(int(val))
+                except (TypeError, ValueError):
+                    values.append(None)
+        rows.append({"label": label, "values": values})
+    return cols, rows
+
+
+@app.route("/api/financials/<ticker>")
+@login_required
+def get_financials(ticker):
+    period    = request.args.get("period",    "annual")    # annual | quarterly
+    statement = request.args.get("statement", "income")    # income | balance | cashflow
+
+    cache = load_cache()
+    key   = f"financials_{ticker}_{period}_{statement}"
+    now   = time.time()
+
+    if key in cache and cache[key].get("expires_at", 0) > now:
+        return jsonify(cache[key]["data"])
+
+    try:
+        t = yf.Ticker(ticker)
+        if period == "quarterly":
+            if statement == "income":
+                df = t.quarterly_income_stmt
+            elif statement == "balance":
+                df = t.quarterly_balance_sheet
+            else:
+                df = t.quarterly_cashflow
+        else:
+            if statement == "income":
+                df = t.income_stmt
+            elif statement == "balance":
+                df = t.balance_sheet
+            else:
+                df = t.cashflow
+
+        row_order = _INCOME_ROWS if statement == "income" else None
+        cols, rows = _df_to_rows(df, row_order)
+
+        if cols is None:
+            result = {"available": False, "ticker": ticker, "period": period, "statement": statement}
+        else:
+            result = {
+                "available": True,
+                "ticker":    ticker,
+                "period":    period,
+                "statement": statement,
+                "columns":   cols,
+                "rows":      rows,
+            }
+    except Exception as e:
+        result = {"available": False, "ticker": ticker, "period": period, "statement": statement, "error": str(e)}
+
+    cache[key] = {"data": result, "expires_at": now + FINANCIALS_TTL}
     save_cache(cache)
     return jsonify(result)
 
