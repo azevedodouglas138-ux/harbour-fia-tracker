@@ -1057,3 +1057,231 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   font-size: 9px; color: var(--text-muted); margin-top: 6px;
   letter-spacing: 0.5px;
 }
+
+/* ══════════════ RISCO (207) ═════════════════════════════════════ */
+.risk-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 10px 0;
+}
+.risk-row:last-child { padding-bottom: 10px; }
+@media (max-width: 900px) { .risk-row { grid-template-columns: 1fr; } }
+
+.risk-card {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+
+.risk-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.risk-ctrl-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.risk-btn {
+  font-size: 9px !important;
+  padding: 2px 7px !important;
+  height: 20px !important;
+  border: 1px solid var(--border2) !important;
+  opacity: 0.6;
+}
+.risk-btn.active {
+  border-color: var(--orange) !important;
+  color: var(--orange) !important;
+  opacity: 1;
+}
+
+.risk-loading {
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.risk-error {
+  padding: 10px;
+  color: var(--red);
+  font-size: 10px;
+}
+
+/* ── VaR metrics ── */
+.risk-var-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 0 4px;
+}
+.risk-metric-block {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  min-width: 110px;
+  flex: 1;
+}
+.risk-metric-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+.risk-metric-val {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.risk-metric-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.bbg-orange { color: var(--orange); }
+
+.risk-dist-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 10px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.risk-dist-row b { color: var(--text); }
+
+.risk-table-title {
+  font-size: 9px;
+  color: var(--orange-text);
+  letter-spacing: 0.8px;
+  padding: 6px 0 4px;
+  text-transform: uppercase;
+}
+
+/* ── Shared risk table ── */
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.risk-table th {
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.risk-table th.num { text-align: right; }
+.risk-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.risk-table tr:hover td { background: var(--surface3); }
+
+/* ── Risk bar (contribution) ── */
+.risk-bar-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.risk-bar {
+  height: 6px;
+  background: var(--orange);
+  border-radius: 2px;
+  min-width: 2px;
+}
+
+/* ── Stress header ── */
+.risk-stress-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+/* ── Correlation matrix ── */
+.risk-corr-info {
+  font-size: 9px;
+  padding: 4px 0;
+  letter-spacing: 0.5px;
+}
+.risk-corr-table {
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 10px;
+}
+.corr-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding: 2px 5px;
+  text-align: center;
+}
+.corr-cell {
+  text-align: center;
+  border-radius: 2px;
+  cursor: default;
+  color: #fff;
+  font-size: 9px;
+  vertical-align: middle;
+}
+.corr-diag { opacity: 0.5; }
+
+.corr-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.corr-legend-bar {
+  width: 80px;
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #0064b4, #2a2a2a, #aa5000);
+}
+
+/* ── Rolling Beta chart badges ── */
+.risk-badge-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.risk-badge {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+.risk-badge b { color: var(--text); }
+
+/* ── Liquidity bars ── */
+.risk-liq-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 80px;
+}
+.risk-liq-bar {
+  height: 8px;
+  border-radius: 2px;
+  min-width: 2px;
+  max-width: 60px;
+}
+.risk-liq-bar.positive { background: var(--green); }
+.risk-liq-bar.negative { background: var(--red); }
+.risk-liq-bar.bbg-orange { background: var(--orange); }

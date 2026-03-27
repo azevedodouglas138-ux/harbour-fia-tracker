@@ -627,6 +627,7 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-macro')     loadMacroTab();
     if (btn.dataset.tab === 'tab-watchlist') loadWatchlistTab();
     if (btn.dataset.tab === 'tab-screener')  loadScreenerTab();
+    if (btn.dataset.tab === 'tab-risk')      loadRiskTab();
   });
 });
 
@@ -2112,3 +2113,516 @@ async function quickAddToWatchlist(ticker) {
   await fetchPortfolio();
   startRefreshCycle();
 })();
+
+// ══════════════════════════════════════════════════════════════════
+// 207) RISCO
+// ══════════════════════════════════════════════════════════════════
+
+let _riskBetaChart = null;
+let _riskLoaded    = false;
+
+// ── State for active selections ───────────────────────────────────
+let _riskVarWindow  = 252;
+let _riskVarHorizon = 1;
+let _riskStress     = 'covid';
+let _riskCorrWindow = 60;
+let _riskAttrWindow = 60;
+
+async function loadRiskTab() {
+  if (_riskLoaded) return;
+  _riskLoaded = true;
+  _setupRiskControls();
+  await Promise.all([
+    _loadVaR(),
+    _loadStress('covid'),
+    _loadCorrelation(60),
+    _loadAttribution(60),
+    _loadRollingBeta(),
+    _loadLiquidity(),
+  ]);
+}
+
+function _setupRiskControls() {
+  // VaR window
+  document.querySelectorAll('[data-var-window]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-var-window]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskVarWindow = parseInt(btn.dataset.varWindow);
+      _loadVaR();
+    });
+  });
+  // VaR horizon
+  document.querySelectorAll('[data-var-horizon]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-var-horizon]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskVarHorizon = parseInt(btn.dataset.varHorizon);
+      _renderVaRHorizon();
+    });
+  });
+  // Stress scenario buttons
+  document.querySelectorAll('[data-stress]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-stress]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const sc = btn.dataset.stress;
+      const customBox = document.getElementById('risk-stress-custom');
+      if (sc === 'custom') {
+        customBox.style.display = 'flex';
+      } else {
+        customBox.style.display = 'none';
+        _riskStress = sc;
+        _loadStress(sc);
+      }
+    });
+  });
+  // Custom stress run
+  document.getElementById('btn-stress-custom-run')?.addEventListener('click', () => {
+    const ibov = document.getElementById('stress-ibov-input')?.value;
+    const brl  = document.getElementById('stress-brl-input')?.value || 0;
+    if (!ibov) return;
+    _loadStress('custom', parseFloat(ibov), parseFloat(brl));
+  });
+  // Correlation window
+  document.querySelectorAll('[data-corr-window]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-corr-window]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskCorrWindow = parseInt(btn.dataset.corrWindow);
+      _loadCorrelation(_riskCorrWindow);
+    });
+  });
+  // Attribution window
+  document.querySelectorAll('[data-attr-window]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-attr-window]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskAttrWindow = parseInt(btn.dataset.attrWindow);
+      _loadAttribution(_riskAttrWindow);
+    });
+  });
+}
+
+// ── VaR ──────────────────────────────────────────────────────────
+let _varCache = {};
+
+async function _loadVaR() {
+  const el = document.getElementById('risk-var-content');
+  if (!el) return;
+  const key = _riskVarWindow;
+  if (!_varCache[key]) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO VaR...</div>';
+    try {
+      const r = await fetch(`/api/risk/var?window=${_riskVarWindow}`);
+      _varCache[key] = await r.json();
+    } catch(e) {
+      el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`;
+      return;
+    }
+  }
+  _renderVaR(_varCache[key], el);
+}
+
+function _renderVaRHorizon() {
+  const el = document.getElementById('risk-var-content');
+  const d  = _varCache[_riskVarWindow];
+  if (el && d) _renderVaR(d, el);
+}
+
+function _renderVaR(d, el) {
+  if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+  const h = _riskVarHorizon;
+  const sfx = h === 10 ? '10d' : '1d';
+
+  el.innerHTML = `
+    <div class="risk-var-grid">
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">VaR 95% ${h}D</div>
+        <div class="risk-metric-val negative">-${fmt(d[`var_95_${sfx}_pct`],2)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d[`var_95_${sfx}_rs`])}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">VaR 99% ${h}D</div>
+        <div class="risk-metric-val negative">-${fmt(d[`var_99_${sfx}_pct`],2)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d[`var_99_${sfx}_rs`])}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">CVaR 95% ${h}D</div>
+        <div class="risk-metric-val negative">-${fmt(d[`cvar_95_${sfx}_pct`],2)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d[`cvar_95_${sfx}_rs`])}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">CVaR 99% ${h}D</div>
+        <div class="risk-metric-val negative">-${fmt(d[`cvar_99_${sfx}_pct`],2)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d[`cvar_99_${sfx}_rs`])}</div>
+      </div>
+    </div>
+    <div class="risk-dist-row">
+      <span>MÉDIA/DIA: <b class="${colorCls(d.return_distribution?.mean_pct)}">${sign(d.return_distribution?.mean_pct)}${fmt(d.return_distribution?.mean_pct,3)}%</b></span>
+      <span>MELHOR DIA: <b class="positive">+${fmt(d.return_distribution?.best_day,2)}%</b></span>
+      <span>PIOR DIA: <b class="negative">${fmt(d.return_distribution?.worst_day,2)}%</b></span>
+      <span>DIAS POSITIVOS: <b>${fmt(d.return_distribution?.positive_days_pct,1)}%</b></span>
+      <span class="dim">BASE: ${d.n_obs} obs | NAV: ${fmtBRL(d.nav_ref)}</span>
+    </div>
+    ${_renderComponentVarTable(d.component_var)}
+  `;
+}
+
+function _renderComponentVarTable(rows) {
+  if (!rows || !rows.length) return '';
+  return `
+    <div class="risk-table-title">COMPONENT VaR POR ATIVO (approx. por beta)</div>
+    <div class="table-wrapper" style="max-height:180px;overflow-y:auto">
+    <table class="risk-table">
+      <thead><tr><th>ATIVO</th><th class="num">PESO%</th><th class="num">BETA</th><th class="num">CONTRIB. RISCO%</th><th class="num">VaR 1D R$</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td class="ticker-cell">${r.ticker}</td>
+            <td class="num">${fmt(r.weight_pct,1)}%</td>
+            <td class="num">${fmt(r.beta,2)}</td>
+            <td class="num"><div class="risk-bar-cell"><div class="risk-bar" style="width:${Math.min(100,r.contrib_pct)}%"></div><span>${fmt(r.contrib_pct,1)}%</span></div></td>
+            <td class="num negative">${fmtBRL(r.var_1d_rs)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+// ── Stress Test ───────────────────────────────────────────────────
+let _stressCache = {};
+
+async function _loadStress(scenario, ibovShock, brlShock) {
+  const el = document.getElementById('risk-stress-content');
+  if (!el) return;
+  let url = `/api/risk/stress?scenario=${scenario}`;
+  if (scenario === 'custom') {
+    url = `/api/risk/stress?ibov_shock=${ibovShock}&brl_shock=${brlShock || 0}`;
+  }
+  const cacheKey = scenario === 'custom' ? `custom_${ibovShock}_${brlShock}` : scenario;
+  if (!_stressCache[cacheKey]) {
+    el.innerHTML = '<div class="risk-loading">SIMULANDO CENÁRIO...</div>';
+    try {
+      const r = await fetch(url);
+      _stressCache[cacheKey] = await r.json();
+    } catch(e) {
+      el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`;
+      return;
+    }
+  }
+  _renderStress(_stressCache[cacheKey], el);
+}
+
+function _renderStress(d, el) {
+  if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+  const impCls = d.portfolio_impact_pct < 0 ? 'negative' : 'positive';
+  el.innerHTML = `
+    <div class="risk-stress-header">
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">${d.label}</div>
+        <div class="risk-metric-sub dim">${d.description}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">IMPACTO PORTFÓLIO</div>
+        <div class="risk-metric-val ${impCls}">${sign(d.portfolio_impact_pct)}${fmt(d.portfolio_impact_pct,2)}%</div>
+        <div class="risk-metric-sub ${impCls}">${sign(d.portfolio_impact_rs)}${fmtBRL(d.portfolio_impact_rs)}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">CHOQUE IBOV</div>
+        <div class="risk-metric-val negative">${sign(d.ibov_shock_pct)}${fmt(d.ibov_shock_pct,1)}%</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">CHOQUE BRL</div>
+        <div class="risk-metric-val ${d.brl_shock_pct >= 0 ? 'negative' : 'positive'}">${sign(d.brl_shock_pct)}${fmt(d.brl_shock_pct,1)}%</div>
+      </div>
+    </div>
+    <div class="table-wrapper" style="max-height:200px;overflow-y:auto">
+    <table class="risk-table">
+      <thead><tr><th>ATIVO</th><th>CATEG.</th><th class="num">PESO%</th><th class="num">BETA</th><th class="num">IMPACTO%</th><th class="num">IMPACTO R$</th></tr></thead>
+      <tbody>
+        ${d.positions.map(r => {
+          const cls = r.impact_pct < 0 ? 'negative' : 'positive';
+          return `<tr>
+            <td class="ticker-cell">${r.ticker}</td>
+            <td>${r.categoria || '—'}</td>
+            <td class="num">${fmt(r.weight_pct,1)}%</td>
+            <td class="num">${fmt(r.beta,2)}</td>
+            <td class="num ${cls}">${sign(r.impact_pct)}${fmt(r.impact_pct,2)}%</td>
+            <td class="num ${cls}">${sign(r.impact_rs)}${fmtBRL(r.impact_rs)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+// ── Correlation Matrix ────────────────────────────────────────────
+let _corrCache = {};
+
+async function _loadCorrelation(window) {
+  const el = document.getElementById('risk-corr-content');
+  if (!el) return;
+  if (!_corrCache[window]) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO CORRELAÇÕES...</div>';
+    try {
+      const r = await fetch(`/api/risk/correlation?window=${window}`);
+      _corrCache[window] = await r.json();
+    } catch(e) {
+      el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`;
+      return;
+    }
+  }
+  _renderCorrelation(_corrCache[window], el);
+}
+
+function _renderCorrelation(d, el) {
+  if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+  const { labels, matrix } = d;
+  const n = labels.length;
+  const cellSz = Math.max(32, Math.min(52, Math.floor(480 / n)));
+
+  let html = `<div class="risk-corr-info dim">Janela: ${d.n_obs} observações</div>
+    <div style="overflow-x:auto"><table class="risk-corr-table" style="border-spacing:2px">
+    <thead><tr><th></th>${labels.map(l => `<th class="corr-lbl">${l}</th>`).join('')}</tr></thead><tbody>`;
+
+  for (let i = 0; i < n; i++) {
+    html += `<tr><td class="corr-lbl">${labels[i]}</td>`;
+    for (let j = 0; j < n; j++) {
+      const v = matrix[i][j];
+      const bg = _corrColor(v);
+      const text = v != null ? fmt(v, 2) : '—';
+      const isDiag = i === j;
+      html += `<td class="corr-cell${isDiag ? ' corr-diag' : ''}" style="background:${bg};width:${cellSz}px;height:${cellSz}px;font-size:${cellSz > 40 ? 10 : 9}px" title="${labels[i]} / ${labels[j]}: ${text}">${text}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
+  // Legend
+  html += `<div class="corr-legend">
+    <span>−1.0</span>
+    <div class="corr-legend-bar"></div>
+    <span>+1.0</span>
+    <span class="dim" style="margin-left:12px">■ azul = negativo  ■ cinza = neutro  ■ laranja = positivo</span>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+function _corrColor(v) {
+  if (v == null) return '#1c1c1c';
+  if (v >= 0.999) return '#2a2a2a'; // diagonal
+  if (v > 0) {
+    const t = Math.min(v, 1);
+    const r = Math.round(255 * 0.35 + 120 * t);
+    const g = Math.round(100 + 40 * (1 - t));
+    const b = Math.round(0);
+    return `rgba(${r},${g},${b},0.85)`;
+  } else {
+    const t = Math.min(Math.abs(v), 1);
+    const r = Math.round(0);
+    const g = Math.round(100 + 100 * (1 - t));
+    const b = Math.round(180 + 75 * t);
+    return `rgba(${r},${g},${b},0.8)`;
+  }
+}
+
+// ── Risk Attribution ──────────────────────────────────────────────
+let _attrCache = {};
+
+async function _loadAttribution(window) {
+  const el = document.getElementById('risk-attr-content');
+  if (!el) return;
+  if (!_attrCache[window]) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO ATTRIBUTION...</div>';
+    try {
+      const r = await fetch(`/api/risk/attribution?window=${window}`);
+      _attrCache[window] = await r.json();
+    } catch(e) {
+      el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`;
+      return;
+    }
+  }
+  _renderAttribution(_attrCache[window], el);
+}
+
+function _renderAttribution(d, el) {
+  if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+  el.innerHTML = `
+    <div class="risk-dist-row">
+      <span>VOL. ANUALIZADA PORTFÓLIO: <b class="bbg-orange">${fmt(d.portfolio_vol_pct,2)}%</b></span>
+      <span class="dim">Janela: ${d.n_obs} obs</span>
+    </div>
+    <div class="table-wrapper" style="max-height:300px;overflow-y:auto">
+    <table class="risk-table">
+      <thead><tr>
+        <th>ATIVO</th><th class="num">PESO%</th>
+        <th class="num">VOL. IND. (ann)</th>
+        <th class="num">CORR. PORTF.</th>
+        <th class="num">CONTRIB. RISCO%</th>
+        <th class="num">CONTRIB. VOL (pp)</th>
+      </tr></thead>
+      <tbody>
+        ${d.rows.map(r => `
+          <tr>
+            <td class="ticker-cell">${r.ticker}</td>
+            <td class="num">${fmt(r.weight_pct,1)}%</td>
+            <td class="num">${fmt(r.vol_ind_pct,1)}%</td>
+            <td class="num ${r.corr_port > 0.7 ? 'negative' : r.corr_port < 0.3 ? 'positive' : ''}">${fmt(r.corr_port,2)}</td>
+            <td class="num">
+              <div class="risk-bar-cell">
+                <div class="risk-bar" style="width:${Math.min(100,Math.abs(r.contrib_risk_pct))}%"></div>
+                <span>${fmt(r.contrib_risk_pct,1)}%</span>
+              </div>
+            </td>
+            <td class="num dim">${fmt(r.contrib_vol_ppt,2)} pp</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}
+
+// ── Rolling Beta ──────────────────────────────────────────────────
+async function _loadRollingBeta() {
+  const canvas = document.getElementById('risk-beta-chart');
+  const badges = document.getElementById('risk-beta-badges');
+  if (!canvas) return;
+  try {
+    const r = await fetch('/api/risk/rolling-beta?roll_window=60');
+    const d = await r.json();
+    if (d.error) {
+      canvas.parentElement.innerHTML += `<div class="risk-error">${d.error}</div>`;
+      return;
+    }
+    const series = d.series.filter(p => p.beta != null);
+    if (!series.length) return;
+    const last  = series[series.length - 1].beta;
+    const avg   = series.reduce((a, p) => a + p.beta, 0) / series.length;
+    const min_v = Math.min(...series.map(p => p.beta));
+    const max_v = Math.max(...series.map(p => p.beta));
+    if (badges) badges.innerHTML = `
+      <span class="risk-badge">ATUAL: <b class="${colorCls(last - 1)}">${fmt(last,2)}</b></span>
+      <span class="risk-badge dim">MÉD: ${fmt(avg,2)}</span>
+      <span class="risk-badge dim">MÍN: ${fmt(min_v,2)}</span>
+      <span class="risk-badge dim">MÁX: ${fmt(max_v,2)}</span>
+    `;
+    if (_riskBetaChart) _riskBetaChart.destroy();
+    _riskBetaChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: series.map(p => p.date),
+        datasets: [{
+          label: 'Beta 60D',
+          data:  series.map(p => p.beta),
+          borderColor: '#ff8c00',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.2,
+        }, {
+          label: 'Beta = 1',
+          data: series.map(() => 1),
+          borderColor: '#444',
+          borderWidth: 1,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.datasetIndex === 0 ? `Beta: ${fmt(ctx.parsed.y, 2)}` : null,
+            }
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 8,
+              callback: (_, i, arr) => {
+                const d = series[i];
+                return d ? d.date.slice(0, 7) : '';
+              },
+              color: '#888',
+            },
+            grid: { color: '#1a1a1a' },
+          },
+          y: {
+            ticks: { color: '#888', callback: v => fmt(v, 2) },
+            grid: { color: '#1a1a1a' },
+          },
+        },
+      },
+    });
+  } catch(e) {
+    if (canvas.parentElement) canvas.insertAdjacentHTML('afterend', `<div class="risk-error">ERRO: ${e.message}</div>`);
+  }
+}
+
+// ── Liquidity ─────────────────────────────────────────────────────
+async function _loadLiquidity() {
+  const el = document.getElementById('risk-liq-content');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/risk/liquidity');
+    const d = await r.json();
+    _renderLiquidity(d, el);
+  } catch(e) {
+    el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`;
+  }
+}
+
+function _renderLiquidity(d, el) {
+  const liqBar = pct => {
+    const cls = pct >= 80 ? 'positive' : pct >= 40 ? 'bbg-orange' : 'negative';
+    return `<div class="risk-liq-bar-wrap"><div class="risk-liq-bar ${cls}" style="width:${pct}%"></div><span>${fmt(pct,0)}%</span></div>`;
+  };
+  el.innerHTML = `
+    <div class="risk-var-grid" style="margin-bottom:10px">
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">LIQUIDÁVEL EM 1D</div>
+        <div class="risk-metric-val ${d.portfolio_liq_1d_pct >= 80 ? 'positive' : 'negative'}">${fmt(d.portfolio_liq_1d_pct,1)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d.portfolio_liq_1d_rs)}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">LIQUIDÁVEL EM 5D</div>
+        <div class="risk-metric-val ${d.portfolio_liq_5d_pct >= 80 ? 'positive' : 'negative'}">${fmt(d.portfolio_liq_5d_pct,1)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d.portfolio_liq_5d_rs)}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">LIQUIDÁVEL EM 10D</div>
+        <div class="risk-metric-val ${d.portfolio_liq_10d_pct >= 80 ? 'positive' : 'negative'}">${fmt(d.portfolio_liq_10d_pct,1)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d.portfolio_liq_10d_rs)}</div>
+      </div>
+    </div>
+    <div class="table-wrapper" style="max-height:260px;overflow-y:auto">
+    <table class="risk-table">
+      <thead><tr>
+        <th>ATIVO</th><th class="num">PESO%</th>
+        <th class="num">SCORE LIQ.</th><th class="num">DIAS P/ LIQ.</th>
+        <th>LIQ. 1D</th><th>LIQ. 5D</th><th>LIQ. 10D</th>
+      </tr></thead>
+      <tbody>
+        ${d.rows.map(r => `
+          <tr>
+            <td class="ticker-cell">${r.ticker}</td>
+            <td class="num">${fmt(r.weight_pct,1)}%</td>
+            <td class="num ${r.liq_score >= 0 ? 'positive' : 'negative'}">${r.liq_score != null ? sign(r.liq_score) + r.liq_score : '—'}</td>
+            <td class="num">${r.days_to_liq != null ? fmt(r.days_to_liq,1) + 'd' : '—'}</td>
+            <td>${liqBar(r.liq_1d_pct)}</td>
+            <td>${liqBar(r.liq_5d_pct)}</td>
+            <td>${liqBar(r.liq_10d_pct)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+  `;
+}

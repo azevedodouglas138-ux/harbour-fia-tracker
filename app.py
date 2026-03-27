@@ -159,6 +159,7 @@ _VIEWER_CONFIG_DEFAULTS = {
     "tab_macro":     True,
     "tab_watchlist": False,
     "tab_screener":  False,
+    "tab_risk":      True,
 }
 
 def load_viewer_config():
@@ -1667,6 +1668,409 @@ def api_screener():
         "loading": state["running"],
         "loaded":  state["loaded"],
         "total":   state["total"],
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Risk Analytics
+# ─────────────────────────────────────────────────────────────────────────────
+
+RISK_TTL = 4 * 3600
+
+STRESS_SCENARIOS = {
+    "covid":      {"label": "COVID Crash",    "ibov_shock": -0.4566, "brl_shock":  0.255,  "description": "IBOV -45.7%, BRL +25.5% (fev-mar 2020)"},
+    "joesley":    {"label": "Joesley Day",    "ibov_shock": -0.088,  "brl_shock":  0.085,  "description": "IBOV -8.8%, BRL +8.5% (17 mai 2017)"},
+    "lula_elei":  {"label": "Eleição Lula",   "ibov_shock": -0.061,  "brl_shock":  0.037,  "description": "IBOV -6.1%, BRL +3.7% (30 out 2022)"},
+    "dilma":      {"label": "Crise Dilma",    "ibov_shock": -0.128,  "brl_shock":  0.468,  "description": "IBOV -12.8%, BRL +46.8% (jan-set 2015)"},
+}
+
+
+def _liq_days_from_score(score):
+    """Convert liq_diaria_mm score (-30 to +30) to estimated days to liquidate full position."""
+    import math
+    if score is None:
+        return None
+    return max(0.5, 2 ** ((-float(score) + 10) / 10))
+
+
+def _compute_component_var_by_beta(rows, total_value, nav, portfolio_var_1d):
+    if not total_value or not nav:
+        return []
+    rows_v = [r for r in rows if r.get("beta") is not None and r.get("valor_liquido")]
+    if not rows_v:
+        return []
+    w_beta = sum(r["beta"] * r["valor_liquido"] / total_value for r in rows_v)
+    if not w_beta:
+        return []
+    out = []
+    for r in rows:
+        w           = (r.get("valor_liquido") or 0) / total_value
+        beta        = r.get("beta") or 0
+        contrib_pct = (w * beta / w_beta * 100) if w_beta else 0
+        var_rs      = (w * beta / w_beta * portfolio_var_1d * nav) if w_beta else 0
+        out.append({
+            "ticker":      r["ticker"],
+            "weight_pct":  round(w * 100, 2),
+            "beta":        beta,
+            "contrib_pct": round(contrib_pct, 2),
+            "var_1d_rs":   round(var_rs, 2),
+        })
+    out.sort(key=lambda x: x["contrib_pct"], reverse=True)
+    return out
+
+
+@app.route("/api/risk/var")
+def api_risk_var():
+    import math
+    window    = int(request.args.get("window", 252))
+    cache     = load_cache()
+    now       = time.time()
+    cache_key = f"risk_var_{window}"
+    if cache.get(cache_key) and now < cache[cache_key].get("expires_at", 0):
+        return jsonify(cache[cache_key]["data"])
+
+    history = load_quota_history()
+    if len(history) < 22:
+        return jsonify({"error": "Histórico insuficiente (< 22 dias)"}), 400
+
+    fund_config = get_effective_fund_config()
+    portfolio   = load_portfolio()
+    tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    prices      = get_cached_prices(tickers)
+    funds       = get_cached_fundamentals(tickers)
+    pdata       = build_portfolio_response(portfolio, prices, funds)
+    nav = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+
+    cotas   = [e["cota_fechamento"] for e in history]
+    rets    = [(cotas[i] / cotas[i - 1] - 1) for i in range(1, len(cotas))]
+    rets    = rets[-window:]
+    n       = len(rets)
+    if n < 10:
+        return jsonify({"error": "Retornos insuficientes"}), 400
+
+    sorted_r = sorted(rets)
+    idx_95   = max(1, int(math.floor(n * 0.05)))
+    idx_99   = max(1, int(math.floor(n * 0.01)))
+
+    var_95  = abs(sorted_r[idx_95 - 1])
+    var_99  = abs(sorted_r[idx_99 - 1])
+    cvar_95 = abs(sum(sorted_r[:idx_95]) / idx_95)
+    cvar_99 = abs(sum(sorted_r[:max(1, idx_99)]) / max(1, idx_99))
+
+    def _rs(v):  return round(v * nav, 2)
+    def _pct(v): return round(v * 100, 3)
+
+    result = {
+        "window_days": window, "n_obs": n, "nav_ref": round(nav, 2),
+        "var_95_1d_pct":  _pct(var_95),
+        "var_99_1d_pct":  _pct(var_99),
+        "cvar_95_1d_pct": _pct(cvar_95),
+        "cvar_99_1d_pct": _pct(cvar_99),
+        "var_95_10d_pct": _pct(var_95 * math.sqrt(10)),
+        "var_99_10d_pct": _pct(var_99 * math.sqrt(10)),
+        "var_95_1d_rs":   _rs(var_95),
+        "var_99_1d_rs":   _rs(var_99),
+        "cvar_95_1d_rs":  _rs(cvar_95),
+        "cvar_99_1d_rs":  _rs(cvar_99),
+        "var_95_10d_rs":  _rs(var_95 * math.sqrt(10)),
+        "var_99_10d_rs":  _rs(var_99 * math.sqrt(10)),
+        "component_var": _compute_component_var_by_beta(
+            pdata["rows"], pdata.get("total_value", 0), nav, var_95),
+        "return_distribution": {
+            "mean_pct":           _pct(sum(rets) / n),
+            "best_day":           _pct(max(rets)),
+            "worst_day":          _pct(min(rets)),
+            "positive_days_pct":  round(sum(1 for r in rets if r > 0) / n * 100, 1),
+        },
+    }
+    cache[cache_key] = {"data": result, "expires_at": now + RISK_TTL}
+    save_cache(cache)
+    return jsonify(result)
+
+
+@app.route("/api/risk/stress")
+def api_risk_stress():
+    scenario_key = request.args.get("scenario", "")
+    custom_ibov  = request.args.get("ibov_shock")
+    custom_brl   = request.args.get("brl_shock")
+
+    portfolio   = load_portfolio()
+    tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    prices      = get_cached_prices(tickers)
+    funds       = get_cached_fundamentals(tickers)
+    pdata       = build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    nav         = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+    total_value = pdata.get("total_value") or 0
+
+    def run_scenario(ibov_shock, brl_shock, label, description):
+        rows_out   = []
+        port_impact = 0.0
+        for r in pdata["rows"]:
+            w        = (r.get("valor_liquido") or 0) / total_value if total_value else 0
+            beta     = r.get("beta") or 1.0
+            is_bdr   = r.get("categoria", "").upper() == "BDR"
+            # BRL depreciation (positive brl_shock) → BDR gains in BRL terms
+            stock_imp   = beta * ibov_shock + (brl_shock if is_bdr else 0)
+            pos_imp_rs  = stock_imp * (r.get("valor_liquido") or 0)
+            port_impact += stock_imp * w
+            rows_out.append({
+                "ticker":     r["ticker"],
+                "categoria":  r.get("categoria"),
+                "weight_pct": round(w * 100, 2),
+                "beta":       round(beta, 2),
+                "impact_pct": round(stock_imp * 100, 2),
+                "impact_rs":  round(pos_imp_rs, 2),
+            })
+        rows_out.sort(key=lambda x: x["impact_rs"])
+        return {
+            "label": label, "description": description,
+            "ibov_shock_pct":       round(ibov_shock * 100, 2),
+            "brl_shock_pct":        round(brl_shock * 100, 2),
+            "portfolio_impact_pct": round(port_impact * 100, 2),
+            "portfolio_impact_rs":  round(port_impact * nav, 2),
+            "nav_ref": round(nav, 2),
+            "positions": rows_out,
+        }
+
+    if custom_ibov is not None:
+        try:
+            ib  = float(custom_ibov) / 100
+            brl = float(custom_brl or 0) / 100
+        except ValueError:
+            return jsonify({"error": "Valores inválidos"}), 400
+        return jsonify(run_scenario(ib, brl, "Cenário Personalizado",
+                                    f"IBOV {ib * 100:+.1f}%, BRL {brl * 100:+.1f}%"))
+
+    if not scenario_key or scenario_key not in STRESS_SCENARIOS:
+        return jsonify({"scenarios": {k: {"label": v["label"], "description": v["description"]}
+                                       for k, v in STRESS_SCENARIOS.items()}})
+
+    sc = STRESS_SCENARIOS[scenario_key]
+    return jsonify(run_scenario(sc["ibov_shock"], sc["brl_shock"], sc["label"], sc["description"]))
+
+
+@app.route("/api/risk/correlation")
+def api_risk_correlation():
+    import math
+    window = int(request.args.get("window", 60))
+    cache  = load_cache()
+    now    = time.time()
+    key    = f"risk_corr_{window}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    portfolio = load_portfolio()
+    tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    all_t     = tickers + ["^BVSP"]
+    end_dt    = datetime.now()
+    start_dt  = end_dt - timedelta(days=int(window * 1.9) + 10)
+
+    try:
+        import pandas as pd
+        df = yf.download(all_t, start=start_dt.strftime("%Y-%m-%d"),
+                         end=end_dt.strftime("%Y-%m-%d"), progress=False, auto_adjust=True)
+        if df.empty:
+            return jsonify({"error": "Sem dados"}), 400
+        close   = df["Close"] if isinstance(df.columns, pd.MultiIndex) else df
+        returns = close.ffill().pct_change().dropna().tail(window)
+        if len(returns) < 10:
+            return jsonify({"error": "Dados insuficientes"}), 400
+        corr    = returns.corr()
+        cols    = [t for t in all_t if t in corr.columns]
+        lmap    = {**{p["yahoo_ticker"]: p["ticker"] for p in portfolio["positions"]}, "^BVSP": "IBOV"}
+        matrix  = []
+        for r in cols:
+            row = []
+            for c in cols:
+                v = corr.loc[r, c] if r in corr.index and c in corr.columns else None
+                try:
+                    row.append(round(float(v), 3) if v is not None and not math.isnan(float(v)) else None)
+                except Exception:
+                    row.append(None)
+            matrix.append(row)
+        result = {
+            "labels": [lmap.get(t, t) for t in cols],
+            "tickers": cols,
+            "matrix": matrix,
+            "window_days": window,
+            "n_obs": len(returns),
+        }
+        cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+        save_cache(cache)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/risk/attribution")
+def api_risk_attribution():
+    import math
+    window = int(request.args.get("window", 60))
+    cache  = load_cache()
+    now    = time.time()
+    key    = f"risk_attr_{window}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    portfolio = load_portfolio()
+    tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    qty_map   = {p["yahoo_ticker"]: p["quantidade"] for p in portfolio["positions"]}
+    end_dt    = datetime.now()
+    start_dt  = end_dt - timedelta(days=int(window * 1.9) + 10)
+
+    try:
+        import pandas as pd
+        df = yf.download(tickers, start=start_dt.strftime("%Y-%m-%d"),
+                         end=end_dt.strftime("%Y-%m-%d"), progress=False, auto_adjust=True)
+        if df.empty:
+            return jsonify({"error": "Sem dados"}), 400
+        close   = df["Close"] if isinstance(df.columns, pd.MultiIndex) else df
+        returns = close.ffill().pct_change().dropna().tail(window)
+        if len(returns) < 10:
+            return jsonify({"error": "Dados insuficientes"}), 400
+
+        prices      = get_cached_prices(tickers)
+        total_value = sum((prices.get(t, {}).get("price") or 0) * qty_map.get(t, 0) for t in tickers)
+        w_map       = {t: ((prices.get(t, {}).get("price") or 0) * qty_map.get(t, 0)) / total_value
+                       for t in tickers} if total_value else {t: 0 for t in tickers}
+
+        avail    = [t for t in tickers if t in returns.columns]
+        port_ret = sum(returns[t] * w_map.get(t, 0) for t in avail)
+        port_vol = float(port_ret.std() * math.sqrt(252) * 100)
+        var_p    = float(port_ret.var())
+        tlabels  = {p["yahoo_ticker"]: p["ticker"] for p in portfolio["positions"]}
+
+        rows_out = []
+        for t in avail:
+            s            = returns[t]
+            w            = w_map.get(t, 0)
+            cov          = float(s.cov(port_ret))
+            corr_p       = round(float(s.corr(port_ret)), 3)
+            contrib_pct  = round(w * cov / var_p * 100, 2) if var_p > 0 else 0
+            rows_out.append({
+                "ticker":          tlabels.get(t, t),
+                "weight_pct":      round(w * 100, 2),
+                "vol_ind_pct":     round(float(s.std() * math.sqrt(252) * 100), 2),
+                "corr_port":       corr_p,
+                "contrib_risk_pct": contrib_pct,
+                "contrib_vol_ppt": round(contrib_pct / 100 * port_vol, 2),
+            })
+        rows_out.sort(key=lambda x: x["contrib_risk_pct"], reverse=True)
+        result = {
+            "portfolio_vol_pct": round(port_vol, 2),
+            "window_days": window,
+            "n_obs": len(returns),
+            "rows": rows_out,
+        }
+        cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+        save_cache(cache)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/risk/rolling-beta")
+def api_risk_rolling_beta():
+    roll_w = int(request.args.get("roll_window", 60))
+    cache  = load_cache()
+    now    = time.time()
+    key    = f"risk_rbeta_{roll_w}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    history = load_quota_history()
+    if len(history) < roll_w + 5:
+        return jsonify({"error": "Histórico insuficiente"}), 400
+
+    start  = history[0]["data"]
+    end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+    try:
+        ibov_h = yf.Ticker("^BVSP").history(
+            start=start, end=end_dt.strftime("%Y-%m-%d"), timeout=15)
+        if ibov_h.empty:
+            return jsonify({"error": "Sem dados do IBOV"}), 400
+        ibov_map   = {str(d.date()): float(v) for d, v in ibov_h["Close"].items()}
+        ibov_dates = sorted(ibov_map)
+        ibov_rets  = {ibov_dates[i]: ibov_map[ibov_dates[i]] / ibov_map[ibov_dates[i - 1]] - 1
+                      for i in range(1, len(ibov_dates))}
+
+        fund_map = {}
+        prev = history[0]["cota_fechamento"]
+        for e in history[1:]:
+            fund_map[e["data"]] = e["cota_fechamento"] / prev - 1
+            prev = e["cota_fechamento"]
+
+        aligned = sorted(d for d in fund_map if d in ibov_rets)
+        f_rets  = [fund_map[d] for d in aligned]
+        i_rets  = [ibov_rets[d] for d in aligned]
+
+        if len(aligned) < roll_w + 2:
+            return jsonify({"error": "Dados insuficientes"}), 400
+
+        series = []
+        for i in range(roll_w, len(aligned)):
+            sf  = f_rets[i - roll_w: i]
+            si  = i_rets[i - roll_w: i]
+            mf  = sum(sf) / roll_w
+            mi  = sum(si) / roll_w
+            cov = sum((sf[j] - mf) * (si[j] - mi) for j in range(roll_w)) / (roll_w - 1)
+            var = sum((si[j] - mi) ** 2 for j in range(roll_w)) / (roll_w - 1)
+            series.append({"date": aligned[i], "beta": round(cov / var, 3) if var > 0 else None})
+
+        result = {"series": series, "roll_window": roll_w}
+        cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+        save_cache(cache)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/risk/liquidity")
+def api_risk_liquidity():
+    portfolio   = load_portfolio()
+    tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    prices      = get_cached_prices(tickers)
+    funds       = get_cached_fundamentals(tickers)
+    pdata       = build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    nav         = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+    total_value = pdata.get("total_value") or 0
+
+    liq_1d = liq_5d = liq_10d = 0.0
+    rows_out = []
+    for r in pdata["rows"]:
+        vl        = r.get("valor_liquido") or 0
+        score     = r.get("liq_diaria_mm")
+        days      = _liq_days_from_score(score)
+        daily_pct = (1.0 / days) if days else None
+        liq1d_v   = min(vl, vl * daily_pct)      if daily_pct else 0
+        liq5d_v   = min(vl, vl * daily_pct * 5)  if daily_pct else 0
+        liq10d_v  = min(vl, vl * daily_pct * 10) if daily_pct else 0
+        liq_1d  += liq1d_v
+        liq_5d  += liq5d_v
+        liq_10d += liq10d_v
+        rows_out.append({
+            "ticker":       r["ticker"],
+            "valor_liquido": round(vl, 2),
+            "weight_pct":   r.get("pct_total"),
+            "liq_score":    score,
+            "days_to_liq":  round(days, 1) if days else None,
+            "liq_1d_pct":   round(min(100, (daily_pct or 0) * 100), 1),
+            "liq_5d_pct":   round(min(100, (daily_pct or 0) * 5 * 100), 1),
+            "liq_10d_pct":  round(min(100, (daily_pct or 0) * 10 * 100), 1),
+        })
+    rows_out.sort(key=lambda x: x.get("days_to_liq") or 9999)
+    return jsonify({
+        "nav_ref":              round(nav, 2),
+        "total_equity_rs":      round(total_value, 2),
+        "portfolio_liq_1d_pct":  round(liq_1d  / total_value * 100, 1) if total_value else 0,
+        "portfolio_liq_5d_pct":  round(liq_5d  / total_value * 100, 1) if total_value else 0,
+        "portfolio_liq_10d_pct": round(liq_10d / total_value * 100, 1) if total_value else 0,
+        "portfolio_liq_1d_rs":   round(liq_1d,  2),
+        "portfolio_liq_5d_rs":   round(liq_5d,  2),
+        "portfolio_liq_10d_rs":  round(liq_10d, 2),
+        "rows": rows_out,
     })
 
 

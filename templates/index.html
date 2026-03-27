@@ -123,6 +123,10 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-screener"><span class="fn-num">206)</span> SCREENER</button>
   {% set ns.first = false %}
   {% endif %}
+  {% if role == 'admin' or viewer_config.tab_risk %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-risk"><span class="fn-num">207)</span> RISCO</button>
+  {% set ns.first = false %}
+  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -429,6 +433,12 @@
           {% if viewer_config.tab_screener %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">RISCO</span>
+        <button class="viewer-toggle {% if viewer_config.tab_risk %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_risk">
+          {% if viewer_config.tab_risk %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
     </div>
     <div class="cfg-footer" style="margin-top:12px">
       <button class="bbg-btn bbg-btn-primary" id="viewer-config-save">SALVAR ACESSO</button>
@@ -674,6 +684,116 @@
       </tbody>
     </table>
   </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     207) RISCO
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.tab_risk %}
+<div id="tab-risk" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <!-- ── Row 1: VaR + Stress Test ── -->
+  <div class="risk-row">
+
+    <!-- VaR / CVaR -->
+    <div class="chart-card risk-card" id="risk-var-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">VALUE AT RISK (VaR / CVaR)</span>
+        <div class="risk-controls">
+          <span class="risk-ctrl-label">JANELA:</span>
+          <button class="bbg-btn risk-btn active" data-var-window="252">252D</button>
+          <button class="bbg-btn risk-btn" data-var-window="126">126D</button>
+          <button class="bbg-btn risk-btn" data-var-window="63">63D</button>
+          <span class="risk-ctrl-label" style="margin-left:8px">HORIZONTE:</span>
+          <button class="bbg-btn risk-btn active" data-var-horizon="1">1D</button>
+          <button class="bbg-btn risk-btn" data-var-horizon="10">10D</button>
+        </div>
+      </div>
+      <div id="risk-var-content">
+        <div class="risk-loading">CARREGANDO VaR...</div>
+      </div>
+    </div>
+
+    <!-- Stress Test -->
+    <div class="chart-card risk-card" id="risk-stress-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">STRESS TEST — CENÁRIOS HISTÓRICOS</span>
+        <div class="risk-controls">
+          <button class="bbg-btn risk-btn active" data-stress="covid">COVID</button>
+          <button class="bbg-btn risk-btn" data-stress="joesley">JOESLEY</button>
+          <button class="bbg-btn risk-btn" data-stress="lula_elei">LULA ELEIÇÃO</button>
+          <button class="bbg-btn risk-btn" data-stress="dilma">DILMA</button>
+          <button class="bbg-btn risk-btn" data-stress="custom">CUSTOM</button>
+        </div>
+      </div>
+      <div id="risk-stress-custom" class="hidden" style="display:none;padding:8px 0;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:10px;color:var(--text-muted)">IBOV %<input type="number" id="stress-ibov-input" step="0.5" placeholder="-10" style="width:70px;margin-left:4px"></label>
+        <label style="font-size:10px;color:var(--text-muted)">BRL %<input type="number" id="stress-brl-input" step="0.5" placeholder="5" style="width:70px;margin-left:4px"></label>
+        <button class="bbg-btn bbg-btn-primary" id="btn-stress-custom-run" style="font-size:10px">SIMULAR</button>
+      </div>
+      <div id="risk-stress-content">
+        <div class="risk-loading">CARREGANDO STRESS TEST...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 2: Correlação + Risk Attribution ── -->
+  <div class="risk-row">
+
+    <!-- Correlação -->
+    <div class="chart-card risk-card" id="risk-corr-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">MATRIZ DE CORRELAÇÃO</span>
+        <div class="risk-controls">
+          <button class="bbg-btn risk-btn active" data-corr-window="60">60D</button>
+          <button class="bbg-btn risk-btn" data-corr-window="252">252D</button>
+        </div>
+      </div>
+      <div id="risk-corr-content">
+        <div class="risk-loading">CARREGANDO CORRELAÇÕES...</div>
+      </div>
+    </div>
+
+    <!-- Risk Attribution -->
+    <div class="chart-card risk-card" id="risk-attr-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">RISK ATTRIBUTION — CONTRIBUIÇÃO AO RISCO</span>
+        <div class="risk-controls">
+          <button class="bbg-btn risk-btn active" data-attr-window="60">60D</button>
+          <button class="bbg-btn risk-btn" data-attr-window="252">252D</button>
+        </div>
+      </div>
+      <div id="risk-attr-content">
+        <div class="risk-loading">CARREGANDO ATTRIBUTION...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 3: Rolling Beta + Liquidez ── -->
+  <div class="risk-row">
+
+    <!-- Rolling Beta -->
+    <div class="chart-card risk-card" id="risk-beta-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">BETA ROLANTE 60D vs. IBOV</span>
+        <div class="risk-badge-row" id="risk-beta-badges"></div>
+      </div>
+      <canvas id="risk-beta-chart" height="180"></canvas>
+    </div>
+
+    <!-- Liquidez -->
+    <div class="chart-card risk-card" id="risk-liq-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">RISCO DE LIQUIDEZ</span>
+      </div>
+      <div id="risk-liq-content">
+        <div class="risk-loading">CARREGANDO LIQUIDEZ...</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endif %}
 
