@@ -2074,5 +2074,486 @@ def api_risk_liquidity():
     })
 
 
+@app.route("/api/risk/tracking-error")
+def api_risk_tracking_error():
+    import math
+    window = int(request.args.get("window", 252))
+    cache  = load_cache()
+    now    = time.time()
+    key    = f"risk_tracking_error_{window}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    history = load_quota_history()
+    if len(history) < 22:
+        return jsonify({"error": "Histórico insuficiente"}), 400
+
+    start  = history[0]["data"]
+    end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+    try:
+        ibov_h = yf.Ticker("^BVSP").history(
+            start=start, end=end_dt.strftime("%Y-%m-%d"), timeout=15)
+        if ibov_h.empty:
+            return jsonify({"error": "Sem dados do IBOV"}), 400
+        ibov_map   = {str(d.date()): float(v) for d, v in ibov_h["Close"].items()}
+        ibov_dates = sorted(ibov_map)
+        ibov_rets  = {ibov_dates[i]: ibov_map[ibov_dates[i]] / ibov_map[ibov_dates[i - 1]] - 1
+                      for i in range(1, len(ibov_dates))}
+
+        fund_map = {}
+        prev = history[0]["cota_fechamento"]
+        for e in history[1:]:
+            fund_map[e["data"]] = e["cota_fechamento"] / prev - 1
+            prev = e["cota_fechamento"]
+
+        aligned = sorted(d for d in fund_map if d in ibov_rets)
+        aligned  = aligned[-window:]
+        if len(aligned) < 20:
+            return jsonify({"error": "Dados insuficientes"}), 400
+
+        f_rets = [fund_map[d] for d in aligned]
+        i_rets = [ibov_rets[d] for d in aligned]
+        n      = len(aligned)
+
+        excess  = [f - i for f, i in zip(f_rets, i_rets)]
+        mean_ex = sum(excess) / n
+        var_ex  = sum((e - mean_ex) ** 2 for e in excess) / (n - 1)
+        te      = math.sqrt(var_ex) * math.sqrt(252)
+        ret_ativo = mean_ex * 252
+        ir      = ret_ativo / te if te > 0 else None
+
+        result = {
+            "window":               window,
+            "tracking_error":       round(te * 100, 2),
+            "information_ratio":    round(ir, 2) if ir is not None else None,
+            "retorno_ativo_anual":  round(ret_ativo * 100, 2),
+            "n_dias":               n,
+        }
+        cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+        save_cache(cache)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/risk/sortino-calmar")
+def api_risk_sortino_calmar():
+    import math
+    cache = load_cache()
+    now   = time.time()
+    key   = "risk_sortino_calmar"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    history = load_quota_history()
+    if len(history) < 22:
+        return jsonify({"error": "Histórico insuficiente"}), 400
+
+    entries   = [(datetime.strptime(e["data"], "%Y-%m-%d"), e["cota_fechamento"]) for e in history]
+    last_date = entries[-1][0]
+    cdi_map   = load_cdi_map()
+
+    def cdi_ann_for_window(start_dt, end_dt):
+        rates = [v for d, v in cdi_map.items()
+                 if start_dt < datetime.strptime(d, "%Y-%m-%d") <= end_dt]
+        if not rates:
+            return None
+        compound = 1.0
+        for r in rates:
+            compound *= (1 + r / 100)
+        return (compound ** (252 / len(rates)) - 1) * 100
+
+    def get_window(months_back=None, ytd=False, no_mes=False):
+        if no_mes:
+            cutoff = datetime(last_date.year, last_date.month, 1)
+        elif ytd:
+            cutoff = datetime(last_date.year, 1, 1)
+        elif months_back:
+            cutoff = last_date - timedelta(days=int(months_back * 365.25 / 12))
+        else:
+            return entries
+        before = [(d, c) for d, c in entries if d < cutoff]
+        after  = [(d, c) for d, c in entries if d >= cutoff]
+        return ([before[-1]] if before else []) + after
+
+    def compute_sortino_calmar(sl):
+        if len(sl) < 5:
+            return {"sortino": None, "calmar": None, "downside_vol": None, "max_dd": None}
+        cotas = [c for _, c in sl]
+        daily = [(cotas[i] / cotas[i - 1] - 1) for i in range(1, len(cotas))]
+        if len(daily) < 2:
+            return {"sortino": None, "calmar": None, "downside_vol": None, "max_dd": None}
+        n       = len(daily)
+        ret_ann = (cotas[-1] / cotas[0]) ** (252 / n) - 1
+        # Max drawdown
+        peak   = cotas[0]
+        max_dd = 0.0
+        for c in cotas:
+            if c > peak:
+                peak = c
+            dd = c / peak - 1
+            if dd < max_dd:
+                max_dd = dd
+        # Downside deviation (MAR = 0)
+        neg = [r for r in daily if r < 0]
+        if neg:
+            downside_dev = math.sqrt(sum(r ** 2 for r in neg) / n) * math.sqrt(252)
+        else:
+            downside_dev = 0
+        dates = [d for d, _ in sl]
+        cdi   = cdi_ann_for_window(dates[0], dates[-1])
+        sortino = round((ret_ann * 100 - (cdi or 0)) / (downside_dev * 100), 2) if downside_dev > 0 else None
+        calmar  = round(ret_ann / abs(max_dd), 2) if max_dd < 0 else None
+        return {
+            "sortino":      sortino,
+            "calmar":       calmar,
+            "downside_vol": round(downside_dev * 100, 2),
+            "max_dd":       round(max_dd * 100, 2),
+        }
+
+    windows = [
+        ("no_mes", get_window(no_mes=True)),
+        ("no_ano", get_window(ytd=True)),
+        ("3m",     get_window(months_back=3)),
+        ("6m",     get_window(months_back=6)),
+        ("12m",    get_window(months_back=12)),
+        ("24m",    get_window(months_back=24)),
+        ("36m",    get_window(months_back=36)),
+        ("total",  entries),
+    ]
+    result = {"windows": {k: compute_sortino_calmar(sl) for k, sl in windows}}
+    cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+    save_cache(cache)
+    return jsonify(result)
+
+
+@app.route("/api/risk/capture")
+def api_risk_capture():
+    window = request.args.get("window", "252")
+    cache  = load_cache()
+    now    = time.time()
+    key    = f"risk_capture_{window}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    history = load_quota_history()
+    if len(history) < 22:
+        return jsonify({"error": "Histórico insuficiente"}), 400
+
+    start  = history[0]["data"]
+    end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+    try:
+        ibov_h = yf.Ticker("^BVSP").history(
+            start=start, end=end_dt.strftime("%Y-%m-%d"), timeout=15)
+        if ibov_h.empty:
+            return jsonify({"error": "Sem dados do IBOV"}), 400
+        ibov_map   = {str(d.date()): float(v) for d, v in ibov_h["Close"].items()}
+        ibov_dates = sorted(ibov_map)
+        ibov_rets  = {ibov_dates[i]: ibov_map[ibov_dates[i]] / ibov_map[ibov_dates[i - 1]] - 1
+                      for i in range(1, len(ibov_dates))}
+
+        fund_map = {}
+        prev = history[0]["cota_fechamento"]
+        for e in history[1:]:
+            fund_map[e["data"]] = e["cota_fechamento"] / prev - 1
+            prev = e["cota_fechamento"]
+
+        aligned = sorted(d for d in fund_map if d in ibov_rets)
+        if window != "total":
+            aligned = aligned[-int(window):]
+        if len(aligned) < 10:
+            return jsonify({"error": "Dados insuficientes"}), 400
+
+        f_rets = [fund_map[d] for d in aligned]
+        i_rets = [ibov_rets[d] for d in aligned]
+
+        up_idx   = [i for i in range(len(aligned)) if i_rets[i] > 0]
+        down_idx = [i for i in range(len(aligned)) if i_rets[i] < 0]
+
+        def _capture(indices):
+            if not indices:
+                return None
+            fund_cum = 1.0
+            ibov_cum = 1.0
+            for idx in indices:
+                fund_cum *= (1 + f_rets[idx])
+                ibov_cum *= (1 + i_rets[idx])
+            ibov_tot = ibov_cum - 1
+            if abs(ibov_tot) < 1e-10:
+                return None
+            return round((fund_cum - 1) / ibov_tot * 100, 1)
+
+        result = {
+            "window":           window,
+            "upside_capture":   _capture(up_idx),
+            "downside_capture": _capture(down_idx),
+            "n_dias_up":        len(up_idx),
+            "n_dias_down":      len(down_idx),
+            "n_total":          len(aligned),
+        }
+        cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+        save_cache(cache)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/risk/concentration")
+def api_risk_concentration():
+    portfolio   = load_portfolio()
+    tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    prices      = get_cached_prices(tickers)
+    funds       = get_cached_fundamentals(tickers)
+    pdata       = build_portfolio_response(portfolio, prices, funds)
+    total_value = pdata.get("total_value") or 0
+    if not total_value:
+        return jsonify({"error": "Sem dados de portfólio"}), 400
+
+    sector_map = {}
+    for r in pdata["rows"]:
+        vl     = r.get("valor_liquido") or 0
+        sector = r.get("sector") or "Outros"
+        if sector not in sector_map:
+            sector_map[sector] = {"tickers": [], "valor": 0.0}
+        sector_map[sector]["tickers"].append(r["ticker"])
+        sector_map[sector]["valor"] += vl
+
+    setores = []
+    hhi     = 0.0
+    for setor, data in sector_map.items():
+        peso = data["valor"] / total_value
+        hhi += peso ** 2
+        setores.append({
+            "setor":    setor,
+            "peso_pct": round(peso * 100, 2),
+            "valor_rs": round(data["valor"], 2),
+            "tickers":  data["tickers"],
+        })
+    setores.sort(key=lambda x: x["peso_pct"], reverse=True)
+
+    hhi_score = int(round(hhi * 10000))
+    if hhi_score < 1000:
+        hhi_label = "diversificado"
+    elif hhi_score < 2500:
+        hhi_label = "moderado"
+    else:
+        hhi_label = "concentrado"
+
+    sorted_rows = sorted(pdata["rows"], key=lambda x: x.get("pct_total") or 0, reverse=True)
+    top1 = sum(r.get("pct_total") or 0 for r in sorted_rows[:1])
+    top3 = sum(r.get("pct_total") or 0 for r in sorted_rows[:3])
+    top5 = sum(r.get("pct_total") or 0 for r in sorted_rows[:5])
+
+    return jsonify({
+        "hhi":        hhi_score,
+        "hhi_label":  hhi_label,
+        "setores":    setores,
+        "top1_pct":   round(top1, 2),
+        "top3_pct":   round(top3, 2),
+        "top5_pct":   round(top5, 2),
+        "n_posicoes": len(pdata["rows"]),
+        "n_setores":  len(setores),
+    })
+
+
+@app.route("/api/risk/fx-exposure")
+def api_risk_fx_exposure():
+    portfolio   = load_portfolio()
+    tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    prices      = get_cached_prices(tickers)
+    funds       = get_cached_fundamentals(tickers)
+    pdata       = build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    nav         = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+    total_value = pdata.get("total_value") or 0
+    if not total_value:
+        return jsonify({"error": "Sem dados de portfólio"}), 400
+
+    bdrs     = [r for r in pdata["rows"] if r.get("categoria") == "BDR"]
+    total_fx = sum(r.get("valor_liquido") or 0 for r in bdrs)
+    fx_pct   = total_fx / total_value
+
+    bdr_rows = sorted([{
+        "ticker":   r["ticker"],
+        "peso_pct": round((r.get("valor_liquido") or 0) / total_value * 100, 2),
+        "valor_rs": round(r.get("valor_liquido") or 0, 2),
+        "sector":   r.get("sector") or "—",
+    } for r in bdrs], key=lambda x: x["peso_pct"], reverse=True)
+
+    sens = {}
+    for shock in [5, 10, -5, -10]:
+        k = f"usd_{'plus' if shock > 0 else 'minus'}{abs(shock)}"
+        sens[k] = round(fx_pct * shock, 2)
+
+    return jsonify({
+        "total_fx_exposure_pct": round(fx_pct * 100, 2),
+        "total_fx_exposure_rs":  round(total_fx, 2),
+        "nav_ref":               round(nav, 2),
+        "bdrs":                  bdr_rows,
+        "sensibilidade_pct":     sens,
+    })
+
+
+@app.route("/api/risk/rolling-ratios")
+def api_risk_rolling_ratios():
+    import math
+    roll_w = int(request.args.get("roll_window", 63))
+    cache  = load_cache()
+    now    = time.time()
+    key    = f"risk_rolling_ratios_{roll_w}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    history = load_quota_history()
+    if len(history) < roll_w + 5:
+        return jsonify({"error": "Histórico insuficiente"}), 400
+
+    cotas       = [e["cota_fechamento"] for e in history]
+    dates       = [e["data"] for e in history]
+    daily       = [(cotas[i] / cotas[i - 1] - 1) for i in range(1, len(cotas))]
+    daily_dates = dates[1:]
+
+    # CDI diário médio como proxy da taxa livre de risco
+    cdi_map  = load_cdi_map()
+    cdi_vals = list(cdi_map.values())
+    cdi_daily = (sum(cdi_vals[-252:]) / min(252, len(cdi_vals))) / 100 if cdi_vals else 0.0
+
+    series       = []
+    sharpe_vals  = []
+    sortino_vals = []
+
+    for i in range(roll_w, len(daily)):
+        sl  = daily[i - roll_w: i]
+        n   = len(sl)
+        mn  = sum(sl) / n
+        var = sum((r - mn) ** 2 for r in sl) / (n - 1) if n > 1 else 0
+        std = math.sqrt(var) if var > 0 else 0
+        vol_ann = std * math.sqrt(252)
+        ret_ann = (1 + mn) ** 252 - 1
+        rf_ann  = (1 + cdi_daily) ** 252 - 1
+
+        sharpe  = round((ret_ann - rf_ann) / vol_ann, 2) if vol_ann > 0 else None
+
+        neg = [r for r in sl if r < 0]
+        if neg:
+            dd_ann = math.sqrt(sum(r ** 2 for r in neg) / n) * math.sqrt(252)
+        else:
+            dd_ann = 0
+        sortino = round((ret_ann - rf_ann) / dd_ann, 2) if dd_ann > 0 else None
+
+        series.append({
+            "date":    daily_dates[i],
+            "sharpe":  sharpe,
+            "sortino": sortino,
+        })
+        if sharpe is not None:
+            sharpe_vals.append(sharpe)
+        if sortino is not None:
+            sortino_vals.append(sortino)
+
+    current = series[-1] if series else {}
+    result  = {
+        "roll_window":    roll_w,
+        "series":         series,
+        "current_sharpe": current.get("sharpe"),
+        "current_sortino":current.get("sortino"),
+        "avg_sharpe":     round(sum(sharpe_vals)  / len(sharpe_vals),  2) if sharpe_vals  else None,
+        "avg_sortino":    round(sum(sortino_vals) / len(sortino_vals), 2) if sortino_vals else None,
+    }
+    cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+    save_cache(cache)
+    return jsonify(result)
+
+
+@app.route("/api/risk/return-distribution")
+def api_risk_return_distribution():
+    import math
+    window = int(request.args.get("window", 252))
+    cache  = load_cache()
+    now    = time.time()
+    key    = f"risk_return_dist_{window}"
+    if cache.get(key) and now < cache[key].get("expires_at", 0):
+        return jsonify(cache[key]["data"])
+
+    history = load_quota_history()
+    if len(history) < 22:
+        return jsonify({"error": "Histórico insuficiente"}), 400
+
+    cotas = [e["cota_fechamento"] for e in history]
+    rets  = [(cotas[i] / cotas[i - 1] - 1) for i in range(1, len(cotas))]
+    rets  = rets[-window:]
+    n     = len(rets)
+
+    mean_r   = sum(rets) / n
+    variance = sum((r - mean_r) ** 2 for r in rets) / (n - 1) if n > 1 else 0
+    std_r    = math.sqrt(variance) if variance > 0 else 0
+
+    skew = (sum((r - mean_r) ** 3 for r in rets) / n) / (std_r ** 3) if std_r > 0 and n > 2 else 0
+    kurt = (sum((r - mean_r) ** 4 for r in rets) / n) / (std_r ** 4) - 3 if std_r > 0 and n > 3 else 0
+
+    min_r    = min(rets)
+    max_r    = max(rets)
+    n_bins   = 20
+    bin_size = (max_r - min_r) / n_bins if max_r > min_r else 0.001
+    bins     = [min_r + i * bin_size for i in range(n_bins + 1)]
+    counts   = [0] * n_bins
+    for r in rets:
+        idx = min(int((r - min_r) / bin_size), n_bins - 1)
+        counts[idx] += 1
+
+    sorted_r = sorted(rets)
+    def pct(p): return sorted_r[max(0, int(p * n / 100) - 1)]
+
+    # IBOV comparison
+    start_h    = history[-min(window + 5, len(history))]["data"]
+    end_dt     = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+    ibov_counts = None
+    ibov_mean   = None
+    ibov_std    = None
+    try:
+        ibov_h = yf.Ticker("^BVSP").history(
+            start=start_h, end=end_dt.strftime("%Y-%m-%d"), timeout=15)
+        if not ibov_h.empty:
+            ic    = list(ibov_h["Close"])
+            ir    = [(ic[i] / ic[i - 1] - 1) for i in range(1, len(ic))]
+            ir    = ir[-window:]
+            ni    = len(ir)
+            mi    = sum(ir) / ni
+            vi    = sum((r - mi) ** 2 for r in ir) / ni if ni > 1 else 0
+            ibov_mean   = round(mi * 100, 3)
+            ibov_std    = round(math.sqrt(vi) * 100, 3)
+            ibov_counts = [0] * n_bins
+            for r in ir:
+                idx = min(int((r - min_r) / bin_size), n_bins - 1)
+                if 0 <= idx < n_bins:
+                    ibov_counts[idx] += 1
+    except Exception:
+        pass
+
+    bin_centers = [round((bins[i] + bins[i + 1]) / 2 * 100, 3) for i in range(n_bins)]
+
+    result = {
+        "window":       window,
+        "n_obs":        n,
+        "bin_centers":  bin_centers,
+        "counts":       counts,
+        "ibov_counts":  ibov_counts,
+        "mean_pct":     round(mean_r * 100, 3),
+        "std_pct":      round(std_r * 100, 3),
+        "skewness":     round(skew, 3),
+        "kurtosis":     round(kurt, 3),
+        "pct_positive": round(sum(1 for r in rets if r > 0) / n * 100, 1),
+        "best_day":     round(max(rets) * 100, 3),
+        "worst_day":    round(min(rets) * 100, 3),
+        "p5":           round(pct(5) * 100, 3),
+        "p95":          round(pct(95) * 100, 3),
+        "ibov_mean_pct":ibov_mean,
+        "ibov_std_pct": ibov_std,
+    }
+    cache[key] = {"data": result, "expires_at": now + RISK_TTL}
+    save_cache(cache)
+    return jsonify(result)
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

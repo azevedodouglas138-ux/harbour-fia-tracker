@@ -2118,7 +2118,9 @@ async function quickAddToWatchlist(ticker) {
 // 207) RISCO
 // ══════════════════════════════════════════════════════════════════
 
-let _riskBetaChart = null;
+let _riskBetaChart         = null;
+let _riskRollingRatiosChart = null;
+let _riskDistChart          = null;
 let _riskLoaded    = false;
 
 // ── State for active selections ───────────────────────────────────
@@ -2127,6 +2129,10 @@ let _riskVarHorizon = 1;
 let _riskStress     = 'covid';
 let _riskCorrWindow = 60;
 let _riskAttrWindow = 60;
+let _riskTeWindow   = 252;
+let _riskCapWindow  = '252';
+let _riskRollWindow = 63;
+let _riskDistWindow = 252;
 
 async function loadRiskTab() {
   if (_riskLoaded) return;
@@ -2139,6 +2145,13 @@ async function loadRiskTab() {
     _loadAttribution(60),
     _loadRollingBeta(),
     _loadLiquidity(),
+    _loadTrackingError(),
+    _loadSortinoCal(),
+    _loadCapture(),
+    _loadConcentration(),
+    _loadFxExposure(),
+    _loadRollingRatios(),
+    _loadReturnDist(),
   ]);
 }
 
@@ -2200,6 +2213,42 @@ function _setupRiskControls() {
       btn.classList.add('active');
       _riskAttrWindow = parseInt(btn.dataset.attrWindow);
       _loadAttribution(_riskAttrWindow);
+    });
+  });
+  // Tracking Error window
+  document.querySelectorAll('[data-te-window]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-te-window]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskTeWindow = parseInt(btn.dataset.teWindow);
+      _loadTrackingError();
+    });
+  });
+  // Capture window
+  document.querySelectorAll('[data-cap-window]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-cap-window]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskCapWindow = btn.dataset.capWindow;
+      _loadCapture();
+    });
+  });
+  // Rolling ratios window
+  document.querySelectorAll('[data-roll-window]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-roll-window]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskRollWindow = parseInt(btn.dataset.rollWindow);
+      _loadRollingRatios();
+    });
+  });
+  // Distribution window
+  document.querySelectorAll('[data-dist-window]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-dist-window]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _riskDistWindow = parseInt(btn.dataset.distWindow);
+      _loadReturnDist();
     });
   });
 }
@@ -2625,4 +2674,422 @@ function _renderLiquidity(d, el) {
     </table>
     </div>
   `;
+}
+
+// ── Tracking Error & Information Ratio ────────────────────────────
+const _teCache = {};
+async function _loadTrackingError() {
+  const el = document.getElementById('risk-te-content');
+  if (!el) return;
+  const key = _riskTeWindow;
+  if (!_teCache[key]) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO...</div>';
+    try {
+      const r = await fetch(`/api/risk/tracking-error?window=${key}`);
+      const d = await r.json();
+      if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+      _teCache[key] = d;
+    } catch(e) { el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`; return; }
+  }
+  const d = _teCache[key];
+  const irCls  = d.information_ratio == null ? '' : d.information_ratio >= 0 ? 'positive' : 'negative';
+  const retCls = d.retorno_ativo_anual >= 0 ? 'positive' : 'negative';
+  el.innerHTML = `
+    <div class="risk-var-grid">
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">TRACKING ERROR (a.a.)</div>
+        <div class="risk-metric-val">${fmt(d.tracking_error,2)}%</div>
+        <div class="risk-metric-sub">Janela: ${d.n_dias}d</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">INFORMATION RATIO</div>
+        <div class="risk-metric-val ${irCls}">${d.information_ratio != null ? fmt(d.information_ratio,2) : '—'}</div>
+        <div class="risk-metric-sub">Retorno ativo / TE</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">RETORNO ATIVO (a.a.)</div>
+        <div class="risk-metric-val ${retCls}">${sign(d.retorno_ativo_anual)}${fmt(Math.abs(d.retorno_ativo_anual),2)}%</div>
+        <div class="risk-metric-sub">vs. IBOV</div>
+      </div>
+    </div>
+    <div style="padding:10px 12px 4px;font-size:9px;color:var(--text-muted)">
+      IR &gt; 0.5 = bom &nbsp;·&nbsp; IR &gt; 1.0 = excelente &nbsp;·&nbsp; TE alto = portfólio muito ativo vs. benchmark
+    </div>
+  `;
+}
+
+// ── Sortino & Calmar ──────────────────────────────────────────────
+let _sortinoData = null;
+async function _loadSortinoCal() {
+  const el = document.getElementById('risk-sortino-content');
+  if (!el) return;
+  if (!_sortinoData) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO...</div>';
+    try {
+      const r = await fetch('/api/risk/sortino-calmar');
+      const d = await r.json();
+      if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+      _sortinoData = d;
+    } catch(e) { el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`; return; }
+  }
+  const d = _sortinoData;
+  const LABELS = { no_mes:'MÊS', no_ano:'ANO', '3m':'3M', '6m':'6M', '12m':'12M', '24m':'24M', '36m':'36M', total:'TOTAL' };
+  const rows = Object.entries(d.windows).map(([k, v]) => {
+    const srtCls = v.sortino == null ? '' : v.sortino >= 0 ? 'positive' : 'negative';
+    const calCls = v.calmar  == null ? '' : v.calmar  >= 0 ? 'positive' : 'negative';
+    return `<tr>
+      <td>${LABELS[k] || k}</td>
+      <td class="num ${srtCls}">${v.sortino != null ? fmt(v.sortino,2) : '—'}</td>
+      <td class="num ${calCls}">${v.calmar  != null ? fmt(v.calmar,2)  : '—'}</td>
+      <td class="num">${v.downside_vol != null ? fmt(v.downside_vol,2)+'%' : '—'}</td>
+      <td class="num negative">${v.max_dd != null ? fmt(v.max_dd,2)+'%' : '—'}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="table-wrapper" style="max-height:320px;overflow-y:auto">
+    <table class="risk-table">
+      <thead><tr>
+        <th>JANELA</th>
+        <th class="num">SORTINO</th>
+        <th class="num">CALMAR</th>
+        <th class="num">VOL. BAIXA</th>
+        <th class="num">MAX DD</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <div style="padding:6px 12px 0;font-size:9px;color:var(--text-muted)">
+      Sortino penaliza só volatilidade negativa &nbsp;·&nbsp; Calmar = Retorno a.a. / Max Drawdown
+    </div>
+  `;
+}
+
+// ── Upside / Downside Capture ─────────────────────────────────────
+const _captureCache = {};
+async function _loadCapture() {
+  const el = document.getElementById('risk-capture-content');
+  if (!el) return;
+  const key = _riskCapWindow;
+  if (!_captureCache[key]) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO...</div>';
+    try {
+      const r = await fetch(`/api/risk/capture?window=${key}`);
+      const d = await r.json();
+      if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+      _captureCache[key] = d;
+    } catch(e) { el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`; return; }
+  }
+  const d = _captureCache[key];
+  const upCls = d.upside_capture   == null ? '' : d.upside_capture   >= 100 ? 'positive' : 'bbg-orange';
+  const dnCls = d.downside_capture == null ? '' : d.downside_capture <= 100 ? 'positive' : 'negative';
+  const upIcon = d.upside_capture   != null && d.upside_capture   >= 100 ? '▲' : '▼';
+  const dnIcon = d.downside_capture != null && d.downside_capture <= 100 ? '▲' : '▼';
+  el.innerHTML = `
+    <div class="risk-var-grid">
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">UPSIDE CAPTURE</div>
+        <div class="risk-metric-val ${upCls}">${d.upside_capture != null ? upIcon+' '+fmt(d.upside_capture,1)+'%' : '—'}</div>
+        <div class="risk-metric-sub">${d.n_dias_up} dias de alta IBOV</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">DOWNSIDE CAPTURE</div>
+        <div class="risk-metric-val ${dnCls}">${d.downside_capture != null ? dnIcon+' '+fmt(d.downside_capture,1)+'%' : '—'}</div>
+        <div class="risk-metric-sub">${d.n_dias_down} dias de baixa IBOV</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">TOTAL DE DIAS</div>
+        <div class="risk-metric-val">${d.n_total}</div>
+        <div class="risk-metric-sub">Janela: ${key === 'total' ? 'completa' : key+'d'}</div>
+      </div>
+    </div>
+    <div style="padding:8px 12px 4px;font-size:9px;color:var(--text-muted)">
+      Ideal: Upside &gt; 100% e Downside &lt; 100% &nbsp;·&nbsp; Reflete a assimetria de retornos vs. IBOV
+    </div>
+  `;
+}
+
+// ── Concentração Setorial (HHI) ───────────────────────────────────
+let _concentrationData = null;
+async function _loadConcentration() {
+  const el = document.getElementById('risk-concentration-content');
+  if (!el) return;
+  if (!_concentrationData) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO...</div>';
+    try {
+      const r = await fetch('/api/risk/concentration');
+      const d = await r.json();
+      if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+      _concentrationData = d;
+    } catch(e) { el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`; return; }
+  }
+  const d = _concentrationData;
+  const hhiCls   = d.hhi < 1000 ? 'positive' : d.hhi < 2500 ? 'bbg-orange' : 'negative';
+  const hhiLabel = d.hhi_label.toUpperCase();
+  const barsHtml = d.setores.map(s => {
+    const barW = Math.min(100, s.peso_pct);
+    return `
+      <div style="margin-bottom:5px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+          <span>${s.setor} <span style="color:var(--text-muted);font-size:9px">(${s.tickers.join(', ')})</span></span>
+          <span>${fmt(s.peso_pct,1)}%</span>
+        </div>
+        <div style="background:#1a1a1a;border-radius:2px;height:5px">
+          <div style="background:#ff8c00;width:${barW}%;height:5px;border-radius:2px"></div>
+        </div>
+      </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="risk-var-grid" style="margin-bottom:10px">
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">ÍNDICE HHI</div>
+        <div class="risk-metric-val ${hhiCls}">${d.hhi}</div>
+        <div class="risk-metric-sub">${hhiLabel}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">TOP 1 / TOP 3 / TOP 5</div>
+        <div class="risk-metric-val">${fmt(d.top1_pct,1)}%</div>
+        <div class="risk-metric-sub">${fmt(d.top3_pct,1)}% / ${fmt(d.top5_pct,1)}%</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">SETORES / POSIÇÕES</div>
+        <div class="risk-metric-val">${d.n_setores}</div>
+        <div class="risk-metric-sub">${d.n_posicoes} ativos</div>
+      </div>
+    </div>
+    <div style="padding:0 12px 8px">${barsHtml}</div>
+    <div style="padding:0 12px 4px;font-size:9px;color:var(--text-muted)">
+      HHI &lt; 1000 = diversificado &nbsp;·&nbsp; 1000–2500 = moderado &nbsp;·&nbsp; &gt; 2500 = concentrado
+    </div>
+  `;
+}
+
+// ── Exposição Cambial (BDRs) ──────────────────────────────────────
+let _fxData = null;
+async function _loadFxExposure() {
+  const el = document.getElementById('risk-fx-content');
+  if (!el) return;
+  if (!_fxData) {
+    el.innerHTML = '<div class="risk-loading">CARREGANDO...</div>';
+    try {
+      const r = await fetch('/api/risk/fx-exposure');
+      const d = await r.json();
+      if (d.error) { el.innerHTML = `<div class="risk-error">${d.error}</div>`; return; }
+      _fxData = d;
+    } catch(e) { el.innerHTML = `<div class="risk-error">ERRO: ${e.message}</div>`; return; }
+  }
+  const d = _fxData;
+  const s = d.sensibilidade_pct || {};
+  const bdrRows = (d.bdrs || []).map(r => `
+    <tr>
+      <td class="ticker-cell">${r.ticker}</td>
+      <td>${r.sector}</td>
+      <td class="num">${fmt(r.peso_pct,2)}%</td>
+      <td class="num">${fmtBRL(r.valor_rs)}</td>
+    </tr>`).join('');
+  el.innerHTML = `
+    <div class="risk-var-grid" style="margin-bottom:10px">
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">EXPOSIÇÃO CAMBIAL</div>
+        <div class="risk-metric-val">${fmt(d.total_fx_exposure_pct,1)}%</div>
+        <div class="risk-metric-sub">${fmtBRL(d.total_fx_exposure_rs)}</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">USD +5% / +10%</div>
+        <div class="risk-metric-val positive">+${fmt(s.usd_plus5||0,2)}%</div>
+        <div class="risk-metric-sub">+${fmt(s.usd_plus10||0,2)}% impacto no portfólio</div>
+      </div>
+      <div class="risk-metric-block">
+        <div class="risk-metric-label">USD −5% / −10%</div>
+        <div class="risk-metric-val negative">${fmt(s.usd_minus5||0,2)}%</div>
+        <div class="risk-metric-sub">${fmt(s.usd_minus10||0,2)}% impacto no portfólio</div>
+      </div>
+    </div>
+    ${d.bdrs && d.bdrs.length ? `
+    <div class="table-wrapper" style="max-height:180px;overflow-y:auto">
+    <table class="risk-table">
+      <thead><tr><th>ATIVO</th><th>SETOR</th><th class="num">PESO%</th><th class="num">R$</th></tr></thead>
+      <tbody>${bdrRows}</tbody>
+    </table>
+    </div>` : '<div style="padding:12px;font-size:11px;color:var(--text-muted)">Sem BDRs no portfólio atual</div>'}
+  `;
+}
+
+// ── Rolling Sharpe / Rolling Sortino ─────────────────────────────
+const _rollingRatiosCache = {};
+async function _loadRollingRatios() {
+  const canvas = document.getElementById('risk-rolling-ratios-chart');
+  const badges = document.getElementById('risk-rolling-badges');
+  if (!canvas) return;
+  const key = _riskRollWindow;
+  if (!_rollingRatiosCache[key]) {
+    try {
+      const r = await fetch(`/api/risk/rolling-ratios?roll_window=${key}`);
+      const d = await r.json();
+      if (d.error) {
+        canvas.insertAdjacentHTML('afterend', `<div class="risk-error">${d.error}</div>`);
+        return;
+      }
+      _rollingRatiosCache[key] = d;
+    } catch(e) {
+      canvas.insertAdjacentHTML('afterend', `<div class="risk-error">ERRO: ${e.message}</div>`);
+      return;
+    }
+  }
+  const d = _rollingRatiosCache[key];
+  const series = d.series.filter(p => p.sharpe != null || p.sortino != null);
+  if (!series.length) return;
+  if (badges) {
+    const sc = d.current_sharpe, so = d.current_sortino, as_ = d.avg_sharpe;
+    badges.innerHTML = `
+      <span class="risk-badge">SHARPE: <b class="${colorCls(sc)}">${sc != null ? fmt(sc,2) : '—'}</b></span>
+      <span class="risk-badge">SORTINO: <b class="${colorCls(so)}">${so != null ? fmt(so,2) : '—'}</b></span>
+      <span class="risk-badge dim">MÉD SHARPE: ${as_ != null ? fmt(as_,2) : '—'}</span>
+    `;
+  }
+  if (_riskRollingRatiosChart) _riskRollingRatiosChart.destroy();
+  _riskRollingRatiosChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: series.map(p => p.date),
+      datasets: [{
+        label: 'Sharpe',
+        data:  series.map(p => p.sharpe),
+        borderColor: '#ff8c00',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.2,
+      }, {
+        label: 'Sortino',
+        data:  series.map(p => p.sortino),
+        borderColor: '#00bcd4',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.2,
+      }, {
+        label: 'Zero',
+        data: series.map(() => 0),
+        borderColor: '#333',
+        borderWidth: 1,
+        borderDash: [4, 4],
+        pointRadius: 0,
+        fill: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#888', boxWidth: 12, font: { size: 10 } },
+          filter: item => item.text !== 'Zero',
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.datasetIndex < 2 ? `${ctx.dataset.label}: ${fmt(ctx.parsed.y, 2)}` : null,
+          }
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxTicksLimit: 8,
+            callback: (_, i) => { const p = series[i]; return p ? p.date.slice(0, 7) : ''; },
+            color: '#888',
+          },
+          grid: { color: '#1a1a1a' },
+        },
+        y: {
+          ticks: { color: '#888', callback: v => fmt(v, 2) },
+          grid: { color: '#1a1a1a' },
+        },
+      },
+    },
+  });
+}
+
+// ── Distribuição de Retornos ──────────────────────────────────────
+const _distCache = {};
+async function _loadReturnDist() {
+  const canvas  = document.getElementById('risk-dist-chart');
+  const statsEl = document.getElementById('risk-dist-stats');
+  if (!canvas) return;
+  const key = _riskDistWindow;
+  if (!_distCache[key]) {
+    try {
+      const r = await fetch(`/api/risk/return-distribution?window=${key}`);
+      const d = await r.json();
+      if (d.error) {
+        canvas.insertAdjacentHTML('afterend', `<div class="risk-error">${d.error}</div>`);
+        return;
+      }
+      _distCache[key] = d;
+    } catch(e) {
+      canvas.insertAdjacentHTML('afterend', `<div class="risk-error">ERRO: ${e.message}</div>`);
+      return;
+    }
+  }
+  const d = _distCache[key];
+  if (statsEl) {
+    const skewLabel = d.skewness < -0.5 ? 'assimetria negativa' : d.skewness > 0.5 ? 'assimetria positiva' : 'simétrico';
+    const kurtLabel = d.kurtosis > 1 ? 'fat tails' : d.kurtosis < -1 ? 'thin tails' : 'normal';
+    const skewCls   = d.skewness < -0.3 ? 'negative' : d.skewness > 0.3 ? 'positive' : '';
+    statsEl.innerHTML = `
+      <span class="risk-badge">MÉDIA: <b>${fmt(d.mean_pct,3)}%</b></span>
+      <span class="risk-badge">VOL DIÁRIA: <b>${fmt(d.std_pct,3)}%</b></span>
+      <span class="risk-badge">DIAS +: <b class="positive">${fmt(d.pct_positive,1)}%</b></span>
+      <span class="risk-badge">MELHOR DIA: <b class="positive">+${fmt(d.best_day,2)}%</b></span>
+      <span class="risk-badge">PIOR DIA: <b class="negative">${fmt(d.worst_day,2)}%</b></span>
+      <span class="risk-badge">SKEW: <b class="${skewCls}">${fmt(d.skewness,2)} (${skewLabel})</b></span>
+      <span class="risk-badge">KURTOSE: <b>${fmt(d.kurtosis,2)} (${kurtLabel})</b></span>
+      <span class="risk-badge">P5/P95: <b>${fmt(d.p5,2)}% / +${fmt(d.p95,2)}%</b></span>
+      ${d.ibov_mean_pct != null ? `<span class="risk-badge dim">IBOV MÉD: ${fmt(d.ibov_mean_pct,3)}% | VOL: ${fmt(d.ibov_std_pct,3)}%</span>` : ''}
+    `;
+  }
+  if (_riskDistChart) _riskDistChart.destroy();
+  const datasets = [{
+    label: 'Fundo',
+    data:  d.counts,
+    backgroundColor: 'rgba(255,140,0,0.6)',
+    borderColor: '#ff8c00',
+    borderWidth: 1,
+  }];
+  if (d.ibov_counts) {
+    datasets.push({
+      label: 'IBOV',
+      data:  d.ibov_counts,
+      backgroundColor: 'rgba(100,180,255,0.3)',
+      borderColor: '#64b4ff',
+      borderWidth: 1,
+    });
+  }
+  _riskDistChart = new Chart(canvas, {
+    type: 'bar',
+    data: { labels: d.bin_centers.map(v => fmt(v, 2) + '%'), datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: '#888', boxWidth: 12, font: { size: 10 } },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} dias`,
+          }
+        },
+      },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 12, color: '#888', font: { size: 9 } },
+          grid: { color: '#1a1a1a' },
+        },
+        y: {
+          ticks: { color: '#888', callback: v => v + 'd' },
+          grid: { color: '#1a1a1a' },
+        },
+      },
+    },
+  });
 }

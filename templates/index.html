@@ -794,6 +794,110 @@
     </div>
   </div>
 
+  <!-- ── Row 4: Tracking Error + Sortino/Calmar ── -->
+  <div class="risk-row">
+
+    <!-- Tracking Error & Information Ratio -->
+    <div class="chart-card risk-card" id="risk-te-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">TRACKING ERROR & INFORMATION RATIO</span>
+        <div class="risk-controls">
+          <span class="risk-ctrl-label">JANELA:</span>
+          <button class="bbg-btn risk-btn active" data-te-window="252">252D</button>
+          <button class="bbg-btn risk-btn" data-te-window="126">126D</button>
+          <button class="bbg-btn risk-btn" data-te-window="63">63D</button>
+        </div>
+      </div>
+      <div id="risk-te-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+
+    <!-- Sortino & Calmar -->
+    <div class="chart-card risk-card" id="risk-sortino-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">SORTINO & CALMAR RATIO</span>
+      </div>
+      <div id="risk-sortino-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 5: Upside/Downside Capture + Concentração Setorial ── -->
+  <div class="risk-row">
+
+    <!-- Upside / Downside Capture -->
+    <div class="chart-card risk-card" id="risk-capture-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">UPSIDE / DOWNSIDE CAPTURE vs. IBOV</span>
+        <div class="risk-controls">
+          <span class="risk-ctrl-label">JANELA:</span>
+          <button class="bbg-btn risk-btn active" data-cap-window="252">252D</button>
+          <button class="bbg-btn risk-btn" data-cap-window="126">126D</button>
+          <button class="bbg-btn risk-btn" data-cap-window="total">TOTAL</button>
+        </div>
+      </div>
+      <div id="risk-capture-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+
+    <!-- Concentração Setorial (HHI) -->
+    <div class="chart-card risk-card" id="risk-concentration-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">CONCENTRAÇÃO SETORIAL (HHI)</span>
+      </div>
+      <div id="risk-concentration-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 6: Exposição Cambial + Rolling Sharpe/Sortino ── -->
+  <div class="risk-row">
+
+    <!-- Exposição Cambial (BDRs) -->
+    <div class="chart-card risk-card" id="risk-fx-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">EXPOSIÇÃO CAMBIAL (BDRs)</span>
+      </div>
+      <div id="risk-fx-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+
+    <!-- Rolling Sharpe / Sortino -->
+    <div class="chart-card risk-card" id="risk-rolling-ratios-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">ROLLING SHARPE / SORTINO</span>
+        <div class="risk-badge-row" id="risk-rolling-badges"></div>
+        <div class="risk-controls" style="margin-top:4px">
+          <button class="bbg-btn risk-btn active" data-roll-window="63">63D</button>
+          <button class="bbg-btn risk-btn" data-roll-window="126">126D</button>
+        </div>
+      </div>
+      <canvas id="risk-rolling-ratios-chart" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Row 7: Distribuição de Retornos (full width) ── -->
+  <div class="risk-row">
+    <div class="chart-card risk-card" id="risk-dist-card" style="flex:1 1 100%">
+      <div class="chart-card-header">
+        <span class="chart-card-title">DISTRIBUIÇÃO DE RETORNOS DIÁRIOS</span>
+        <div class="risk-controls">
+          <span class="risk-ctrl-label">JANELA:</span>
+          <button class="bbg-btn risk-btn active" data-dist-window="252">252D</button>
+          <button class="bbg-btn risk-btn" data-dist-window="126">126D</button>
+          <button class="bbg-btn risk-btn" data-dist-window="63">63D</button>
+        </div>
+      </div>
+      <div id="risk-dist-stats" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 12px 0;font-size:10px"></div>
+      <canvas id="risk-dist-chart" height="120"></canvas>
+    </div>
+  </div>
+
 </div>
 {% endif %}
 
