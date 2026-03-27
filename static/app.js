@@ -140,7 +140,7 @@ function renderStatsBar() {
     }
   }
 
-  setVal('s-nav',    fmtBRL(d.total_value));
+  setVal('s-nav',    fmtBRL(q.nav_total ?? d.total_value));
   setVal('s-upside', d.weighted_upside != null ? sign(d.weighted_upside)+fmt(d.weighted_upside,2)+'%' : '—', colorCls(d.weighted_upside));
   setVal('s-beta',   d.weighted_beta   != null ? fmt(d.weighted_beta,2) : '—');
 
