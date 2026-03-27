@@ -1339,20 +1339,24 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 .fin-period-btn {
   background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  border: 1px solid var(--amber);
+  color: var(--amber);
   font-family: var(--mono);
   font-size: 10px;
-  padding: 4px 10px;
+  padding: 4px 12px;
   cursor: pointer;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
 }
 .fin-period-btn:first-child { border-right: none; }
+.fin-period-btn:hover { opacity: 0.8; }
 .fin-period-btn.active {
   background: var(--amber);
   color: #000;
   border-color: var(--amber);
   font-weight: bold;
+  opacity: 1;
 }
 
 /* Statement sub-tabs */
@@ -1365,19 +1369,22 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: var(--text-muted);
+  color: var(--amber);
   font-family: var(--mono);
   font-size: 11px;
   padding: 6px 14px;
   cursor: pointer;
   letter-spacing: 0.5px;
   margin-bottom: -1px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
 }
 .fin-stmt-btn.active {
   color: var(--amber);
   border-bottom-color: var(--amber);
+  opacity: 1;
 }
-.fin-stmt-btn:hover { color: var(--text); }
+.fin-stmt-btn:hover { opacity: 0.75; }
 
 /* Currency note */
 .fin-currency-note {

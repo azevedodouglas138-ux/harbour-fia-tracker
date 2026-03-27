@@ -3278,7 +3278,7 @@ function _finPopulateTickers() {
   if (portfolioData && portfolioData.rows) {
     portfolioData.rows.forEach(r => {
       const opt = document.createElement('option');
-      opt.value       = r.ticker;
+      opt.value       = r.yahoo_ticker;
       opt.textContent = r.ticker;
       sel.appendChild(opt);
     });
