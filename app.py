@@ -1439,6 +1439,8 @@ def api_macro():
     today   = datetime.now()
     s60     = (today - timedelta(days=60)).strftime("%d/%m/%Y")
     s14m    = (today - timedelta(days=430)).strftime("%d/%m/%Y")
+    s2y     = (today - timedelta(days=730)).strftime("%d/%m/%Y")
+    jan1    = datetime(today.year, 1, 1).strftime("%d/%m/%Y")
     today_s = today.strftime("%d/%m/%Y")
 
     def bcb_series(serie, start):
@@ -1448,6 +1450,38 @@ def api_macro():
         r.raise_for_status()
         return r.json()
 
+    def focus_anual(indicador):
+        """Busca expectativas anuais do Focus para o indicador dado.
+        Retorna dict {ano: {mediana, minimo, maximo, respondentes}} para
+        o ano corrente e o seguinte."""
+        url = ("https://olinda.bcb.gov.br/olinda/servico/Expectativas"
+               "/versao/v1/odata/ExpectativaMercadoAnuais")
+        ano_atual = str(today.year)
+        ano_prox  = str(today.year + 1)
+        params = {
+            "$filter":   f"Indicador eq '{indicador}'",
+            "$format":   "json",
+            "$select":   "DataReferencia,Data,Mediana,Minimo,Maximo,numeroRespondentes",
+            "$orderby":  "Data desc",
+            "$top":      "40",
+        }
+        r = req.get(url, params=params, timeout=12)
+        r.raise_for_status()
+        rows = r.json().get("value", [])
+        res = {}
+        for ano in [ano_atual, ano_prox]:
+            for row in rows:
+                if str(row.get("DataReferencia", "")) == ano:
+                    res[ano] = {
+                        "mediana":      row.get("Mediana"),
+                        "minimo":       row.get("Minimo"),
+                        "maximo":       row.get("Maximo"),
+                        "respondentes": row.get("numeroRespondentes"),
+                    }
+                    break
+        return res
+
+    # ── SELIC Meta (série 432) ────────────────────────────────────────
     try:
         data = bcb_series(432, s60)
         if isinstance(data, list) and data:
@@ -1459,6 +1493,26 @@ def api_macro():
     except Exception:
         pass
 
+    # ── SELIC Focus ───────────────────────────────────────────────────
+    try:
+        result["selic_focus"] = focus_anual("Meta para taxa over-selic")
+    except Exception:
+        pass
+
+    # ── CDI acumulado no ano (série 12 — taxa over anualizada diária) ─
+    try:
+        data_cdi = bcb_series(12, jan1)
+        if isinstance(data_cdi, list) and data_cdi:
+            acc_cdi = 1.0
+            for item in data_cdi:
+                annual = float(item["valor"]) / 100
+                daily  = (1 + annual) ** (1 / 252) - 1
+                acc_cdi *= (1 + daily)
+            result["cdi_ytd"] = {"valor": round((acc_cdi - 1) * 100, 2)}
+    except Exception:
+        pass
+
+    # ── IPCA 12m (série 433) ──────────────────────────────────────────
     try:
         data = bcb_series(433, s14m)
         if isinstance(data, list) and len(data) >= 12:
@@ -1474,7 +1528,78 @@ def api_macro():
     except Exception:
         pass
 
-    for key, ticker in [("usdbrl", "BRL=X"), ("brent", "BZ=F"), ("sp500", "^GSPC")]:
+    # ── IPCA Focus ────────────────────────────────────────────────────
+    try:
+        result["ipca_focus"] = focus_anual("IPCA")
+    except Exception:
+        pass
+
+    # ── IPCA Serviços (série 10844) ───────────────────────────────────
+    try:
+        data = bcb_series(10844, s14m)
+        if isinstance(data, list) and data:
+            result["ipca_servicos"] = {
+                "valor": float(data[-1]["valor"]),
+                "data":  data[-1]["data"],
+                "hist":  [{"data": d["data"], "valor": float(d["valor"])} for d in data[-24:]],
+            }
+    except Exception:
+        pass
+
+    # ── USD/BRL oficial BCB (série 1) ─────────────────────────────────
+    try:
+        data = bcb_series(1, s60)
+        if isinstance(data, list) and len(data) >= 2:
+            val  = float(data[-1]["valor"])
+            prev = float(data[-2]["valor"])
+            var  = round((val - prev) / prev * 100, 2) if prev else None
+            result["usdbrl"] = {
+                "valor":   round(val, 4),
+                "var_pct": var,
+                "data":    data[-1]["data"],
+                "hist":    [{"data": d["data"], "valor": float(d["valor"])} for d in data[-30:]],
+            }
+    except Exception:
+        pass
+
+    # ── USD/BRL Focus ─────────────────────────────────────────────────
+    try:
+        result["usdbrl_focus"] = focus_anual("Câmbio")
+    except Exception:
+        pass
+
+    # ── PIB Focus ─────────────────────────────────────────────────────
+    try:
+        result["pib_focus"] = focus_anual("PIB Total")
+    except Exception:
+        pass
+
+    # ── Dívida Bruta do Governo Geral % PIB (série 13762) ────────────
+    try:
+        data = bcb_series(13762, s2y)
+        if isinstance(data, list) and data:
+            result["divida_bruta"] = {
+                "valor": float(data[-1]["valor"]),
+                "data":  data[-1]["data"],
+                "hist":  [{"data": d["data"], "valor": float(d["valor"])} for d in data[-24:]],
+            }
+    except Exception:
+        pass
+
+    # ── Balança Comercial saldo mensal (série 22707) ──────────────────
+    try:
+        data = bcb_series(22707, s2y)
+        if isinstance(data, list) and data:
+            result["balanca"] = {
+                "valor": float(data[-1]["valor"]),
+                "data":  data[-1]["data"],
+                "hist":  [{"data": d["data"], "valor": float(d["valor"])} for d in data[-24:]],
+            }
+    except Exception:
+        pass
+
+    # ── Brent e S&P 500 (Yahoo Finance) ──────────────────────────────
+    for key, ticker in [("brent", "BZ=F"), ("sp500", "^GSPC")]:
         try:
             fi    = yf.Ticker(ticker).fast_info
             price = fi.last_price

@@ -1812,23 +1812,55 @@ function renderMacro(data) {
   if (!grid) return;
   if (loading) loading.classList.add('hidden');
 
-  const CARDS = [
-    { key: 'selic_meta', label: 'SELIC META',  suffix: '%',  decimals: 2, color: '#ff8c00' },
-    { key: 'ipca_12m',   label: 'IPCA 12M',    suffix: '%',  decimals: 2, color: '#ffcc00' },
-    { key: 'usdbrl',     label: 'USD/BRL',      suffix: '',   decimals: 2, color: '#00aacc' },
-    { key: 'brent',      label: 'BRENT (USD)',  suffix: '',   decimals: 2, color: '#888888' },
-    { key: 'sp500',      label: 'S&P 500',      suffix: '',   decimals: 0, color: '#ff4488' },
+  const SECTIONS = [
+    {
+      title: 'POLÍTICA MONETÁRIA',
+      cards: [
+        { key: 'selic_meta',  label: 'SELIC META',  type: 'realized', suffix: '%', decimals: 2, color: '#ff8c00' },
+        { key: 'selic_focus', label: 'SELIC FOCUS', type: 'focus',    suffix: '%', decimals: 2 },
+        { key: 'cdi_ytd',     label: 'CDI ANO',     type: 'simple',   suffix: '%', decimals: 2 },
+      ],
+    },
+    {
+      title: 'INFLAÇÃO',
+      cards: [
+        { key: 'ipca_12m',      label: 'IPCA 12M',      type: 'realized', suffix: '%', decimals: 2, color: '#ffcc00' },
+        { key: 'ipca_focus',    label: 'IPCA FOCUS',    type: 'focus',    suffix: '%', decimals: 2 },
+        { key: 'ipca_servicos', label: 'IPCA SERVIÇOS', type: 'realized', suffix: '%', decimals: 2, color: '#ffaa44' },
+      ],
+    },
+    {
+      title: 'CÂMBIO & ATIVIDADE',
+      cards: [
+        { key: 'usdbrl',       label: 'USD/BRL',      type: 'realized', suffix: '',  decimals: 4, color: '#00aacc' },
+        { key: 'usdbrl_focus', label: 'USD FOCUS',    type: 'focus',    suffix: '',  decimals: 2 },
+        { key: 'pib_focus',    label: 'PIB FOCUS',    type: 'focus',    suffix: '%', decimals: 1 },
+        { key: 'divida_bruta', label: 'DÍVIDA/PIB',   type: 'realized', suffix: '%', decimals: 1, color: '#cc4444' },
+        { key: 'balanca',      label: 'BALANÇA COM.', type: 'realized', suffix: '',  decimals: 0, color: '#44cc88' },
+      ],
+    },
+    {
+      title: 'MERCADOS EXTERNOS',
+      cards: [
+        { key: 'brent', label: 'BRENT (USD)', type: 'realized', suffix: '', decimals: 2, color: '#888888' },
+        { key: 'sp500', label: 'S&P 500',     type: 'realized', suffix: '', decimals: 0, color: '#ff4488' },
+      ],
+    },
   ];
 
+  // Destroy existing sparklines
+  Object.keys(_macroSparklines).forEach(id => {
+    if (_macroSparklines[id]) { _macroSparklines[id].destroy(); delete _macroSparklines[id]; }
+  });
   grid.innerHTML = '';
-  CARDS.forEach(card => {
-    const d = data[card.key];
-    if (!d) return;
-    const val    = d.valor;
-    const varPct = d.var_pct;
+
+  // Helper: build a "realized" card (current value + var_pct + sparkline)
+  function buildRealizedCard(card, d) {
     const div = document.createElement('div');
     div.className = 'macro-card';
     const canvasId = `macro-spark-${card.key}`;
+    const val    = d.valor;
+    const varPct = d.var_pct != null ? d.var_pct : null;
     div.innerHTML = `
       <div class="macro-card-label">${card.label}</div>
       <div class="macro-card-value">${val != null ? fmt(val, card.decimals) + card.suffix : '—'}</div>
@@ -1836,14 +1868,10 @@ function renderMacro(data) {
         ${varPct != null ? (varPct >= 0 ? '▲' : '▼') + ' ' + fmt(Math.abs(varPct), 2) + '%' : ''}
       </div>
       <canvas id="${canvasId}" class="macro-spark" height="40"></canvas>`;
-    grid.appendChild(div);
-
-    // Sparkline
     if (d.hist && d.hist.length) {
       requestAnimationFrame(() => {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
-        if (_macroSparklines[canvasId]) _macroSparklines[canvasId].destroy();
         _macroSparklines[canvasId] = new Chart(canvas.getContext('2d'), {
           type: 'line',
           data: {
@@ -1854,14 +1882,72 @@ function renderMacro(data) {
           options: {
             responsive: false, animation: false,
             plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: {
-              x: { display: false },
-              y: { display: false },
-            },
+            scales: { x: { display: false }, y: { display: false } },
           },
         });
       });
     }
+    return div;
+  }
+
+  // Helper: build a "focus" card (two rows: ano atual + próximo, mediana + faixa)
+  function buildFocusCard(card, d) {
+    const div = document.createElement('div');
+    div.className = 'macro-card macro-card-focus';
+    const anos = Object.keys(d).sort();
+    let rowsHtml = '';
+    anos.forEach(ano => {
+      const f = d[ano];
+      const med = f.mediana != null ? fmt(f.mediana, card.decimals) + card.suffix : '—';
+      const range = (f.minimo != null && f.maximo != null)
+        ? `${fmt(f.minimo, card.decimals)}–${fmt(f.maximo, card.decimals)}${card.suffix}`
+        : '';
+      rowsHtml += `<div class="macro-focus-row">
+        <span class="macro-focus-year">${ano}</span>
+        <span class="macro-focus-med">${med}</span>
+        ${range ? `<span class="macro-focus-range"> (${range})</span>` : ''}
+      </div>`;
+    });
+    div.innerHTML = `
+      <div class="macro-card-label">${card.label}</div>
+      <div class="macro-focus-body">${rowsHtml || '<span class="macro-focus-range">—</span>'}</div>`;
+    return div;
+  }
+
+  // Helper: build a "simple" card (just value, no var_pct, no sparkline)
+  function buildSimpleCard(card, d) {
+    const div = document.createElement('div');
+    div.className = 'macro-card';
+    const val = d.valor;
+    div.innerHTML = `
+      <div class="macro-card-label">${card.label}</div>
+      <div class="macro-card-value">${val != null ? fmt(val, card.decimals) + card.suffix : '—'}</div>`;
+    return div;
+  }
+
+  SECTIONS.forEach(section => {
+    // Filter to cards that have data
+    const visibleCards = section.cards.filter(c => data[c.key] != null);
+    if (!visibleCards.length) return;
+
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'macro-section';
+    sectionEl.innerHTML = `<div class="macro-section-title">${section.title}</div>`;
+
+    const sectionGrid = document.createElement('div');
+    sectionGrid.className = 'macro-grid';
+
+    visibleCards.forEach(card => {
+      const d = data[card.key];
+      let cardEl;
+      if (card.type === 'focus')    cardEl = buildFocusCard(card, d);
+      else if (card.type === 'simple') cardEl = buildSimpleCard(card, d);
+      else                          cardEl = buildRealizedCard(card, d);
+      sectionGrid.appendChild(cardEl);
+    });
+
+    sectionEl.appendChild(sectionGrid);
+    grid.appendChild(sectionEl);
   });
 }
 
