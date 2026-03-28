@@ -87,7 +87,7 @@
       "yahoo_ticker": "RAPT4.SA",
       "categoria": "Acao",
       "quantidade": 100.0,
-      "liq_diaria_mm": 30.0,
+      "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 9.0
     },
