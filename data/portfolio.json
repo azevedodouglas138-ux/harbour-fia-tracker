@@ -68,10 +68,10 @@
       "ticker": "SIMH3",
       "yahoo_ticker": "SIMH3.SA",
       "categoria": "Acao",
-      "quantidade": 100,
-      "liq_diaria_mm": 30,
-      "lucro_mi_26": 800,
-      "preco_alvo": 18
+      "quantidade": 100.0,
+      "liq_diaria_mm": null,
+      "lucro_mi_26": 800.0,
+      "preco_alvo": 18.0
     },
     {
       "ticker": "NVDC34",
