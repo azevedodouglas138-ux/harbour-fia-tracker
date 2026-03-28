@@ -3333,3 +3333,22 @@ function loadFinancialsTab() {
     _finFetch(_finCurrentTicker, _finCurrentPeriod, _finCurrentStatement);
   }
 }
+
+// ── Column info tooltip ───────────────────────────────────────────
+(function () {
+  const tip = document.getElementById('col-tooltip');
+  if (!tip) return;
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('.col-info');
+    if (!el) return;
+    tip.textContent = el.dataset.tip || '';
+    const rect = el.getBoundingClientRect();
+    const left = Math.min(rect.right - 260, window.innerWidth - 270);
+    tip.style.left = Math.max(6, left) + 'px';
+    tip.style.top  = (rect.bottom + 6) + 'px';
+    tip.style.display = 'block';
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest('.col-info')) tip.style.display = 'none';
+  });
+})();

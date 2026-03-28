@@ -246,25 +246,24 @@ td.upside-neg  { color: var(--red); }
 .field-hint    { display: block; color: #777; font-size: 10px; margin-top: 3px; font-weight: 400; }
 
 .col-info {
-  display: inline-block; position: relative;
+  display: inline-block;
   font-size: 9px; font-weight: 400; opacity: 0.5;
   cursor: default; vertical-align: super;
   user-select: none;
 }
 .col-info:hover { opacity: 1; }
-.col-info::after {
-  content: attr(data-tip);
-  position: absolute; bottom: calc(100% + 6px); right: 0;
+
+#col-tooltip {
+  display: none;
+  position: fixed;
   width: 260px; padding: 8px 10px;
-  background: #1a1a1a; border: 1px solid #333;
+  background: #1a1a1a; border: 1px solid #444;
   color: #ccc; font-size: 10px; font-weight: 400;
   line-height: 1.5; border-radius: 4px;
   white-space: normal; text-align: left;
-  pointer-events: none; opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 999;
+  pointer-events: none;
+  z-index: 9999;
 }
-.col-info:hover::after { opacity: 1; }
 
 .range-bar  { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
 .range-track { width: 44px; height: 2px; background: var(--border2); border-radius: 1px; }
