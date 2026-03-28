@@ -51,7 +51,7 @@
       "yahoo_ticker": "VTRU3.SA",
       "categoria": "Acao",
       "quantidade": 50000.0,
-      "liq_diaria_mm": -10.0,
+      "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 25.0
     },
