@@ -33,7 +33,7 @@
       "yahoo_ticker": "BMEB4.SA",
       "categoria": "Acao",
       "quantidade": 28000.0,
-      "liq_diaria_mm": -10.0,
+      "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 150.0
     },
