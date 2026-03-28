@@ -59,10 +59,10 @@
       "ticker": "TTEN3",
       "yahoo_ticker": "TTEN3.SA",
       "categoria": "Acao",
-      "quantidade": 100,
-      "liq_diaria_mm": -30,
-      "lucro_mi_26": 700,
-      "preco_alvo": 24
+      "quantidade": 100.0,
+      "liq_diaria_mm": null,
+      "lucro_mi_26": 700.0,
+      "preco_alvo": 24.0
     },
     {
       "ticker": "SIMH3",
