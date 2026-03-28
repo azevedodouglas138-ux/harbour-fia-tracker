@@ -265,6 +265,7 @@ def fetch_fundamentals(tickers):
                 "enterprise_to_ebitda": _round(ev_ebitda, 1),
                 "return_on_equity":    round(roe * 100, 1) if roe is not None else None,
                 "sector":              SECTOR_PT.get(sector_en, sector_en) if sector_en else None,
+                "average_volume":      info.get("averageVolume"),
             }
         except Exception as e:
             result[ticker] = {"error": str(e)}
@@ -274,7 +275,7 @@ def get_cached_fundamentals(tickers):
     cache = load_cache()
     now = time.time()
     # Invalida se expirado OU se peg_ratio ainda não está no cache (campo novo)
-    if any(now > cache.get(t, {}).get("expires_at", 0) or "peg_ratio" not in cache.get(t, {}) for t in tickers):
+    if any(now > cache.get(t, {}).get("expires_at", 0) or "peg_ratio" not in cache.get(t, {}) or "average_volume" not in cache.get(t, {}) for t in tickers):
         fresh = fetch_fundamentals(tickers)
         for t, d in fresh.items():
             cache[t] = {**d, "expires_at": now + FUNDAMENTALS_TTL}
@@ -499,6 +500,9 @@ def calculate_quota(rows, fund_config, prices):
 # ---------------------------------------------------------------------------
 
 def build_portfolio_response(portfolio, prices, fundamentals):
+    import math
+    _PARTICIPATION_RATE = 0.20  # 20% do ADV — padrão de mercado para fundos
+
     rows = []
     total_value = 0.0
     for pos in portfolio["positions"]:
@@ -512,10 +516,26 @@ def build_portfolio_response(portfolio, prices, fundamentals):
         pa    = pos.get("preco_alvo")
         upside = round((pa / price - 1) * 100, 2) if price and pa and price > 0 else None
         mc     = fund.get("market_cap")
+
+        avg_vol = fund.get("average_volume")
+        avg_daily_vol_rs = round(avg_vol * price, 2) if avg_vol and price else None
+        avg_daily_vol_mm = round(avg_daily_vol_rs / 1e6, 1) if avg_daily_vol_rs else None
+
+        manual_score = pos.get("liq_diaria_mm")
+        if manual_score is None and avg_daily_vol_rs and vl and avg_daily_vol_rs > 0:
+            effective_daily = avg_daily_vol_rs * _PARTICIPATION_RATE
+            days_calc = vl / effective_daily
+            liq_score = round(max(-30.0, min(30.0, 10.0 - 10.0 * math.log2(max(days_calc, 0.001)))), 1)
+            liq_auto  = True
+        else:
+            liq_score = manual_score
+            liq_auto  = False
+
         rows.append({
             "ticker": pos["ticker"], "yahoo_ticker": yahoo,
             "categoria": pos.get("categoria", "Acao"), "quantidade": qtde,
-            "liq_diaria_mm": pos.get("liq_diaria_mm"),
+            "liq_diaria_mm": liq_score, "liq_auto": liq_auto,
+            "avg_daily_vol_mm": avg_daily_vol_mm,
             "lucro_mi_26":   pos.get("lucro_mi_26"),
             "preco_alvo": pa, "preco": price,
             "var_dia_pct": pd_.get("change_pct"),

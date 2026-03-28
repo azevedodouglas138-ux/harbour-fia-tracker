@@ -168,8 +168,11 @@ function renderTable() {
     tr.dataset.ticker = row.ticker;
 
     const liq = row.liq_diaria_mm;
-    const liqHtml = liq == null ? '—'
-      : `<span class="liq-badge ${liq>=0?'liq-buy':'liq-sell'}">${liq>=0?'+':''}${liq}</span>`;
+    const vol = row.avg_daily_vol_mm;
+    const volStr   = vol != null ? `<br><small class="liq-vol-hint">R$${vol}MM/dia</small>` : '';
+    const autoMark = row.liq_auto   ? `<sup class="liq-auto-mark">auto</sup>` : '';
+    const liqHtml  = liq == null ? '—'
+      : `<span class="liq-badge ${liq>=0?'liq-buy':'liq-sell'}">${liq>=0?'+':''}${liq}${autoMark}</span>${volStr}`;
 
     let rangeHtml = '—';
     if (row.week_high && row.week_low && row.preco) {
@@ -1478,9 +1481,16 @@ function openEditModal(row) {
   editingTicker = row.ticker;
   document.getElementById('edit-modal-ticker').textContent = row.ticker;
   document.getElementById('edit-quantidade').value  = row.quantidade ?? '';
-  document.getElementById('edit-liq').value         = row.liq_diaria_mm ?? '';
+  document.getElementById('edit-liq').value         = row.liq_auto ? '' : (row.liq_diaria_mm ?? '');
   document.getElementById('edit-lucro').value       = row.lucro_mi_26 ?? '';
   document.getElementById('edit-preco-alvo').value  = row.preco_alvo ?? '';
+  const hint = document.getElementById('edit-liq-hint');
+  if (row.avg_daily_vol_mm != null) {
+    const autoStr = row.liq_auto ? ` • auto: ${row.liq_diaria_mm > 0 ? '+' : ''}${row.liq_diaria_mm}` : '';
+    hint.textContent = `Vol. médio 3m: R$${row.avg_daily_vol_mm}MM/dia${autoStr} — deixe vazio p/ automático`;
+  } else {
+    hint.textContent = 'Volume não disponível no yfinance';
+  }
   document.getElementById('edit-modal').classList.remove('hidden');
 }
 const closeEditModal = () => { document.getElementById('edit-modal').classList.add('hidden'); editingTicker = null; };
