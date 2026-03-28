@@ -42,7 +42,7 @@
       "yahoo_ticker": "TEND3.SA",
       "categoria": "Acao",
       "quantidade": 45000.0,
-      "liq_diaria_mm": 30.0,
+      "liq_diaria_mm": null,
       "lucro_mi_26": 400.0,
       "preco_alvo": 46.0
     },
