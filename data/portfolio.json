@@ -50,10 +50,10 @@
       "ticker": "VTRU3",
       "yahoo_ticker": "VTRU3.SA",
       "categoria": "Acao",
-      "quantidade": 65000,
-      "liq_diaria_mm": -10,
+      "quantidade": 50000.0,
+      "liq_diaria_mm": -10.0,
       "lucro_mi_26": null,
-      "preco_alvo": 25
+      "preco_alvo": 25.0
     },
     {
       "ticker": "TTEN3",
