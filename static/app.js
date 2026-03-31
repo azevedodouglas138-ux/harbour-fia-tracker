@@ -3144,7 +3144,14 @@ async function _loadReturnDist() {
       ${d.ibov_mean_pct != null ? `<span class="risk-badge dim">IBOV MÉD: ${fmt(d.ibov_mean_pct,3)}% | VOL: ${fmt(d.ibov_std_pct,3)}%</span>` : ''}
     `;
   }
-  if (_riskDistChart) _riskDistChart.destroy();
+  if (_riskDistChart) {
+    _riskDistChart.destroy();
+    _riskDistChart = null;
+  }
+  canvas.removeAttribute('width');
+  canvas.removeAttribute('height');
+  canvas.style.width = '';
+  canvas.style.height = '';
   const datasets = [{
     label: 'Fundo',
     data:  d.counts,
@@ -3166,6 +3173,7 @@ async function _loadReturnDist() {
     data: { labels: d.bin_centers.map(v => fmt(v, 2) + '%'), datasets },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
           display: true,

@@ -1108,6 +1108,11 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .risk-row:last-child { padding-bottom: 10px; }
 @media (max-width: 900px) { .risk-row { grid-template-columns: 1fr; } }
 
+#risk-dist-chart {
+  height: 200px;
+  width: 100%;
+}
+
 .risk-card {
   min-height: 220px;
   display: flex;
