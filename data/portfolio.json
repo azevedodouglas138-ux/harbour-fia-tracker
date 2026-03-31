@@ -117,6 +117,15 @@
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 200.0
+    },
+    {
+      "ticker": "CSNA3",
+      "yahoo_ticker": "CSNA3.SA",
+      "categoria": "Acao",
+      "quantidade": 1000.0,
+      "liq_diaria_mm": null,
+      "lucro_mi_26": null,
+      "preco_alvo": 11.0
     }
   ]
 }
