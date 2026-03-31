@@ -2794,17 +2794,17 @@ async function _loadTrackingError() {
   el.innerHTML = `
     <div class="risk-var-grid">
       <div class="risk-metric-block">
-        <div class="risk-metric-label">TRACKING ERROR (a.a.)</div>
+        <div class="risk-metric-label">TRACKING ERROR (a.a.)<span class="risk-metric-info">i<span class="risk-metric-tooltip">Desvio padrão anualizado dos retornos diários ativos (fundo − IBOV). Mede o quanto o portfólio desvia do benchmark. TE alto indica gestão mais ativa e menos correlacionada com o índice.</span></span></div>
         <div class="risk-metric-val">${fmt(d.tracking_error,2)}%</div>
         <div class="risk-metric-sub">Janela: ${d.n_dias}d</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">INFORMATION RATIO</div>
+        <div class="risk-metric-label">INFORMATION RATIO<span class="risk-metric-info">i<span class="risk-metric-tooltip">Retorno ativo anualizado dividido pelo Tracking Error. Mede a eficiência do gestor: quanto alpha foi gerado por unidade de risco ativo. IR &gt; 0,5 = bom · IR &gt; 1,0 = excelente.</span></span></div>
         <div class="risk-metric-val ${irCls}">${d.information_ratio != null ? fmt(d.information_ratio,2) : '—'}</div>
         <div class="risk-metric-sub">Retorno ativo / TE</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">RETORNO ATIVO (a.a.)</div>
+        <div class="risk-metric-label">RETORNO ATIVO (a.a.)<span class="risk-metric-info">i<span class="risk-metric-tooltip">Diferença entre o retorno anualizado do fundo e o retorno anualizado do IBOV no período selecionado. Também chamado de Alpha — quanto o fundo ganhou (ou perdeu) além do benchmark.</span></span></div>
         <div class="risk-metric-val ${retCls}">${sign(d.retorno_ativo_anual)}${fmt(Math.abs(d.retorno_ativo_anual),2)}%</div>
         <div class="risk-metric-sub">vs. IBOV</div>
       </div>

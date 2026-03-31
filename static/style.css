@@ -1172,11 +1172,56 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   flex: 1;
 }
 .risk-metric-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 9px;
   color: var(--text-muted);
   letter-spacing: 0.8px;
   margin-bottom: 4px;
 }
+.risk-metric-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--text-muted);
+  border-radius: 50%;
+  font-size: 8px;
+  color: var(--text-muted);
+  cursor: default;
+  user-select: none;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.risk-metric-info:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.risk-metric-info .risk-metric-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  border: 1px solid #444;
+  color: #ccc;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 8px 10px;
+  width: 220px;
+  border-radius: 3px;
+  white-space: normal;
+  text-align: left;
+  pointer-events: none;
+  z-index: 9999;
+  letter-spacing: 0;
+}
+.risk-metric-info:hover .risk-metric-tooltip { display: block; }
 .risk-metric-val {
   font-size: 18px;
   font-weight: 700;
