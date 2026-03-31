@@ -1366,21 +1366,31 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   gap: 0;
 }
 .fin-period-btn {
-  background: transparent;
-  border: 1px solid var(--amber);
-  color: var(--amber);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--orange-text);
   font-family: var(--mono);
   font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
   padding: 4px 12px;
   cursor: pointer;
-  letter-spacing: 1px;
+  opacity: 0.55;
+  transition: all .12s;
 }
 .fin-period-btn:first-child { border-right: none; }
-.fin-period-btn:hover { background: rgba(255,140,0,0.15); }
+.fin-period-btn:hover {
+  background: var(--orange-dim);
+  border-color: var(--orange);
+  color: var(--orange);
+  opacity: 1;
+}
 .fin-period-btn.active {
-  background: var(--amber);
-  color: #000;
-  font-weight: bold;
+  border-color: var(--orange);
+  color: var(--orange);
+  background: transparent;
+  font-weight: 700;
+  opacity: 1;
 }
 
 /* Statement sub-tabs */
@@ -1402,10 +1412,10 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   margin-bottom: -1px;
 }
 .fin-stmt-btn.active {
-  color: var(--amber);
-  border-bottom-color: var(--amber);
+  color: var(--orange);
+  border-bottom-color: var(--orange);
 }
-.fin-stmt-btn:hover { color: var(--amber); }
+.fin-stmt-btn:hover { color: var(--orange); }
 
 /* Currency note */
 .fin-currency-note {
