@@ -116,6 +116,7 @@ def load_fund_config():
         "num_cotas": None, "caixa": 0,
         "proventos_a_receber": 0, "custos_provisionados": 0,
         "performance_fee_rate": 20, "performance_fee_acumulada_rs": 0,
+        "descricao_fundo": "",
     }
     if not os.path.exists(FUND_CONFIG_FILE):
         return defaults
@@ -152,15 +153,16 @@ def get_effective_fund_config():
     return config
 
 _VIEWER_CONFIG_DEFAULTS = {
-    "tab_table":      True,
-    "tab_charts":     True,
-    "tab_config":     True,
-    "tab_history":    True,
-    "tab_macro":      True,
-    "tab_watchlist":  False,
-    "tab_screener":   False,
-    "tab_risk":       True,
-    "tab_financials": True,
+    "tab_table":         True,
+    "tab_charts":        True,
+    "tab_config":        True,
+    "tab_history":       True,
+    "tab_macro":         True,
+    "tab_watchlist":     False,
+    "tab_screener":      False,
+    "tab_risk":          True,
+    "tab_financials":    True,
+    "tab_apresentacao":  True,
 }
 
 def load_viewer_config():
@@ -707,11 +709,13 @@ def api_get_fund_config(): return jsonify(load_fund_config())
 def api_update_fund_config():
     payload = request.json
     config  = load_fund_config()
+    _string_keys = {"data_fechamento", "descricao_fundo"}
     for key in ["quota_fechamento","data_fechamento","num_cotas","caixa",
-                "proventos_a_receber","custos_provisionados","performance_fee_rate","performance_fee_acumulada_rs"]:
+                "proventos_a_receber","custos_provisionados","performance_fee_rate",
+                "performance_fee_acumulada_rs","descricao_fundo"]:
         if key not in payload: continue
         val = payload[key]
-        if key == "data_fechamento":
+        if key in _string_keys:
             config[key] = val
         elif val in (None, ""):
             config[key] = None
@@ -754,6 +758,250 @@ def api_export_excel():
     filename = f"harbour_fia_{datetime.now().strftime('%Y%m%d')}.xlsx"
     return send_file(buf, as_attachment=True, download_name=filename,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.route("/api/export/pptx", methods=["POST"])
+@require_admin
+def api_export_pptx():
+    from pptx import Presentation
+    from pptx.util import Cm, Pt
+    from pptx.dml.color import RGBColor
+    from pptx.enum.text import PP_ALIGN
+    import base64 as _b64, io as _io
+
+    body          = request.json or {}
+    images        = body.get("images", {})
+    fund_name     = body.get("fund_name", "HARBOUR IAT FIF AÇÕES RL")
+    ref_date      = body.get("ref_date", "")
+    descricao     = body.get("descricao", "")
+    stats         = body.get("stats", {})
+    indicators    = body.get("indicators", {})
+    annual_years  = body.get("annual_years", [])
+    risk          = body.get("risk", {})
+    concentration = body.get("concentration", {})
+    liquidity     = body.get("liquidity", {})
+    dist          = body.get("dist", {})
+
+    prs = Presentation()
+    prs.slide_width  = Cm(33.87)
+    prs.slide_height = Cm(19.05)
+    blank = prs.slide_layouts[6]
+
+    BG     = RGBColor(0x0D, 0x0D, 0x0D)
+    ORANGE = RGBColor(0xFF, 0x8C, 0x00)
+    WHITE  = RGBColor(0xFF, 0xFF, 0xFF)
+    MUTED  = RGBColor(0x88, 0x88, 0x88)
+    SURF   = RGBColor(0x1E, 0x1E, 0x1E)
+    GREEN_ = RGBColor(0x00, 0xCC, 0x44)
+    RED_   = RGBColor(0xFF, 0x33, 0x33)
+    BLACK  = RGBColor(0x00, 0x00, 0x00)
+
+    def _bg(slide):
+        s = slide.shapes.add_shape(1, 0, 0, prs.slide_width, prs.slide_height)
+        s.fill.solid(); s.fill.fore_color.rgb = BG; s.line.fill.background()
+
+    def _rect(slide, l, t, w, h, color):
+        s = slide.shapes.add_shape(1, l, t, w, h)
+        s.fill.solid(); s.fill.fore_color.rgb = color; s.line.fill.background()
+
+    def _txt(slide, text, l, t, w, h, size=11, bold=False, color=WHITE,
+             align=PP_ALIGN.LEFT, italic=False):
+        tf = slide.shapes.add_textbox(l, t, w, h).text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]; p.alignment = align
+        run = p.add_run(); run.text = str(text)
+        run.font.size = Pt(size); run.font.bold = bold
+        run.font.italic = italic; run.font.color.rgb = color
+
+    def _img(slide, b64str, l, t, w, h):
+        if not b64str: return
+        raw = _b64.b64decode(b64str.split(",")[-1])
+        slide.shapes.add_picture(_io.BytesIO(raw), l, t, w, h)
+
+    def _pct_color(val):
+        if not isinstance(val, (int, float)): return MUTED
+        return GREEN_ if val >= 0 else RED_
+
+    def _fmt(val, is_pct=True, decimals=2):
+        if not isinstance(val, (int, float)): return "—"
+        if is_pct:
+            sign = "+" if val > 0 else ""
+            return f"{sign}{val:.{decimals}f}%"
+        return f"{val:.{decimals}f}"
+
+    # ── Slide 1: Capa ────────────────────────────────────────────────
+    s1 = prs.slides.add_slide(blank)
+    _bg(s1)
+    _rect(s1, 0, 0, prs.slide_width, Cm(2.0), ORANGE)
+    _txt(s1, fund_name, Cm(0.6), Cm(0.2), Cm(26), Cm(1.6), size=24, bold=True, color=BLACK)
+    if ref_date:
+        _txt(s1, f"Ref.: {ref_date}", Cm(27), Cm(0.5), Cm(6.2), Cm(1.0),
+             size=10, color=BLACK, align=PP_ALIGN.RIGHT)
+    stat_items = [
+        ("PATRIMÔNIO",  stats.get("aum",       "—")),
+        ("COTA",        stats.get("quota",      "—")),
+        ("INÍCIO",      stats.get("inception",  "—")),
+        ("BENCHMARK",   stats.get("benchmark",  "IBOV")),
+        ("ESTRATÉGIA",  stats.get("strategy",   "Long-Only")),
+    ]
+    bw = Cm(5.8)
+    for i, (lbl, val) in enumerate(stat_items):
+        x = Cm(0.6 + i * 6.5)
+        _rect(s1, x, Cm(2.4), bw, Cm(2.0), SURF)
+        _txt(s1, lbl, x+Cm(0.3), Cm(2.5), bw-Cm(0.6), Cm(0.7), size=8, color=ORANGE, bold=True)
+        _txt(s1, str(val), x+Cm(0.3), Cm(3.1), bw-Cm(0.6), Cm(1.0), size=11, color=WHITE, bold=True)
+    if descricao:
+        _txt(s1, descricao, Cm(0.6), Cm(5.0), prs.slide_width-Cm(1.2), Cm(12.0),
+             size=11, color=RGBColor(0xCC, 0xCC, 0xCC))
+
+    # ── Slide 2: Performance ─────────────────────────────────────────
+    s2 = prs.slides.add_slide(blank)
+    _bg(s2)
+    _rect(s2, 0, 0, prs.slide_width, Cm(1.2), ORANGE)
+    _txt(s2, "PERFORMANCE ACUMULADA", Cm(0.6), Cm(0.1), Cm(20), Cm(1.0), size=14, bold=True, color=BLACK)
+    if images.get("perf_chart"):
+        _img(s2, images["perf_chart"], Cm(0.5), Cm(1.5), Cm(24), Cm(13))
+    metric_items = [
+        ("RETORNO TOTAL", indicators.get("total", {}).get("ret"),   True),
+        ("NO ANO",        indicators.get("no_ano", {}).get("ret"),  True),
+        ("12 MESES",      indicators.get("12m",    {}).get("ret"),  True),
+        ("SHARPE TOTAL",  indicators.get("total", {}).get("sharpe"), False),
+        ("VOL. ANUAL",    indicators.get("total", {}).get("vol"),   True),
+    ]
+    for i, (lbl, val, is_pct) in enumerate(metric_items):
+        y = Cm(1.8 + i * 3.0)
+        _rect(s2, Cm(25.5), y, Cm(7.8), Cm(2.6), SURF)
+        _txt(s2, lbl, Cm(25.8), y+Cm(0.1), Cm(7.3), Cm(0.8), size=8, color=MUTED, bold=True)
+        c = _pct_color(val) if lbl not in ("SHARPE TOTAL", "VOL. ANUAL") else WHITE
+        _txt(s2, _fmt(val, is_pct), Cm(25.8), y+Cm(0.9), Cm(7.3), Cm(1.4),
+             size=16, bold=True, color=c)
+
+    # ── Slide 3: Rentabilidade Anual ──────────────────────────────────
+    s3 = prs.slides.add_slide(blank)
+    _bg(s3)
+    _rect(s3, 0, 0, prs.slide_width, Cm(1.2), ORANGE)
+    _txt(s3, "RENTABILIDADE HISTÓRICA ANUAL", Cm(0.6), Cm(0.1), Cm(30), Cm(1.0), size=14, bold=True, color=BLACK)
+    hdrs = ["ANO", "FUNDO", "IBOV", "CDI", "ALPHA"]
+    cws  = [Cm(3.2), Cm(5.0), Cm(5.0), Cm(5.0), Cm(5.0)]
+    cx   = [Cm(1.5)]
+    for w in cws[:-1]: cx.append(cx[-1] + w)
+    rh = Cm(0.88)
+    hy = Cm(1.5)
+    _rect(s3, Cm(1.0), hy, sum(cws), rh, RGBColor(0x1E, 0x1E, 0x2E))
+    for i, h in enumerate(hdrs):
+        _txt(s3, h, cx[i], hy+Cm(0.05), cws[i], rh-Cm(0.1), size=9, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
+    for ri, yr in enumerate(annual_years):
+        y = hy + rh*(ri+1)
+        _rect(s3, Cm(1.0), y, sum(cws), rh,
+              RGBColor(0x18,0x18,0x18) if ri%2==0 else RGBColor(0x14,0x14,0x14))
+        row_vals = [
+            (yr.get("year",""),       WHITE),
+            (_fmt(yr.get("fund_year")), _pct_color(yr.get("fund_year"))),
+            (_fmt(yr.get("ibov_year")), _pct_color(yr.get("ibov_year"))),
+            (_fmt(yr.get("cdi_year")),  _pct_color(yr.get("cdi_year"))),
+            (_fmt(yr.get("alpha")),     _pct_color(yr.get("alpha"))),
+        ]
+        for i, (txt, c) in enumerate(row_vals):
+            _txt(s3, txt, cx[i], y+Cm(0.05), cws[i], rh-Cm(0.1), size=9, color=c, align=PP_ALIGN.CENTER)
+    if annual_years:
+        last = annual_years[-1]
+        y = hy + rh*(len(annual_years)+1)
+        _rect(s3, Cm(1.0), y, sum(cws), rh, RGBColor(0x22,0x22,0x11))
+        acc_vals = [
+            ("ACUMULADO",                     ORANGE),
+            (_fmt(last.get("fund_accum")),    _pct_color(last.get("fund_accum"))),
+            (_fmt(last.get("ibov_accum")),    _pct_color(last.get("ibov_accum"))),
+            (_fmt(last.get("cdi_accum")),     _pct_color(last.get("cdi_accum"))),
+            ("—",                             MUTED),
+        ]
+        for i, (txt, c) in enumerate(acc_vals):
+            _txt(s3, txt, cx[i], y+Cm(0.05), cws[i], rh-Cm(0.1), size=9, bold=True, color=c, align=PP_ALIGN.CENTER)
+
+    # ── Slide 4: Risco ────────────────────────────────────────────────
+    s4 = prs.slides.add_slide(blank)
+    _bg(s4)
+    _rect(s4, 0, 0, prs.slide_width, Cm(1.2), ORANGE)
+    _txt(s4, "ANÁLISE DE RISCO", Cm(0.6), Cm(0.1), Cm(20), Cm(1.0), size=14, bold=True, color=BLACK)
+    risk_cards = [
+        ("SHARPE (TOTAL)",   risk.get("sharpe"),           False),
+        ("VOLATILIDADE ANUAL", risk.get("vol"),            True),
+        ("MAX. DRAWDOWN",    risk.get("max_dd"),           False),
+        ("VaR 95% (1D)",     risk.get("var_95"),           False),
+        ("BETA (vs IBOV)",   risk.get("beta"),             False),
+        ("TRACKING ERROR",   risk.get("tracking_error"),   True),
+        ("INFORMATION RATIO", risk.get("info_ratio"),      False),
+        ("CAPTURE UP",       risk.get("upside_capture"),   False),
+        ("CAPTURE DOWN",     risk.get("downside_capture"), True),
+    ]
+    cw_ = Cm(9.8); ch_ = Cm(4.2)
+    for i, (lbl, val, neutral) in enumerate(risk_cards):
+        col = i % 3; row = i // 3
+        x = Cm(1.0 + col * 10.8); y = Cm(1.5 + row * 4.8)
+        _rect(s4, x, y, cw_, ch_, SURF)
+        _txt(s4, lbl, x+Cm(0.3), y+Cm(0.2), cw_-Cm(0.6), Cm(0.8), size=8, color=MUTED, bold=True)
+        is_ratio = lbl in ("BETA (vs IBOV)", "INFORMATION RATIO", "SHARPE (TOTAL)", "CAPTURE UP", "CAPTURE DOWN")
+        txt = _fmt(val, is_pct=not is_ratio)
+        c   = WHITE if neutral or val is None else _pct_color(val)
+        if lbl in ("VOLATILIDADE ANUAL", "TRACKING ERROR"): c = WHITE
+        _txt(s4, txt, x+Cm(0.3), y+Cm(1.0), cw_-Cm(0.6), Cm(2.8), size=22, bold=True, color=c)
+
+    # ── Slide 5: Concentração e Liquidez ──────────────────────────────
+    s5 = prs.slides.add_slide(blank)
+    _bg(s5)
+    _rect(s5, 0, 0, prs.slide_width, Cm(1.2), ORANGE)
+    _txt(s5, "CONCENTRAÇÃO E LIQUIDEZ", Cm(0.6), Cm(0.1), Cm(20), Cm(1.0), size=14, bold=True, color=BLACK)
+    top5 = concentration.get("top5", [])
+    _txt(s5, "TOP POSIÇÕES", Cm(1.0), Cm(1.5), Cm(16), Cm(0.8), size=10, color=ORANGE, bold=True)
+    for i, pos in enumerate(top5[:5]):
+        y = Cm(2.5 + i * 1.8)
+        _rect(s5, Cm(1.0), y, Cm(16), Cm(1.5), SURF if i%2==0 else BG)
+        _txt(s5, pos.get("ticker",""), Cm(1.3), y+Cm(0.2), Cm(10), Cm(1.0), size=12, bold=True, color=WHITE)
+        pct = pos.get("pct_total", 0)
+        _txt(s5, f"{pct:.1f}%", Cm(13), y+Cm(0.2), Cm(3.5), Cm(1.0), size=12, color=ORANGE, align=PP_ALIGN.RIGHT)
+    hhi_val = concentration.get("hhi")
+    hhi_lbl = concentration.get("hhi_label", "")
+    top5_pct = concentration.get("top5_pct")
+    liq_items = [
+        ("HHI",       f"{hhi_val:.0f} ({hhi_lbl})" if isinstance(hhi_val,(int,float)) else "—"),
+        ("TOP 5",     _fmt(top5_pct) if isinstance(top5_pct,(int,float)) else "—"),
+        ("LIQ. 1D",   _fmt(liquidity.get("liq_1d_pct"))),
+        ("LIQ. 5D",   _fmt(liquidity.get("liq_5d_pct"))),
+        ("LIQ. 10D",  _fmt(liquidity.get("liq_10d_pct"))),
+    ]
+    _txt(s5, "INDICADORES", Cm(19.0), Cm(1.5), Cm(14), Cm(0.8), size=10, color=ORANGE, bold=True)
+    for i, (lbl, val) in enumerate(liq_items):
+        y = Cm(2.5 + i * 3.0)
+        _rect(s5, Cm(19.0), y, Cm(14.0), Cm(2.6), SURF)
+        _txt(s5, lbl, Cm(19.3), y+Cm(0.1), Cm(13.5), Cm(0.8), size=8, color=MUTED, bold=True)
+        _txt(s5, val, Cm(19.3), y+Cm(0.9), Cm(13.5), Cm(1.4), size=16, bold=True, color=WHITE)
+
+    # ── Slide 6: Distribuição de Retornos ─────────────────────────────
+    s6 = prs.slides.add_slide(blank)
+    _bg(s6)
+    _rect(s6, 0, 0, prs.slide_width, Cm(1.2), ORANGE)
+    _txt(s6, "DISTRIBUIÇÃO DE RETORNOS DIÁRIOS", Cm(0.6), Cm(0.1), Cm(30), Cm(1.0), size=14, bold=True, color=BLACK)
+    if images.get("dist_chart"):
+        _img(s6, images["dist_chart"], Cm(0.5), Cm(1.5), Cm(22), Cm(14))
+    dist_stats = [
+        ("ASSIMETRIA",     dist.get("skewness"),     False),
+        ("CURTOSE",        dist.get("kurtosis"),      False),
+        ("DIAS POSITIVOS", dist.get("pct_positive"),  True),
+        ("MELHOR DIA",     dist.get("best_day"),      True),
+        ("PIOR DIA",       dist.get("worst_day"),     False),
+    ]
+    for i, (lbl, val, use_pct_color) in enumerate(dist_stats):
+        y = Cm(1.8 + i * 3.2)
+        _rect(s6, Cm(23.5), y, Cm(9.8), Cm(2.8), SURF)
+        _txt(s6, lbl, Cm(23.8), y+Cm(0.1), Cm(9.3), Cm(0.8), size=8, color=MUTED, bold=True)
+        txt = _fmt(val) if isinstance(val,(int,float)) else "—"
+        c   = _pct_color(val) if use_pct_color else WHITE
+        _txt(s6, txt, Cm(23.8), y+Cm(0.9), Cm(9.3), Cm(1.6), size=16, bold=True, color=c)
+
+    buf = io.BytesIO()
+    prs.save(buf)
+    buf.seek(0)
+    filename = f"harbour_fia_{datetime.now().strftime('%Y%m%d')}.pptx"
+    return send_file(buf, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation")
 
 @app.route("/api/portfolio/update", methods=["POST"])
 @require_admin
@@ -1161,6 +1409,98 @@ def api_monthly_returns():
             "fund_months": fund_months, "ibov_months": ibov_months,
             "fund_year": fund_year, "ibov_year": ibov_year,
             "fund_accum": fund_accum, "ibov_accum": ibov_accum,
+        })
+
+    return jsonify({"years": result, "inception_date": inception_date})
+
+@app.route("/api/annual-returns")
+def api_annual_returns():
+    history = load_quota_history()
+    if not history:
+        return jsonify({"years": [], "inception_date": None})
+
+    cache    = load_cache()
+    now      = time.time()
+    ibov_key = "ibov_history_full"
+
+    ibov_map = {}
+    if cache.get(ibov_key) and now < cache[ibov_key].get("expires_at", 0):
+        ibov_map = cache[ibov_key]["data"]
+    else:
+        start  = history[0]["data"]
+        end_dt = datetime.strptime(history[-1]["data"], "%Y-%m-%d") + timedelta(days=5)
+        try:
+            hist = yf.Ticker("^BVSP").history(
+                start=start, end=end_dt.strftime("%Y-%m-%d"), timeout=10)
+            if not hist.empty:
+                ibov_map = {str(d.date()): round(float(v), 2)
+                            for d, v in hist["Close"].items()}
+        except Exception as e:
+            print(f"[annual-returns] IBOV error: {e}")
+        ttl = HISTORY_TTL if ibov_map else 120
+        cache[ibov_key] = {"data": ibov_map, "expires_at": now + ttl}
+        save_cache(cache)
+
+    cdi_map = load_cdi_map()
+
+    year_end_fund = {}
+    for e in sorted(history, key=lambda x: x["data"]):
+        year_end_fund[e["data"][:4]] = e["cota_fechamento"]
+
+    year_end_ibov = {}
+    for date_str in sorted(ibov_map):
+        year_end_ibov[date_str[:4]] = ibov_map[date_str]
+
+    inception_date = history[0]["data"]
+    inception_cota = history[0]["cota_fechamento"]
+    inception_ibov = None
+    for d in sorted(ibov_map):
+        if d <= inception_date:
+            inception_ibov = ibov_map[d]
+
+    years = sorted(year_end_fund.keys())
+    result = []
+    for year in years:
+        prev_year  = str(int(year) - 1)
+        fund_start = year_end_fund.get(prev_year) or inception_cota
+        fund_end   = year_end_fund.get(year)
+        ibov_start = year_end_ibov.get(prev_year) or inception_ibov
+        ibov_end   = year_end_ibov.get(year)
+
+        cdi_rates = [v for d, v in cdi_map.items() if d.startswith(year)]
+        if cdi_rates:
+            cdi_cum = 1.0
+            for r in cdi_rates:
+                cdi_cum *= (1 + r / 100)
+            cdi_year = round((cdi_cum - 1) * 100, 2)
+        else:
+            cdi_year = None
+
+        fund_year  = round((fund_end / fund_start - 1) * 100, 2) if fund_end and fund_start else None
+        ibov_year  = round((ibov_end / ibov_start - 1) * 100, 2) if ibov_end and ibov_start else None
+        fund_accum = round((fund_end / inception_cota - 1) * 100, 2) if fund_end else None
+        ibov_accum = round((ibov_end / inception_ibov - 1) * 100, 2) if ibov_end and inception_ibov else None
+
+        cdi_accum_rates = [v for d, v in cdi_map.items() if d >= inception_date and d[:4] <= year]
+        if cdi_accum_rates:
+            cum = 1.0
+            for r in cdi_accum_rates:
+                cum *= (1 + r / 100)
+            cdi_accum = round((cum - 1) * 100, 2)
+        else:
+            cdi_accum = None
+
+        alpha = round(fund_year - ibov_year, 2) if fund_year is not None and ibov_year is not None else None
+
+        result.append({
+            "year":       year,
+            "fund_year":  fund_year,
+            "ibov_year":  ibov_year,
+            "cdi_year":   cdi_year,
+            "alpha":      alpha,
+            "fund_accum": fund_accum,
+            "ibov_accum": ibov_accum,
+            "cdi_accum":  cdi_accum,
         })
 
     return jsonify({"years": result, "inception_date": inception_date})
