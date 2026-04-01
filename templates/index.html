@@ -131,10 +131,6 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-financials"><span class="fn-num">208)</span> FINANCIALS</button>
   {% set ns.first = false %}
   {% endif %}
-  {% if role == 'admin' or viewer_config.tab_apresentacao %}
-  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-apresentacao"><span class="fn-num">209)</span> APRES.</button>
-  {% set ns.first = false %}
-  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -391,19 +387,6 @@
   </div>
 
   {% if role == 'admin' %}
-  <div class="cfg-panel">
-    <div class="cfg-panel-title">◆ DESCRIÇÃO DO FUNDO (APRESENTAÇÃO)</div>
-    <div class="cfg-fields">
-      <div class="cfg-field" style="grid-column:1/-1">
-        <label>TEXTO DE APRESENTAÇÃO</label>
-        <textarea id="cfg-descricao-fundo" rows="5" placeholder="Descreva a estratégia, filosofia e características do fundo..." style="width:100%;background:#1a1a1a;color:#e0e3f0;border:1px solid #333;padding:8px;font-family:inherit;font-size:0.85rem;resize:vertical;"></textarea>
-        <span class="cfg-hint">Exibido no Slide 1 da aba APRES.</span>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  {% if role == 'admin' %}
   <div class="cfg-footer">
     <button class="bbg-btn bbg-btn-primary" id="cfg-save">SALVAR CONFIGURAÇÕES</button>
     <span class="cfg-status" id="cfg-status"></span>
@@ -465,12 +448,6 @@
         <span class="viewer-access-label">FINANCIAIS</span>
         <button class="viewer-toggle {% if viewer_config.tab_financials %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_financials">
           {% if viewer_config.tab_financials %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
-        </button>
-      </div>
-      <div class="viewer-access-row">
-        <span class="viewer-access-label">APRESENTAÇÃO</span>
-        <button class="viewer-toggle {% if viewer_config.tab_apresentacao %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_apresentacao">
-          {% if viewer_config.tab_apresentacao %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
     </div>
@@ -972,142 +949,6 @@
 </div>
 {% endif %}
 
-<!-- ═══════════════════════════════════════════════════════════════════
-     209) APRESENTAÇÃO
-     ═══════════════════════════════════════════════════════════════════ -->
-{% if role == 'admin' or viewer_config.tab_apresentacao %}
-<div id="tab-apresentacao" class="tab-content{% if ns2.first %} active{% endif %}">
-{% set ns2.first = false %}
-
-  <div class="apres-toolbar">
-    <div class="apres-nav">
-      <button class="bbg-btn apres-nav-btn" id="apres-prev" onclick="apresGo(-1)">&#8592;</button>
-      <span id="apres-counter" class="apres-counter">1 / 6</span>
-      <button class="bbg-btn apres-nav-btn" id="apres-next" onclick="apresGo(1)">&#8594;</button>
-    </div>
-    <div class="apres-dots" id="apres-dots">
-      <span class="apres-dot active" onclick="apresGoTo(0)" title="Sobre o Fundo"></span>
-      <span class="apres-dot" onclick="apresGoTo(1)" title="Performance"></span>
-      <span class="apres-dot" onclick="apresGoTo(2)" title="Rentabilidade Anual"></span>
-      <span class="apres-dot" onclick="apresGoTo(3)" title="Risco"></span>
-      <span class="apres-dot" onclick="apresGoTo(4)" title="Concentração e Liquidez"></span>
-      <span class="apres-dot" onclick="apresGoTo(5)" title="Distribuição de Retornos"></span>
-    </div>
-    <div class="apres-export-btns">
-      <button class="bbg-btn" id="apres-btn-pdf" onclick="apresExportPDF()">&#8595; PDF</button>
-      <button class="bbg-btn" id="apres-btn-ppt" onclick="apresExportPPTX()">&#8595; PPT</button>
-    </div>
-  </div>
-
-  <div class="apres-viewport" id="apres-viewport">
-
-    <!-- Slide 0: Sobre o Fundo -->
-    <div class="apres-slide" id="apres-slide-0">
-      <div class="apres-title-bar">
-        <span id="apres-fund-name">HARBOUR IAT FIF AÇÕES RL</span>
-        <span id="apres-ref-date" class="apres-ref-date"></span>
-      </div>
-      <div class="apres-stats-row" id="apres-stats-row">
-        <div class="apres-stat-box"><div class="apres-stat-label">PATRIMÔNIO</div><div class="apres-stat-val" id="apres-aum">—</div></div>
-        <div class="apres-stat-box"><div class="apres-stat-label">COTA ATUAL</div><div class="apres-stat-val" id="apres-quota">—</div></div>
-        <div class="apres-stat-box"><div class="apres-stat-label">INÍCIO</div><div class="apres-stat-val" id="apres-inception">—</div></div>
-        <div class="apres-stat-box"><div class="apres-stat-label">BENCHMARK</div><div class="apres-stat-val" id="apres-benchmark">IBOV</div></div>
-        <div class="apres-stat-box"><div class="apres-stat-label">ESTRATÉGIA</div><div class="apres-stat-val" id="apres-strategy">Long-Only</div></div>
-      </div>
-      <div id="apres-descricao" class="apres-descricao">Carregando...</div>
-    </div>
-
-    <!-- Slide 1: Performance Acumulada -->
-    <div class="apres-slide" id="apres-slide-1" style="display:none">
-      <div class="apres-slide-header">PERFORMANCE ACUMULADA</div>
-      <div class="apres-slide-body apres-slide-body--chart">
-        <div class="apres-chart-area">
-          <canvas id="apres-perf-canvas"></canvas>
-        </div>
-        <div class="apres-metrics-col" id="apres-perf-metrics">
-          <div class="apres-metric-card"><div class="apres-metric-label">RETORNO TOTAL</div><div class="apres-metric-val" id="am-total-ret">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">NO ANO</div><div class="apres-metric-val" id="am-ytd-ret">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">12 MESES</div><div class="apres-metric-val" id="am-12m-ret">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">SHARPE TOTAL</div><div class="apres-metric-val" id="am-sharpe">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">VOL. ANUAL</div><div class="apres-metric-val" id="am-vol">—</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 2: Rentabilidade Anual -->
-    <div class="apres-slide" id="apres-slide-2" style="display:none">
-      <div class="apres-slide-header">RENTABILIDADE HISTÓRICA ANUAL</div>
-      <div class="apres-slide-body">
-        <table class="apres-annual-table" id="apres-annual-table">
-          <thead>
-            <tr>
-              <th>ANO</th>
-              <th class="num">FUNDO</th>
-              <th class="num">IBOV</th>
-              <th class="num">CDI</th>
-              <th class="num">ALPHA</th>
-            </tr>
-          </thead>
-          <tbody id="apres-annual-tbody"></tbody>
-          <tfoot id="apres-annual-tfoot"></tfoot>
-        </table>
-      </div>
-    </div>
-
-    <!-- Slide 3: Risco -->
-    <div class="apres-slide" id="apres-slide-3" style="display:none">
-      <div class="apres-slide-header">ANÁLISE DE RISCO</div>
-      <div class="apres-slide-body">
-        <div class="apres-risk-grid" id="apres-risk-grid">
-          <div class="apres-risk-card"><div class="apres-risk-label">SHARPE (TOTAL)</div><div class="apres-risk-val" id="ar-sharpe">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">VOLATILIDADE ANUAL</div><div class="apres-risk-val" id="ar-vol">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">MAX. DRAWDOWN</div><div class="apres-risk-val" id="ar-dd">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">VaR 95% (1D)</div><div class="apres-risk-val" id="ar-var">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">BETA (vs IBOV)</div><div class="apres-risk-val" id="ar-beta">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">TRACKING ERROR</div><div class="apres-risk-val" id="ar-te">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">INFORMATION RATIO</div><div class="apres-risk-val" id="ar-ir">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">CAPTURE UP</div><div class="apres-risk-val" id="ar-cup">—</div></div>
-          <div class="apres-risk-card"><div class="apres-risk-label">CAPTURE DOWN</div><div class="apres-risk-val" id="ar-cdn">—</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 4: Concentração e Liquidez -->
-    <div class="apres-slide" id="apres-slide-4" style="display:none">
-      <div class="apres-slide-header">CONCENTRAÇÃO E LIQUIDEZ</div>
-      <div class="apres-slide-body apres-slide-body--two-col">
-        <div class="apres-conc-left">
-          <div class="apres-section-title">TOP POSIÇÕES</div>
-          <div id="apres-top5"></div>
-          <div class="apres-hhi-row" id="apres-hhi-row"></div>
-        </div>
-        <div class="apres-conc-right">
-          <div class="apres-section-title">LIQUIDEZ</div>
-          <div id="apres-liq-items"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Slide 5: Distribuição de Retornos -->
-    <div class="apres-slide" id="apres-slide-5" style="display:none">
-      <div class="apres-slide-header">DISTRIBUIÇÃO DE RETORNOS DIÁRIOS</div>
-      <div class="apres-slide-body apres-slide-body--chart">
-        <div class="apres-chart-area">
-          <canvas id="apres-dist-canvas"></canvas>
-        </div>
-        <div class="apres-metrics-col">
-          <div class="apres-metric-card"><div class="apres-metric-label">ASSIMETRIA</div><div class="apres-metric-val" id="ad-skew">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">CURTOSE</div><div class="apres-metric-val" id="ad-kurt">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">DIAS POSITIVOS</div><div class="apres-metric-val" id="ad-pos">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">MELHOR DIA</div><div class="apres-metric-val" id="ad-best">—</div></div>
-          <div class="apres-metric-card"><div class="apres-metric-label">PIOR DIA</div><div class="apres-metric-val" id="ad-worst">—</div></div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /apres-viewport -->
-</div>
-{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      MODAL — Adicionar à Watchlist

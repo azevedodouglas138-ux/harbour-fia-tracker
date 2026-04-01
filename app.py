@@ -162,7 +162,6 @@ _VIEWER_CONFIG_DEFAULTS = {
     "tab_screener":      False,
     "tab_risk":          True,
     "tab_financials":    True,
-    "tab_apresentacao":  True,
 }
 
 def load_viewer_config():
