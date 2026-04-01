@@ -3069,7 +3069,7 @@ def _df_to_rows(df, row_order=None):
     if df is None or df.empty:
         return None, None
     # Columns are datetime objects → format as strings
-    cols = [c.strftime("%m/%d/%Y") if hasattr(c, "strftime") else str(c) for c in df.columns]
+    cols = [c.strftime("%d/%m/%y") if hasattr(c, "strftime") else str(c) for c in df.columns]
     if row_order:
         present = [r for r in row_order if r in df.index]
         extra   = [r for r in df.index if r not in row_order]

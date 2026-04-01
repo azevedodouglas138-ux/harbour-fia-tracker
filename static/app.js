@@ -3211,6 +3211,121 @@ let _finCurrentPeriod    = 'annual';
 let _finCurrentStatement = 'income';
 let _finInitialized      = false;
 
+// Tradução de labels financeiros (yfinance → Português BR)
+const FIN_LABEL_PT = {
+  // DRE
+  'Total Revenue': 'Receita Total',
+  'Cost Of Revenue': 'Custo da Receita',
+  'Gross Profit': 'Lucro Bruto',
+  'Operating Expense': 'Despesas Operacionais',
+  'Selling General Administrative': 'Desp. de Vendas, Gerais e Admin.',
+  'General Administrative Expense': 'Desp. Gerais e Admin.',
+  'Selling Expense': 'Despesas de Vendas',
+  'Other Operating Expenses': 'Outras Desp. Operacionais',
+  'Operating Income': 'Resultado Operacional',
+  'Net Non Operating Interest Income Expense': 'Resultado Financeiro Líquido',
+  'Interest Income Non Operating': 'Receita Financeira',
+  'Interest Expense Non Operating': 'Despesa Financeira',
+  'Total Other Finance Cost': 'Outros Custos Financeiros',
+  'Pretax Income': 'Resultado Antes do IR',
+  'Tax Provision': 'Provisão de IR/CSLL',
+  'Net Income': 'Lucro Líquido',
+  'Basic EPS': 'LPA Básico',
+  'Diluted EPS': 'LPA Diluído',
+  'EBITDA': 'EBITDA',
+  'Tax Effect Of Unusual Items': 'Efeito Fiscal - Itens Extraordinários',
+  'Tax Rate For Calcs': 'Alíquota para Cálculo',
+  'Normalized EBITDA': 'EBITDA Normalizado',
+  'Total Unusual Items': 'Itens Extraordinários',
+  'Total Unusual Items Excluding Goodwill': 'Itens Extraordinários (ex-Goodwill)',
+  'Net Income From Continuing Operation Net Minority Interest': 'Lucro Líquido (Op. Contínuas)',
+  'Net Income Common Stockholders': 'Lucro Líquido dos Acionistas',
+  'Diluted NI Availto Com Stockholders': 'LL Diluído Disponível',
+  'Average Dilution Earnings': 'Diluição Média de Lucros',
+  'Reconciled Depreciation': 'Depreciação Reconciliada',
+  'Reconciled Cost Of Revenue': 'Custo da Receita Reconciliado',
+  // Balanço
+  'Total Assets': 'Ativo Total',
+  'Total Liabilities Net Minority Interest': 'Passivo Total',
+  'Stockholders Equity': 'Patrimônio Líquido',
+  'Cash And Cash Equivalents': 'Caixa e Equivalentes',
+  'Cash Cash Equivalents And Short Term Investments': 'Caixa e Invest. CP',
+  'Current Assets': 'Ativo Circulante',
+  'Total Non Current Assets': 'Ativo Não Circulante',
+  'Current Liabilities': 'Passivo Circulante',
+  'Total Non Current Liabilities Net Minority Interest': 'Passivo Não Circulante',
+  'Long Term Debt': 'Dívida LP',
+  'Current Debt': 'Dívida CP',
+  'Total Debt': 'Dívida Total',
+  'Net Debt': 'Dívida Líquida',
+  'Accounts Receivable': 'Contas a Receber',
+  'Inventory': 'Estoques',
+  'Payables And Accrued Expenses': 'Contas a Pagar e Acréscimos',
+  'Payables': 'Contas a Pagar',
+  'Retained Earnings': 'Lucros Acumulados',
+  'Common Stock': 'Capital Social',
+  'Gross PPE': 'Imobilizado Bruto',
+  'Accumulated Depreciation': 'Depreciação Acumulada',
+  'Net PPE': 'Imobilizado Líquido',
+  'Goodwill And Other Intangible Assets': 'Goodwill e Intangíveis',
+  'Goodwill': 'Goodwill',
+  'Intangible Assets': 'Intangíveis',
+  'Total Equity Gross Minority Interest': 'PL Total (inc. Minoritários)',
+  'Minority Interest': 'Participação Minoritária',
+  'Common Stock Equity': 'PL Acionistas Ord.',
+  'Capital Lease Obligations': 'Obrigações de Arrendamento',
+  'Net Tangible Assets': 'Ativos Tangíveis Líquidos',
+  'Other Current Assets': 'Outros Ativos Circulantes',
+  'Other Non Current Assets': 'Outros Ativos Não Circ.',
+  'Other Current Liabilities': 'Outros Passivos Circulantes',
+  'Other Non Current Liabilities': 'Outros Passivos Não Circ.',
+  'Properties': 'Propriedades',
+  'Investments And Advances': 'Investimentos e Adiantamentos',
+  // Fluxo de Caixa
+  'Operating Cash Flow': 'FCO - Caixa Operacional',
+  'Free Cash Flow': 'FCL - Caixa Livre',
+  'Capital Expenditure': 'Capex',
+  'Investing Cash Flow': 'Caixa de Investimento',
+  'Financing Cash Flow': 'Caixa de Financiamento',
+  'Changes In Cash': 'Variação de Caixa',
+  'Net Income From Continuing Operations': 'Lucro Líquido (Op. Contínuas)',
+  'Depreciation And Amortization': 'D&A',
+  'Depreciation': 'Depreciação',
+  'Amortization Of Intangibles': 'Amortização de Intangíveis',
+  'Deferred Income Tax': 'IR Diferido',
+  'Stock Based Compensation': 'Remuneração em Ações',
+  'Change In Working Capital': 'Var. Capital de Giro',
+  'Change In Receivables': 'Var. Contas a Receber',
+  'Change In Inventory': 'Var. Estoques',
+  'Changes In Account Receivables': 'Var. Contas a Receber',
+  'Repayment Of Debt': 'Pagamento de Dívida',
+  'Issuance Of Debt': 'Captação de Dívida',
+  'Long Term Debt Issuance': 'Emissão Dívida LP',
+  'Long Term Debt Payments': 'Pagamento Dívida LP',
+  'Short Term Debt Issuance': 'Emissão Dívida CP',
+  'Short Term Debt Payments': 'Pagamento Dívida CP',
+  'Common Stock Issuance': 'Emissão de Ações',
+  'Common Stock Payments': 'Recompra de Ações',
+  'Dividends Paid': 'Dividendos Pagos',
+  'Net Issuance Payments Of Debt': 'Captação Líq. de Dívida',
+  'Net Common Stock Issuance': 'Emissão Líq. de Ações',
+  'Purchase Of Investment': 'Compra de Investimentos',
+  'Sale Of Investment': 'Venda de Investimentos',
+  'Net Investment Purchase And Sale': 'Comp./Venda Líq. Investimentos',
+  'Purchase Of Business': 'Aquisição de Negócios',
+  'Net PPE Purchase And Sale': 'Comp./Venda Líq. Imobilizado',
+  'Purchase Of PPE': 'Compra de Imobilizado',
+  'Sale Of PPE': 'Venda de Imobilizado',
+  'Effect Of Exchange Rate Changes': 'Efeito Variação Cambial',
+  'Beginning Cash Position': 'Saldo Inicial de Caixa',
+  'End Cash Position': 'Saldo Final de Caixa',
+  'Income Tax Paid Supplemental Data': 'IR Pago',
+  'Interest Paid Supplemental Data': 'Juros Pagos',
+  'Other Non Cash Items': 'Outros Itens Não-Caixa',
+  'Pension And Employee Benefit Expense': 'Benefícios a Empregados',
+  'Asset Impairment Charge': 'Perda por Imparidade',
+};
+
 // Rows that should be visually highlighted (bold amber)
 const FIN_HIGHLIGHT_ROWS = new Set([
   'Gross Profit', 'Operating Income', 'Net Income', 'EBITDA',
@@ -3252,7 +3367,7 @@ function _finRenderTable(data) {
 
   // Header row
   const thead = document.getElementById('fin-thead-row');
-  thead.innerHTML = '<th class="fin-th-label">Breakdown</th>' +
+  thead.innerHTML = '<th class="fin-th-label">Discriminação</th>' +
     data.columns.map(c => `<th class="fin-th-val">${c}</th>`).join('');
 
   // Body rows
@@ -3268,7 +3383,8 @@ function _finRenderTable(data) {
       return `<td class="fin-td-val ${cls}">${_finFmtNumber(v)}</td>`;
     }).join('');
     const rowCls = isHighlight ? 'fin-row-highlight' : '';
-    return `<tr class="${rowCls}"><td class="fin-td-label">${row.label}</td>${cells}</tr>`;
+    const labelPt = FIN_LABEL_PT[row.label] || row.label;
+    return `<tr class="${rowCls}"><td class="fin-td-label">${labelPt}</td>${cells}</tr>`;
   }).join('');
 }
 
