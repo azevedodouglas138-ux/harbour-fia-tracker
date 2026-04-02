@@ -564,6 +564,13 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   transition: border-color .12s;
 }
 .form-grid input:focus, .form-grid select:focus { border-color: var(--orange); }
+.bbg-input {
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  padding: 6px 8px; outline: none; border-radius: 2px;
+  transition: border-color .12s;
+}
+.bbg-input:focus { border-color: var(--orange); }
 
 .modal-footer {
   display: flex; gap: 6px; justify-content: flex-end;

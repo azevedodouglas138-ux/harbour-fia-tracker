@@ -632,6 +632,8 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-screener')  loadScreenerTab();
     if (btn.dataset.tab === 'tab-risk')          loadRiskTab();
     if (btn.dataset.tab === 'tab-financials')   loadFinancialsTab();
+    if (btn.dataset.tab === 'tab-pretrade')     loadPretradeTab();
+    if (btn.dataset.tab === 'tab-events')       loadEventsTab();
   });
 });
 
@@ -3479,4 +3481,429 @@ function loadFinancialsTab() {
     if (e.target.closest('.col-info')) tip.style.display = 'none';
   });
 })();
+
+// ═══════════════════════════════════════════════════════════════════
+// 209) PRÉ-TRADE
+// ═══════════════════════════════════════════════════════════════════
+
+let _pretradeListenersSet = false;
+
+function loadPretradeTab() {
+  if (_pretradeListenersSet) return;
+  _pretradeListenersSet = true;
+
+  // Popular select com ativos da carteira
+  const sel = document.getElementById('pt-ticker-select');
+  if (sel && portfolioData && portfolioData.rows) {
+    portfolioData.rows.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.yahoo_ticker || (r.ticker + '.SA');
+      opt.textContent = r.ticker;
+      sel.appendChild(opt);
+    });
+  }
+
+  document.getElementById('btn-pt-simular').addEventListener('click', _pretradeSubmit);
+}
+
+async function _pretradeSubmit() {
+  const errEl  = document.getElementById('pt-error');
+  const loadEl = document.getElementById('pt-loading');
+  errEl.classList.add('hidden');
+  loadEl.classList.remove('hidden');
+
+  const selVal    = (document.getElementById('pt-ticker-select').value || '').trim();
+  const manualVal = (document.getElementById('pt-ticker-manual').value || '').trim().toUpperCase();
+  let ticker      = manualVal || selVal;
+  if (!ticker.includes('.')) ticker += '.SA';
+
+  const direcao   = document.getElementById('pt-direcao').value;
+  const quantidade = parseFloat(document.getElementById('pt-quantidade').value) || 0;
+  const preco      = parseFloat(document.getElementById('pt-preco').value) || 0;
+  const corretagem = parseFloat(document.getElementById('pt-corretagem').value) || 0;
+
+  if (!ticker || ticker === '.SA') {
+    errEl.textContent = 'Selecione ou informe um ticker.';
+    errEl.classList.remove('hidden');
+    loadEl.classList.add('hidden');
+    return;
+  }
+  if (preco <= 0) {
+    errEl.textContent = 'Preço deve ser maior que zero.';
+    errEl.classList.remove('hidden');
+    loadEl.classList.add('hidden');
+    return;
+  }
+  if (direcao !== 'zerar' && quantidade <= 0) {
+    errEl.textContent = 'Quantidade deve ser maior que zero.';
+    errEl.classList.remove('hidden');
+    loadEl.classList.add('hidden');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/pretrade/simulate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ticker, quantidade, direcao, preco, corretagem_rs: corretagem}),
+    });
+    const data = await res.json();
+    loadEl.classList.add('hidden');
+    if (!res.ok || data.error) {
+      errEl.textContent = data.error || 'Erro na simulação.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    _pretradeRender(data);
+  } catch(e) {
+    loadEl.classList.add('hidden');
+    errEl.textContent = 'Erro de comunicação com o servidor.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+function _pretradeRender(d) {
+  const fmt   = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+  const fmtC  = (v, dec=8) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+  const fmtR  = v => v == null ? '—' : 'R$ ' + fmt(v, 2);
+  const arrow = (before, after) => {
+    const diff = (after || 0) - (before || 0);
+    if (Math.abs(diff) < 0.0001) return '<span style="color:#888">→</span>';
+    return diff > 0
+      ? '<span style="color:#f5a623">▲</span>'
+      : '<span style="color:#cc3333">▼</span>';
+  };
+  const cls = v => Number(v) < 0 ? 'style="color:#cc3333"' : (Number(v) > 0 ? 'style="color:#00cc88"' : '');
+
+  // ── Card 1: Impacto na Cota ──
+  const op = d.operacao;
+  const antes = d.antes;
+  const dep   = d.depois;
+  const imp   = d.impactos;
+  const dir   = {compra: 'COMPRA', venda: 'VENDA', zerar: 'ZERAR'}[op.direcao] || op.direcao.toUpperCase();
+  const isNovo = d.ativo.is_novo ? ' <span style="color:#f5a623;font-size:10px">[NOVO]</span>' : '';
+
+  document.getElementById('pretrade-cota-content').innerHTML = `
+    <div style="font-family:monospace;font-size:11px;color:#aaa;padding:4px 0 10px">
+      <b style="color:#f5a623">${dir}</b> ${fmt(op.quantidade, 0)} × ${fmtR(op.preco)}
+      = <b style="color:#fff">${fmtR(op.valor_total_rs)}</b>
+      ${op.corretagem_rs ? `+ corretagem ${fmtR(op.corretagem_rs)}` : ''}
+      → <b style="color:#fff">${fmtR(op.custo_total_rs)}</b>
+      &nbsp;|&nbsp; Ativo: <b style="color:#f5a623">${d.ativo.ticker}</b>${isNovo}
+      &nbsp;|&nbsp; Setor: ${d.ativo.sector}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+      <thead>
+        <tr style="color:#888;border-bottom:1px solid #333">
+          <th style="text-align:left;padding:4px 8px">MÉTRICA</th>
+          <th style="text-align:right;padding:4px 8px">ANTES</th>
+          <th style="text-align:center;padding:4px 2px"></th>
+          <th style="text-align:right;padding:4px 8px">DEPOIS</th>
+          <th style="text-align:right;padding:4px 8px">Δ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:5px 8px;color:#aaa">Cota Estimada</td>
+          <td style="text-align:right;padding:5px 8px">${fmtC(antes.cota_estimada)}</td>
+          <td style="text-align:center">${arrow(antes.cota_estimada, dep.cota_estimada)}</td>
+          <td style="text-align:right;padding:5px 8px;color:#fff">${fmtC(dep.cota_estimada)}</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(imp.variacao_cota_pct)}>${fmt(imp.variacao_cota_pct,4)}%</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:5px 8px;color:#aaa">NAV Total</td>
+          <td style="text-align:right;padding:5px 8px">${fmtR(antes.nav_total)}</td>
+          <td style="text-align:center">${arrow(antes.nav_total, dep.nav_total)}</td>
+          <td style="text-align:right;padding:5px 8px;color:#fff">${fmtR(dep.nav_total)}</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(imp.variacao_nav_rs)}>${fmtR(imp.variacao_nav_rs)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:5px 8px;color:#aaa">Caixa Resultante</td>
+          <td style="text-align:right;padding:5px 8px">${fmtR(antes.caixa)}</td>
+          <td style="text-align:center">${arrow(antes.caixa, dep.caixa)}</td>
+          <td style="text-align:right;padding:5px 8px" ${dep.caixa < 0 ? 'style="color:#cc3333"' : 'style="color:#fff"'}>${fmtR(dep.caixa)}</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(dep.caixa - antes.caixa)}>${fmtR(dep.caixa - antes.caixa)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:5px 8px;color:#aaa">Peso do Ativo</td>
+          <td style="text-align:right;padding:5px 8px">${fmt(antes.pct_ativo)}%</td>
+          <td style="text-align:center">${arrow(antes.pct_ativo, dep.pct_ativo)}</td>
+          <td style="text-align:right;padding:5px 8px;color:#fff">${fmt(dep.pct_ativo)}%</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(imp.variacao_peso_pp)}>${imp.variacao_peso_pp > 0 ? '+' : ''}${fmt(imp.variacao_peso_pp)} pp</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:5px 8px;color:#aaa">Beta Pond.</td>
+          <td style="text-align:right;padding:5px 8px">${fmt(antes.weighted_beta,4)}</td>
+          <td style="text-align:center">${arrow(antes.weighted_beta, dep.weighted_beta)}</td>
+          <td style="text-align:right;padding:5px 8px;color:#fff">${fmt(dep.weighted_beta,4)}</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(imp.variacao_beta)}>${imp.variacao_beta > 0 ? '+' : ''}${fmt(imp.variacao_beta,4)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:5px 8px;color:#aaa">Upside Pond.</td>
+          <td style="text-align:right;padding:5px 8px">${fmt(antes.weighted_upside)}%</td>
+          <td style="text-align:center">${arrow(antes.weighted_upside, dep.weighted_upside)}</td>
+          <td style="text-align:right;padding:5px 8px;color:#fff">${fmt(dep.weighted_upside)}%</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(imp.variacao_upside_pp)}>${imp.variacao_upside_pp > 0 ? '+' : ''}${fmt(imp.variacao_upside_pp)} pp</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 8px;color:#aaa">HHI Concentração</td>
+          <td style="text-align:right;padding:5px 8px">${antes.hhi}</td>
+          <td style="text-align:center">${arrow(-antes.hhi, -dep.hhi)}</td>
+          <td style="text-align:right;padding:5px 8px;color:#fff">${dep.hhi}</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(-imp.variacao_hhi)}>${imp.variacao_hhi > 0 ? '+' : ''}${imp.variacao_hhi}</td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  // ── Card 2: Compliance ──
+  const statusColor = s => s === 'ok' ? '#00cc88' : s === 'alerta' ? '#f5a623' : '#cc3333';
+  const statusLabel = s => s === 'ok' ? 'OK' : s === 'alerta' ? 'ALERTA' : 'VIOLAÇÃO';
+  let compHtml = '<div style="display:flex;flex-direction:column;gap:14px">';
+  d.compliance.forEach(c => {
+    const pct = c.limite_pct > 0
+      ? Math.min(100, (c.valor_depois_pct / c.limite_pct) * 100)
+      : 0;
+    const barColor = statusColor(c.status);
+    // Para caixa, renderizar como valor R$ ao invés de %
+    const ehCaixa = c.regra.toLowerCase().includes('caixa');
+    const valLabel = ehCaixa
+      ? `R$ ${fmt(c.valor_depois_pct, 2)}`
+      : `${fmt(c.valor_depois_pct)}% / ${fmt(c.limite_pct)}%`;
+    compHtml += `
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-family:monospace;font-size:11px;color:#aaa">${c.regra}</span>
+          <span style="font-family:monospace;font-size:11px;font-weight:bold;color:${barColor}">${statusLabel(c.status)}</span>
+        </div>
+        ${!ehCaixa ? `
+        <div style="background:#1a1a1a;border-radius:2px;height:6px;overflow:hidden;margin-bottom:4px">
+          <div style="width:${pct.toFixed(1)}%;height:100%;background:${barColor};transition:width 0.4s"></div>
+        </div>` : ''}
+        <div style="display:flex;justify-content:space-between;font-family:monospace;font-size:10px;color:#666">
+          <span>Antes: ${ehCaixa ? 'R$ '+fmt(c.valor_antes_pct,2) : fmt(c.valor_antes_pct)+'%'}</span>
+          <span style="color:${barColor}">${valLabel}</span>
+        </div>
+      </div>`;
+  });
+  compHtml += '</div>';
+  document.getElementById('pretrade-compliance-content').innerHTML = `<div style="padding:14px">${compHtml}</div>`;
+
+  // ── Card 3: Carteira Antes vs Depois ──
+  const rowsAntes = {};
+  (d.rows_antes || []).forEach(r => { rowsAntes[r.ticker] = r; });
+  const allTickers = new Set([...(d.rows_antes||[]).map(r=>r.ticker), ...(d.rows_depois||[]).map(r=>r.ticker)]);
+  let tblHtml = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+    <thead>
+      <tr style="color:#888;border-bottom:1px solid #333">
+        <th style="text-align:left;padding:4px 8px">ATIVO</th>
+        <th style="text-align:right;padding:4px 8px">ANTES %</th>
+        <th style="text-align:right;padding:4px 8px">DEPOIS %</th>
+        <th style="text-align:right;padding:4px 8px">Δ pp</th>
+      </tr>
+    </thead><tbody>`;
+  (d.rows_depois || []).forEach(r => {
+    const ra = rowsAntes[r.ticker] || {pct_total: 0};
+    const delta = r.pct_total - ra.pct_total;
+    const isChanged = Math.abs(delta) > 0.01;
+    const rowStyle = isChanged ? 'background:#111' : '';
+    const isTarget = r.ticker === d.ativo.ticker;
+    tblHtml += `<tr style="border-bottom:1px solid #1a1a1a;${rowStyle}">
+      <td style="padding:4px 8px;color:${isTarget?'#f5a623':'#ccc'}">${r.ticker}${d.ativo.is_novo && isTarget?' <span style="font-size:9px;color:#f5a623">[+NOVO]</span>':''}</td>
+      <td style="text-align:right;padding:4px 8px;color:#666">${fmt(ra.pct_total)}%</td>
+      <td style="text-align:right;padding:4px 8px;color:${isTarget?'#f5a623':'#fff'}">${fmt(r.pct_total)}%</td>
+      <td style="text-align:right;padding:4px 8px" ${cls(delta)}>${delta>0?'+':''}${fmt(delta)}</td>
+    </tr>`;
+  });
+  tblHtml += '</tbody></table></div>';
+  document.getElementById('pretrade-portfolio-content').innerHTML = tblHtml;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 210) EVENTOS CORPORATIVOS
+// ═══════════════════════════════════════════════════════════════════
+
+let _eventsLoaded   = false;
+let _eventsData     = null;
+let _eventsMode     = 'timeline';
+let _eventsFilters  = new Set(['RESULTADO', 'DIVIDENDO', 'EX-DIV', 'SPLIT']);
+let _eventsListeners = false;
+
+function loadEventsTab() {
+  if (!_eventsListeners) {
+    _eventsListeners = true;
+
+    // Modo timeline / por ativo
+    document.querySelectorAll('[data-events-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-events-mode]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _eventsMode = btn.dataset.eventsMode;
+        _applyEventsFilter();
+      });
+    });
+
+    // Filtros de tipo
+    document.querySelectorAll('[data-event-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tipo = btn.dataset.eventFilter;
+        if (_eventsFilters.has(tipo)) {
+          _eventsFilters.delete(tipo);
+          btn.classList.remove('active');
+          btn.style.opacity = '0.4';
+        } else {
+          _eventsFilters.add(tipo);
+          btn.classList.add('active');
+          btn.style.opacity = '1';
+        }
+        _applyEventsFilter();
+      });
+    });
+
+    // Refresh forçado
+    document.getElementById('btn-events-refresh').addEventListener('click', () => {
+      _eventsData = null;
+      _eventsLoaded = false;
+      _fetchEvents(true);
+    });
+  }
+
+  if (!_eventsLoaded) _fetchEvents(false);
+}
+
+async function _fetchEvents(force) {
+  const loadEl = document.getElementById('events-loading');
+  const errEl  = document.getElementById('events-error');
+  loadEl.style.display = 'block';
+  errEl.classList.add('hidden');
+
+  try {
+    const url = '/api/events?dias_futuro=90&incluir_historico=1' + (force ? '&force=1' : '');
+    const res  = await fetch(url);
+    const data = await res.json();
+    loadEl.style.display = 'none';
+    if (!res.ok || data.error) {
+      errEl.textContent = data.error || 'Erro ao carregar eventos.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    _eventsData   = data;
+    _eventsLoaded = true;
+    _applyEventsFilter();
+  } catch(e) {
+    loadEl.style.display = 'none';
+    errEl.textContent = 'Erro de comunicação com o servidor.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+function _applyEventsFilter() {
+  if (!_eventsData) return;
+  const filtered = (_eventsData.eventos || []).filter(ev => _eventsFilters.has(ev.tipo));
+  document.getElementById('events-timeline-view').classList.toggle('hidden', _eventsMode !== 'timeline');
+  document.getElementById('events-byasset-view').classList.toggle('hidden', _eventsMode !== 'byasset');
+  if (_eventsMode === 'timeline') {
+    _renderEventsTimeline(filtered);
+  } else {
+    _renderEventsByAsset(_eventsData.por_ativo || {}, filtered);
+  }
+}
+
+function _renderEventsTimeline(eventos) {
+  const el = document.getElementById('events-timeline-view');
+  if (!eventos.length) {
+    el.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;padding:12px">Nenhum evento encontrado no período.</p>';
+    return;
+  }
+
+  const tipoColor = {'RESULTADO':'#f5a623','DIVIDENDO':'#00cc88','EX-DIV':'#ffcc00','SPLIT':'#00aacc'};
+  const fmt = (v,d=2) => v == null ? '' : Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+  // Agrupar por mês
+  const grupos = {};
+  eventos.forEach(ev => {
+    const mes = ev.data.substring(0,7); // YYYY-MM
+    if (!grupos[mes]) grupos[mes] = [];
+    grupos[mes].push(ev);
+  });
+
+  let html = '';
+  Object.keys(grupos).sort().forEach(mes => {
+    const [ano, m] = mes.split('-');
+    const meses = ['','JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+    html += `<div style="font-family:monospace;font-size:10px;color:#555;padding:6px 0 4px;border-bottom:1px solid #1a1a1a;margin-bottom:6px">${meses[+m]} ${ano}</div>`;
+    grupos[mes].forEach(ev => {
+      const color = tipoColor[ev.tipo] || '#aaa';
+      const diasLabel = ev.dias_ate_evento >= 0
+        ? (ev.dias_ate_evento === 0 ? '<span style="color:#f5a623">HOJE</span>'
+           : `<span style="color:#888">em ${ev.dias_ate_evento}d</span>`)
+        : `<span style="color:#444">${Math.abs(ev.dias_ate_evento)}d atrás</span>`;
+      const valorLabel = ev.valor != null ? `<span style="color:#aaa"> | R$ ${fmt(ev.valor,4)}</span>` : '';
+      const confirmLabel = !ev.confirmado ? '<span style="color:#555;font-size:9px"> (est.)</span>' : '';
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid #111;font-family:monospace;font-size:11px">
+        <span style="color:${color};font-weight:bold;min-width:72px">${ev.tipo}</span>
+        <span style="color:#f5a623;min-width:60px">${ev.ticker}</span>
+        <span style="color:#ccc">${ev.data}</span>
+        <span>${diasLabel}</span>
+        ${valorLabel}${confirmLabel}
+        <span style="color:#555;font-size:10px;margin-left:auto">${ev.descricao}</span>
+      </div>`;
+    });
+  });
+
+  el.innerHTML = html;
+}
+
+function _renderEventsByAsset(porAtivo, filtered) {
+  const el = document.getElementById('events-byasset-view');
+  const tipoColor = {'RESULTADO':'#f5a623','DIVIDENDO':'#00cc88','EX-DIV':'#ffcc00','SPLIT':'#00aacc'};
+  const fmt = (v,d=4) => v == null ? '' : Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+  // Montar mapa de ticker → eventos filtrados
+  const tickerMap = {};
+  filtered.forEach(ev => {
+    if (!tickerMap[ev.ticker]) tickerMap[ev.ticker] = [];
+    tickerMap[ev.ticker].push(ev);
+  });
+
+  if (!Object.keys(tickerMap).length) {
+    el.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;padding:12px">Nenhum evento encontrado.</p>';
+    return;
+  }
+
+  let html = '';
+  Object.keys(tickerMap).sort().forEach(ticker => {
+    const evs = tickerMap[ticker];
+    let rowsHtml = '';
+    evs.forEach(ev => {
+      const color = tipoColor[ev.tipo] || '#aaa';
+      const diasLabel = ev.dias_ate_evento >= 0
+        ? (ev.dias_ate_evento === 0 ? 'HOJE' : `em ${ev.dias_ate_evento}d`)
+        : `${Math.abs(ev.dias_ate_evento)}d atrás`;
+      rowsHtml += `<tr style="border-bottom:1px solid #111;font-size:11px">
+        <td style="padding:4px 6px;color:${color};font-weight:bold">${ev.tipo}</td>
+        <td style="padding:4px 6px;color:#ccc">${ev.data}</td>
+        <td style="padding:4px 6px;color:#888">${diasLabel}</td>
+        <td style="padding:4px 6px;color:#aaa">${ev.valor != null ? 'R$ '+fmt(ev.valor) : '—'}</td>
+      </tr>`;
+    });
+    html += `<div class="chart-card risk-card" style="margin:0">
+      <div class="chart-card-header">
+        <span class="chart-card-title" style="color:#f5a623">${ticker}</span>
+        <span style="font-family:monospace;font-size:10px;color:#555">${evs.length} evento${evs.length>1?'s':''}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-family:monospace">
+        <thead><tr style="color:#555;font-size:10px;border-bottom:1px solid #222">
+          <th style="text-align:left;padding:3px 6px">TIPO</th>
+          <th style="text-align:left;padding:3px 6px">DATA</th>
+          <th style="text-align:left;padding:3px 6px">PRAZO</th>
+          <th style="text-align:left;padding:3px 6px">VALOR</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
 

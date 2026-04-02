@@ -131,6 +131,14 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-financials"><span class="fn-num">208)</span> FINANCIALS</button>
   {% set ns.first = false %}
   {% endif %}
+  {% if role == 'admin' %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-pretrade"><span class="fn-num">209)</span> PRÉ-TRADE</button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_events %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-events"><span class="fn-num">210)</span> EVENTOS</button>
+  {% set ns.first = false %}
+  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -448,6 +456,12 @@
         <span class="viewer-access-label">FINANCIAIS</span>
         <button class="viewer-toggle {% if viewer_config.tab_financials %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_financials">
           {% if viewer_config.tab_financials %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">EVENTOS</span>
+        <button class="viewer-toggle {% if viewer_config.tab_events %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_events">
+          {% if viewer_config.tab_events %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
     </div>
@@ -945,6 +959,126 @@
       </table>
     </div>
   </div>
+
+</div>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     209) PRÉ-TRADE
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' %}
+<div id="tab-pretrade" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <div class="risk-row">
+    <!-- Formulário de simulação -->
+    <div class="chart-card risk-card" style="flex:0 0 340px;min-width:340px">
+      <div class="chart-card-header">
+        <span class="chart-card-title">SIMULADOR PRÉ-TRADE</span>
+      </div>
+      <div id="pretrade-form-wrap" style="padding:14px;display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
+          ATIVO
+          <select id="pt-ticker-select" class="bbg-input" style="width:100%">
+            <option value="">— selecione ou digite abaixo —</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
+          TICKER MANUAL (novo ativo)
+          <input type="text" id="pt-ticker-manual" class="bbg-input" placeholder="ex: VALE3.SA" style="text-transform:uppercase;width:100%">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
+          DIREÇÃO
+          <select id="pt-direcao" class="bbg-input" style="width:100%">
+            <option value="compra">COMPRA</option>
+            <option value="venda">VENDA</option>
+            <option value="zerar">ZERAR POSIÇÃO</option>
+          </select>
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
+            QUANTIDADE
+            <input type="number" id="pt-quantidade" class="bbg-input" placeholder="0" min="0" style="width:100%">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
+            PREÇO (R$)
+            <input type="number" id="pt-preco" class="bbg-input" placeholder="0,00" step="0.01" min="0" style="width:100%">
+          </label>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
+          CORRETAGEM (R$)
+          <input type="number" id="pt-corretagem" class="bbg-input" placeholder="0,00" step="0.01" min="0" value="0" style="width:100%">
+        </label>
+        <button id="btn-pt-simular" class="bbg-btn bbg-btn-primary" style="margin-top:4px">SIMULAR</button>
+        <div id="pt-error" class="error-msg hidden"></div>
+        <div id="pt-loading" class="risk-loading hidden">CALCULANDO...</div>
+      </div>
+    </div>
+
+    <!-- Impacto na Cota -->
+    <div class="chart-card risk-card" id="pretrade-cota-card" style="flex:1">
+      <div class="chart-card-header">
+        <span class="chart-card-title">IMPACTO NA COTA &amp; NAV</span>
+      </div>
+      <div id="pretrade-cota-content" style="padding:14px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Execute uma simulação para ver o impacto.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="risk-row">
+    <!-- Compliance -->
+    <div class="chart-card risk-card" id="pretrade-compliance-card" style="flex:1">
+      <div class="chart-card-header">
+        <span class="chart-card-title">COMPLIANCE — LIMITES CVM 555</span>
+      </div>
+      <div id="pretrade-compliance-content" style="padding:14px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>
+      </div>
+    </div>
+
+    <!-- Carteira Antes vs Depois -->
+    <div class="chart-card risk-card" id="pretrade-portfolio-card" style="flex:1">
+      <div class="chart-card-header">
+        <span class="chart-card-title">CARTEIRA — ANTES vs DEPOIS</span>
+      </div>
+      <div id="pretrade-portfolio-content" style="padding:14px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     210) EVENTOS
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.tab_events %}
+<div id="tab-events" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <div class="fin-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div class="fin-stmt-tabs">
+      <button class="fin-stmt-btn active" data-events-mode="timeline">TIMELINE</button>
+      <button class="fin-stmt-btn" data-events-mode="byasset">POR ATIVO</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="bbg-btn risk-btn active" data-event-filter="RESULTADO" style="color:#f5a623;border-color:#f5a623">RESULTADO</button>
+      <button class="bbg-btn risk-btn active" data-event-filter="DIVIDENDO" style="color:#00cc88;border-color:#00cc88">DIVIDENDO</button>
+      <button class="bbg-btn risk-btn active" data-event-filter="EX-DIV" style="color:#ffcc00;border-color:#ffcc00">EX-DIV</button>
+      <button class="bbg-btn risk-btn active" data-event-filter="SPLIT" style="color:#00aacc;border-color:#00aacc">SPLIT</button>
+    </div>
+    <button class="bbg-btn" id="btn-events-refresh" style="font-size:13px">&#8635; ATUALIZAR</button>
+  </div>
+
+  <div id="events-loading" class="risk-loading" style="display:none">CARREGANDO EVENTOS CORPORATIVOS...</div>
+  <div id="events-error" class="risk-error hidden"></div>
+
+  <div id="events-timeline-view" style="padding:12px 0"></div>
+  <div id="events-byasset-view" class="hidden" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;padding:12px 0"></div>
 
 </div>
 {% endif %}
