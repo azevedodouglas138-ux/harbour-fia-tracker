@@ -5,5 +5,8 @@
   "tab_history": true,
   "tab_macro": true,
   "tab_watchlist": true,
-  "tab_screener": true
+  "tab_screener": true,
+  "tab_risk": true,
+  "tab_financials": true,
+  "tab_events": true
 }
