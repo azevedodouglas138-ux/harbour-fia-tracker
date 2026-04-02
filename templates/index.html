@@ -972,47 +972,38 @@
 {% set ns2.first = false %}
 
   <div class="risk-row">
-    <!-- Formulário de simulação -->
-    <div class="chart-card risk-card" style="flex:0 0 340px;min-width:340px">
-      <div class="chart-card-header">
-        <span class="chart-card-title">SIMULADOR PRÉ-TRADE</span>
+    <!-- Basket de Operações -->
+    <div class="chart-card risk-card" style="flex:1.3;min-width:0">
+      <div class="chart-card-header" style="justify-content:space-between">
+        <span class="chart-card-title">BASKET DE OPERAÇÕES</span>
+        <button id="btn-pt-add-row" class="bbg-btn" style="font-size:11px;padding:3px 10px">+ ADICIONAR ATIVO</button>
       </div>
-      <div id="pretrade-form-wrap" style="padding:14px;display:flex;flex-direction:column;gap:10px">
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
-          ATIVO
-          <select id="pt-ticker-select" class="bbg-input" style="width:100%">
-            <option value="">— selecione ou digite abaixo —</option>
-          </select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
-          TICKER MANUAL (novo ativo)
-          <input type="text" id="pt-ticker-manual" class="bbg-input" placeholder="ex: VALE3.SA" style="text-transform:uppercase;width:100%">
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
-          DIREÇÃO
-          <select id="pt-direcao" class="bbg-input" style="width:100%">
-            <option value="compra">COMPRA</option>
-            <option value="venda">VENDA</option>
-            <option value="zerar">ZERAR POSIÇÃO</option>
-          </select>
-        </label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
-            QUANTIDADE
-            <input type="number" id="pt-quantidade" class="bbg-input" placeholder="0" min="0" style="width:100%">
-          </label>
-          <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
-            PREÇO (R$)
-            <input type="number" id="pt-preco" class="bbg-input" placeholder="0,00" step="0.01" min="0" style="width:100%">
-          </label>
+      <div style="padding:14px">
+        <div style="overflow-x:auto">
+          <table id="pt-basket-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+            <thead>
+              <tr style="color:#888;border-bottom:1px solid #333">
+                <th style="text-align:left;padding:4px 6px;white-space:nowrap">ATIVO</th>
+                <th style="text-align:left;padding:4px 6px;white-space:nowrap">TICKER MANUAL</th>
+                <th style="text-align:left;padding:4px 6px;white-space:nowrap">DIREÇÃO</th>
+                <th style="text-align:right;padding:4px 6px;white-space:nowrap">QTDE</th>
+                <th style="text-align:right;padding:4px 6px;white-space:nowrap">PREÇO (R$)</th>
+                <th style="text-align:right;padding:4px 6px;white-space:nowrap">CORRET.</th>
+                <th style="padding:4px 4px"></th>
+              </tr>
+            </thead>
+            <tbody id="pt-basket-body">
+              <!-- linhas adicionadas pelo JS -->
+            </tbody>
+          </table>
         </div>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#aaa;font-family:monospace">
-          CORRETAGEM (R$)
-          <input type="number" id="pt-corretagem" class="bbg-input" placeholder="0,00" step="0.01" min="0" value="0" style="width:100%">
-        </label>
-        <button id="btn-pt-simular" class="bbg-btn bbg-btn-primary" style="margin-top:4px">SIMULAR</button>
-        <div id="pt-error" class="error-msg hidden"></div>
-        <div id="pt-loading" class="risk-loading hidden">CALCULANDO...</div>
+        <div id="pt-basket-summary" style="font-family:monospace;font-size:11px;color:#888;margin-top:8px;text-align:right;min-height:16px"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <button id="btn-pt-simular" class="bbg-btn bbg-btn-primary" style="flex:1">SIMULAR BASKET</button>
+          <button id="btn-pt-limpar" class="bbg-btn" style="font-size:11px">LIMPAR</button>
+        </div>
+        <div id="pt-error" class="error-msg hidden" style="margin-top:8px"></div>
+        <div id="pt-loading" class="risk-loading hidden" style="margin-top:8px">CALCULANDO BASKET...</div>
       </div>
     </div>
 
@@ -1031,7 +1022,7 @@
     <!-- Compliance -->
     <div class="chart-card risk-card" id="pretrade-compliance-card" style="flex:1">
       <div class="chart-card-header">
-        <span class="chart-card-title">COMPLIANCE — LIMITES CVM 555</span>
+        <span class="chart-card-title">COMPLIANCE — RESOLUÇÃO CVM 175</span>
       </div>
       <div id="pretrade-compliance-content" style="padding:14px">
         <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>

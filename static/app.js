@@ -3486,24 +3486,126 @@ function loadFinancialsTab() {
 // 209) PRÉ-TRADE
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+// 209) PRÉ-TRADE — Basket Simulator
+// ═══════════════════════════════════════════════════════════════════
+
 let _pretradeListenersSet = false;
+let _ptRowId = 0;
+let _ptPortfolioOptions = [];   // [{value, label}] populado na primeira abertura
 
 function loadPretradeTab() {
   if (_pretradeListenersSet) return;
   _pretradeListenersSet = true;
 
-  // Popular select com ativos da carteira
-  const sel = document.getElementById('pt-ticker-select');
-  if (sel && portfolioData && portfolioData.rows) {
-    portfolioData.rows.forEach(r => {
-      const opt = document.createElement('option');
-      opt.value = r.yahoo_ticker || (r.ticker + '.SA');
-      opt.textContent = r.ticker;
-      sel.appendChild(opt);
-    });
+  // Montar opções de portfolio para os selects das linhas
+  if (portfolioData && portfolioData.rows) {
+    _ptPortfolioOptions = portfolioData.rows.map(r => ({
+      value: r.yahoo_ticker || (r.ticker + '.SA'),
+      label: r.ticker,
+    }));
   }
 
+  // Adicionar primeira linha vazia
+  _ptAddRow();
+
+  document.getElementById('btn-pt-add-row').addEventListener('click', () => _ptAddRow());
   document.getElementById('btn-pt-simular').addEventListener('click', _pretradeSubmit);
+  document.getElementById('btn-pt-limpar').addEventListener('click', () => {
+    document.getElementById('pt-basket-body').innerHTML = '';
+    document.getElementById('pt-basket-summary').textContent = '';
+    document.getElementById('pt-error').classList.add('hidden');
+    document.getElementById('pretrade-cota-content').innerHTML =
+      '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Execute uma simulação para ver o impacto.</p>';
+    document.getElementById('pretrade-compliance-content').innerHTML =
+      '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>';
+    document.getElementById('pretrade-portfolio-content').innerHTML =
+      '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>';
+    _ptAddRow();
+  });
+}
+
+function _ptAddRow(tickerVal, direcaoVal) {
+  const id  = ++_ptRowId;
+  const tr  = document.createElement('tr');
+  tr.dataset.rowId = id;
+  tr.style.borderBottom = '1px solid #1a1a1a';
+
+  // Build select options
+  let selOpts = '<option value="">NOVO...</option>';
+  _ptPortfolioOptions.forEach(o => {
+    const sel = tickerVal === o.value ? ' selected' : '';
+    selOpts += `<option value="${o.value}"${sel}>${o.label}</option>`;
+  });
+
+  tr.innerHTML = `
+    <td style="padding:4px 5px">
+      <select class="bbg-input pt-row-sel" style="width:100px;font-size:11px">${selOpts}</select>
+    </td>
+    <td style="padding:4px 5px">
+      <input type="text" class="bbg-input pt-row-manual" placeholder="VALE3.SA"
+             style="width:90px;font-size:11px;text-transform:uppercase">
+    </td>
+    <td style="padding:4px 5px">
+      <select class="bbg-input pt-row-dir" style="width:88px;font-size:11px">
+        <option value="compra"${direcaoVal==='compra'?' selected':''}>COMPRA</option>
+        <option value="venda"${direcaoVal==='venda'?' selected':''}>VENDA</option>
+        <option value="zerar"${direcaoVal==='zerar'?' selected':''}>ZERAR</option>
+      </select>
+    </td>
+    <td style="padding:4px 5px">
+      <input type="number" class="bbg-input pt-row-qtde" placeholder="0" min="0"
+             style="width:80px;font-size:11px;text-align:right">
+    </td>
+    <td style="padding:4px 5px">
+      <input type="number" class="bbg-input pt-row-preco" placeholder="0,00" step="0.01" min="0"
+             style="width:80px;font-size:11px;text-align:right">
+    </td>
+    <td style="padding:4px 5px">
+      <input type="number" class="bbg-input pt-row-corret" placeholder="0" step="0.01" min="0" value="0"
+             style="width:56px;font-size:11px;text-align:right">
+    </td>
+    <td style="padding:4px 3px">
+      <button class="bbg-btn pt-row-rm"
+              style="color:#cc3333;border-color:#333;padding:2px 7px;font-size:13px;line-height:1">×</button>
+    </td>`;
+
+  tr.querySelector('.pt-row-rm').addEventListener('click', () => {
+    tr.remove();
+    _ptUpdateSummary();
+  });
+
+  // Atualizar resumo ao mudar qtde / preço / direção
+  ['pt-row-qtde', 'pt-row-preco', 'pt-row-dir'].forEach(cls => {
+    tr.querySelector('.' + cls).addEventListener('input', _ptUpdateSummary);
+  });
+
+  document.getElementById('pt-basket-body').appendChild(tr);
+  _ptUpdateSummary();
+}
+
+function _ptUpdateSummary() {
+  const rows = document.querySelectorAll('#pt-basket-body tr');
+  let totalCompra = 0, totalVenda = 0, n = 0;
+  rows.forEach(tr => {
+    const qtde  = parseFloat(tr.querySelector('.pt-row-qtde')?.value) || 0;
+    const preco = parseFloat(tr.querySelector('.pt-row-preco')?.value) || 0;
+    const dir   = tr.querySelector('.pt-row-dir')?.value || 'compra';
+    const val   = qtde * preco;
+    if (val > 0) {
+      n++;
+      if (dir === 'compra') totalCompra += val;
+      else totalVenda += val;
+    }
+  });
+  const fmtR = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+  const el = document.getElementById('pt-basket-summary');
+  if (n === 0) { el.textContent = ''; return; }
+  el.innerHTML =
+    (totalCompra > 0 ? `<span style="color:#f5a623">▲ ${fmtR(totalCompra)}</span>` : '') +
+    (totalCompra > 0 && totalVenda > 0 ? '&nbsp;&nbsp;' : '') +
+    (totalVenda  > 0 ? `<span style="color:#00cc88">▼ ${fmtR(totalVenda)}</span>` : '') +
+    `&nbsp;&nbsp;<span style="color:#555">${rows.length} ativo(s)</span>`;
 }
 
 async function _pretradeSubmit() {
@@ -3512,40 +3614,48 @@ async function _pretradeSubmit() {
   errEl.classList.add('hidden');
   loadEl.classList.remove('hidden');
 
-  const selVal    = (document.getElementById('pt-ticker-select').value || '').trim();
-  const manualVal = (document.getElementById('pt-ticker-manual').value || '').trim().toUpperCase();
-  let ticker      = manualVal || selVal;
-  if (!ticker.includes('.')) ticker += '.SA';
+  const rows = document.querySelectorAll('#pt-basket-body tr');
+  const operacoes = [];
 
-  const direcao   = document.getElementById('pt-direcao').value;
-  const quantidade = parseFloat(document.getElementById('pt-quantidade').value) || 0;
-  const preco      = parseFloat(document.getElementById('pt-preco').value) || 0;
-  const corretagem = parseFloat(document.getElementById('pt-corretagem').value) || 0;
+  for (const tr of rows) {
+    const selVal    = (tr.querySelector('.pt-row-sel')?.value || '').trim();
+    const manualVal = (tr.querySelector('.pt-row-manual')?.value || '').trim().toUpperCase();
+    let ticker = manualVal || selVal;
+    if (!ticker) continue;   // linha vazia — ignorar
+    if (!ticker.includes('.')) ticker += '.SA';
 
-  if (!ticker || ticker === '.SA') {
-    errEl.textContent = 'Selecione ou informe um ticker.';
-    errEl.classList.remove('hidden');
-    loadEl.classList.add('hidden');
-    return;
+    const direcao   = tr.querySelector('.pt-row-dir')?.value || 'compra';
+    const quantidade = parseFloat(tr.querySelector('.pt-row-qtde')?.value) || 0;
+    const preco      = parseFloat(tr.querySelector('.pt-row-preco')?.value) || 0;
+    const corretagem = parseFloat(tr.querySelector('.pt-row-corret')?.value) || 0;
+
+    if (preco <= 0) {
+      errEl.textContent = `Preço inválido para ${ticker}. Preencha todos os preços.`;
+      errEl.classList.remove('hidden');
+      loadEl.classList.add('hidden');
+      return;
+    }
+    if (direcao !== 'zerar' && quantidade <= 0) {
+      errEl.textContent = `Quantidade inválida para ${ticker}.`;
+      errEl.classList.remove('hidden');
+      loadEl.classList.add('hidden');
+      return;
+    }
+    operacoes.push({ticker, direcao, quantidade, preco, corretagem_rs: corretagem});
   }
-  if (preco <= 0) {
-    errEl.textContent = 'Preço deve ser maior que zero.';
-    errEl.classList.remove('hidden');
-    loadEl.classList.add('hidden');
-    return;
-  }
-  if (direcao !== 'zerar' && quantidade <= 0) {
-    errEl.textContent = 'Quantidade deve ser maior que zero.';
+
+  if (operacoes.length === 0) {
+    errEl.textContent = 'Adicione ao menos uma operação ao basket.';
     errEl.classList.remove('hidden');
     loadEl.classList.add('hidden');
     return;
   }
 
   try {
-    const res = await fetch('/api/pretrade/simulate', {
+    const res  = await fetch('/api/pretrade/simulate', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ticker, quantidade, direcao, preco, corretagem_rs: corretagem}),
+      body: JSON.stringify({operacoes}),
     });
     const data = await res.json();
     loadEl.classList.add('hidden');
@@ -3563,34 +3673,47 @@ async function _pretradeSubmit() {
 }
 
 function _pretradeRender(d) {
-  const fmt   = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: dec, maximumFractionDigits: dec});
-  const fmtC  = (v, dec=8) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: dec, maximumFractionDigits: dec});
-  const fmtR  = v => v == null ? '—' : 'R$ ' + fmt(v, 2);
+  const fmt  = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+  const fmtC = (v, dec=8) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+  const fmtR = v => v == null ? '—' : 'R$ ' + fmt(v, 2);
   const arrow = (before, after) => {
     const diff = (after || 0) - (before || 0);
     if (Math.abs(diff) < 0.0001) return '<span style="color:#888">→</span>';
-    return diff > 0
-      ? '<span style="color:#f5a623">▲</span>'
-      : '<span style="color:#cc3333">▼</span>';
+    return diff > 0 ? '<span style="color:#f5a623">▲</span>' : '<span style="color:#cc3333">▼</span>';
   };
   const cls = v => Number(v) < 0 ? 'style="color:#cc3333"' : (Number(v) > 0 ? 'style="color:#00cc88"' : '');
 
-  // ── Card 1: Impacto na Cota ──
-  const op = d.operacao;
   const antes = d.antes;
   const dep   = d.depois;
   const imp   = d.impactos;
-  const dir   = {compra: 'COMPRA', venda: 'VENDA', zerar: 'ZERAR'}[op.direcao] || op.direcao.toUpperCase();
-  const isNovo = d.ativo.is_novo ? ' <span style="color:#f5a623;font-size:10px">[NOVO]</span>' : '';
+  const ops   = d.operacoes || [];
+  const basket = d.basket || {};
 
+  // ── Sumário das operações (cabeçalho do card de impacto) ──
+  const dirLabel = {compra: 'COMPRA', venda: 'VENDA', zerar: 'ZERAR'};
+  const dirColor = {compra: '#f5a623', venda: '#00cc88', zerar: '#cc3333'};
+  let opsHtml = ops.map(op =>
+    `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a1a1a">
+      <span>
+        <b style="color:${dirColor[op.direcao]||'#aaa'}">${dirLabel[op.direcao]||op.direcao}</b>
+        &nbsp;<span style="color:#f5a623">${op.ticker}</span>${op.is_novo ? ' <span style="color:#f5a623;font-size:9px">[NOVO]</span>' : ''}
+        &nbsp;<span style="color:#555">${op.sector}</span>
+      </span>
+      <span style="color:#888">
+        ${op.direcao !== 'zerar' ? fmt(op.quantidade,0) + ' × ' + fmtR(op.preco) + ' = ' : ''}
+        <b style="color:#ccc">${fmtR(op.valor_total_rs)}</b>
+        ${op.corretagem_rs ? `<span style="color:#555"> +c ${fmtR(op.corretagem_rs)}</span>` : ''}
+      </span>
+    </div>`
+  ).join('');
+
+  // ── Card 1: Impacto na Cota ──
   document.getElementById('pretrade-cota-content').innerHTML = `
-    <div style="font-family:monospace;font-size:11px;color:#aaa;padding:4px 0 10px">
-      <b style="color:#f5a623">${dir}</b> ${fmt(op.quantidade, 0)} × ${fmtR(op.preco)}
-      = <b style="color:#fff">${fmtR(op.valor_total_rs)}</b>
-      ${op.corretagem_rs ? `+ corretagem ${fmtR(op.corretagem_rs)}` : ''}
-      → <b style="color:#fff">${fmtR(op.custo_total_rs)}</b>
-      &nbsp;|&nbsp; Ativo: <b style="color:#f5a623">${d.ativo.ticker}</b>${isNovo}
-      &nbsp;|&nbsp; Setor: ${d.ativo.sector}
+    <div style="font-family:monospace;font-size:11px;margin-bottom:10px">
+      ${opsHtml}
+      <div style="text-align:right;margin-top:6px;color:#888">
+        Custo líquido total: <b style="color:${basket.custo_total_rs >= 0 ? '#cc3333' : '#00cc88'}">${fmtR(basket.custo_total_rs)}</b>
+      </div>
     </div>
     <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
       <thead>
@@ -3625,11 +3748,11 @@ function _pretradeRender(d) {
           <td style="text-align:right;padding:5px 8px" ${cls(dep.caixa - antes.caixa)}>${fmtR(dep.caixa - antes.caixa)}</td>
         </tr>
         <tr style="border-bottom:1px solid #1a1a1a">
-          <td style="padding:5px 8px;color:#aaa">Peso do Ativo</td>
-          <td style="text-align:right;padding:5px 8px">${fmt(antes.pct_ativo)}%</td>
-          <td style="text-align:center">${arrow(antes.pct_ativo, dep.pct_ativo)}</td>
-          <td style="text-align:right;padding:5px 8px;color:#fff">${fmt(dep.pct_ativo)}%</td>
-          <td style="text-align:right;padding:5px 8px" ${cls(imp.variacao_peso_pp)}>${imp.variacao_peso_pp > 0 ? '+' : ''}${fmt(imp.variacao_peso_pp)} pp</td>
+          <td style="padding:5px 8px;color:#aaa">Grupo I (Ações/BDRs)</td>
+          <td style="text-align:right;padding:5px 8px">${fmt(antes.pct_grupo1)}%</td>
+          <td style="text-align:center">${arrow(antes.pct_grupo1, dep.pct_grupo1)}</td>
+          <td style="text-align:right;padding:5px 8px;color:${dep.pct_grupo1 < 67 ? '#cc3333' : '#fff'}">${fmt(dep.pct_grupo1)}%</td>
+          <td style="text-align:right;padding:5px 8px" ${cls(dep.pct_grupo1 - antes.pct_grupo1)}>${dep.pct_grupo1 - antes.pct_grupo1 > 0 ? '+' : ''}${fmt(dep.pct_grupo1 - antes.pct_grupo1)} pp</td>
         </tr>
         <tr style="border-bottom:1px solid #1a1a1a">
           <td style="padding:5px 8px;color:#aaa">Beta Pond.</td>
@@ -3658,25 +3781,27 @@ function _pretradeRender(d) {
   // ── Card 2: Compliance ──
   const statusColor = s => s === 'ok' ? '#00cc88' : s === 'alerta' ? '#f5a623' : '#cc3333';
   const statusLabel = s => s === 'ok' ? 'OK' : s === 'alerta' ? 'ALERTA' : 'VIOLAÇÃO';
-  let compHtml = '<div style="display:flex;flex-direction:column;gap:14px">';
+  let compHtml = '<div style="display:flex;flex-direction:column;gap:12px">';
   d.compliance.forEach(c => {
-    const pct = c.limite_pct > 0
-      ? Math.min(100, (c.valor_depois_pct / c.limite_pct) * 100)
-      : 0;
-    const barColor = statusColor(c.status);
-    // Para caixa, renderizar como valor R$ ao invés de %
-    const ehCaixa = c.regra.toLowerCase().includes('caixa');
+    const barColor  = statusColor(c.status);
+    const ehCaixa   = (c.tipo || '') === 'caixa';
+    const ehMinimo  = (c.tipo || '') === 'minimo';
+    // Para mínimos: barra representa quanto do mínimo foi atingido (invertida)
+    const pct = ehCaixa ? 0
+      : ehMinimo
+        ? Math.min(100, (c.valor_depois_pct / c.limite_pct) * 100)
+        : Math.min(100, (c.valor_depois_pct / c.limite_pct) * 100);
     const valLabel = ehCaixa
       ? `R$ ${fmt(c.valor_depois_pct, 2)}`
-      : `${fmt(c.valor_depois_pct)}% / ${fmt(c.limite_pct)}%`;
+      : `${fmt(c.valor_depois_pct)}% / ${ehMinimo ? 'mín ' : 'máx '}${fmt(c.limite_pct)}%`;
     compHtml += `
       <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <span style="font-family:monospace;font-size:11px;color:#aaa">${c.regra}</span>
           <span style="font-family:monospace;font-size:11px;font-weight:bold;color:${barColor}">${statusLabel(c.status)}</span>
         </div>
         ${!ehCaixa ? `
-        <div style="background:#1a1a1a;border-radius:2px;height:6px;overflow:hidden;margin-bottom:4px">
+        <div style="background:#1a1a1a;border-radius:2px;height:5px;overflow:hidden;margin-bottom:3px">
           <div style="width:${pct.toFixed(1)}%;height:100%;background:${barColor};transition:width 0.4s"></div>
         </div>` : ''}
         <div style="display:flex;justify-content:space-between;font-family:monospace;font-size:10px;color:#666">
@@ -3689,9 +3814,9 @@ function _pretradeRender(d) {
   document.getElementById('pretrade-compliance-content').innerHTML = `<div style="padding:14px">${compHtml}</div>`;
 
   // ── Card 3: Carteira Antes vs Depois ──
+  const tickersTocados = new Set(ops.map(o => o.ticker));
   const rowsAntes = {};
   (d.rows_antes || []).forEach(r => { rowsAntes[r.ticker] = r; });
-  const allTickers = new Set([...(d.rows_antes||[]).map(r=>r.ticker), ...(d.rows_depois||[]).map(r=>r.ticker)]);
   let tblHtml = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
     <thead>
       <tr style="color:#888;border-bottom:1px solid #333">
@@ -3702,17 +3827,28 @@ function _pretradeRender(d) {
       </tr>
     </thead><tbody>`;
   (d.rows_depois || []).forEach(r => {
-    const ra = rowsAntes[r.ticker] || {pct_total: 0};
+    const ra    = rowsAntes[r.ticker] || {pct_total: 0};
     const delta = r.pct_total - ra.pct_total;
-    const isChanged = Math.abs(delta) > 0.01;
-    const rowStyle = isChanged ? 'background:#111' : '';
-    const isTarget = r.ticker === d.ativo.ticker;
+    const isTocado  = tickersTocados.has(r.ticker);
+    const isNovo    = ops.find(o => o.ticker === r.ticker && o.is_novo);
+    const rowStyle  = isTocado ? 'background:#111' : '';
     tblHtml += `<tr style="border-bottom:1px solid #1a1a1a;${rowStyle}">
-      <td style="padding:4px 8px;color:${isTarget?'#f5a623':'#ccc'}">${r.ticker}${d.ativo.is_novo && isTarget?' <span style="font-size:9px;color:#f5a623">[+NOVO]</span>':''}</td>
+      <td style="padding:4px 8px;color:${isTocado?'#f5a623':'#ccc'}">${r.ticker}${isNovo?' <span style="font-size:9px;color:#f5a623">[+NOVO]</span>':''}</td>
       <td style="text-align:right;padding:4px 8px;color:#666">${fmt(ra.pct_total)}%</td>
-      <td style="text-align:right;padding:4px 8px;color:${isTarget?'#f5a623':'#fff'}">${fmt(r.pct_total)}%</td>
+      <td style="text-align:right;padding:4px 8px;color:${isTocado?'#f5a623':'#fff'}">${fmt(r.pct_total)}%</td>
       <td style="text-align:right;padding:4px 8px" ${cls(delta)}>${delta>0?'+':''}${fmt(delta)}</td>
     </tr>`;
+  });
+  // Ativos zerados que saíram do portfolio
+  (d.rows_antes || []).forEach(r => {
+    if (!(d.rows_depois || []).find(x => x.ticker === r.ticker)) {
+      tblHtml += `<tr style="border-bottom:1px solid #1a1a1a;background:#111">
+        <td style="padding:4px 8px;color:#cc3333">${r.ticker} <span style="font-size:9px">[-ZERADO]</span></td>
+        <td style="text-align:right;padding:4px 8px;color:#666">${fmt(r.pct_total)}%</td>
+        <td style="text-align:right;padding:4px 8px;color:#cc3333">0,00%</td>
+        <td style="text-align:right;padding:4px 8px;color:#cc3333">−${fmt(r.pct_total)}</td>
+      </tr>`;
+    }
   });
   tblHtml += '</tbody></table></div>';
   document.getElementById('pretrade-portfolio-content').innerHTML = tblHtml;

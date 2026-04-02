@@ -3171,194 +3171,267 @@ def get_financials(ticker):
 @require_admin
 def api_pretrade_simulate():
     import copy
-    payload     = request.json or {}
-    ticker      = payload.get("ticker", "").strip()       # yahoo_ticker ex: "PRIO3.SA"
-    quantidade  = float(payload.get("quantidade") or 0)
-    direcao     = payload.get("direcao", "compra")        # compra | venda | zerar
-    preco       = float(payload.get("preco") or 0)
-    corretagem  = float(payload.get("corretagem_rs") or 0)
+    payload = request.json or {}
 
-    if not ticker or preco <= 0:
-        return jsonify({"error": "ticker e preco são obrigatórios"}), 400
-    if direcao not in ("compra", "venda", "zerar"):
-        return jsonify({"error": "direcao deve ser compra, venda ou zerar"}), 400
+    # Aceita basket {operacoes: [...]} ou formato legado {ticker, quantidade, ...}
+    if "operacoes" in payload:
+        ops_input = payload["operacoes"]
+    else:
+        ops_input = [{
+            "ticker":        payload.get("ticker", "").strip(),
+            "quantidade":    payload.get("quantidade", 0),
+            "direcao":       payload.get("direcao", "compra"),
+            "preco":         payload.get("preco", 0),
+            "corretagem_rs": payload.get("corretagem_rs", 0),
+        }]
 
-    portfolio   = load_portfolio()
-    fund_config = get_effective_fund_config()
+    if not ops_input:
+        return jsonify({"error": "Informe ao menos uma operação"}), 400
+
+    # Validar e normalizar tickers
+    for op in ops_input:
+        t = str(op.get("ticker") or "").strip()
+        if not t:
+            return jsonify({"error": "ticker é obrigatório em todas as operações"}), 400
+        if "." not in t:
+            t += ".SA"
+        op["ticker"] = t.upper()
+        op["preco"]      = float(op.get("preco") or 0)
+        op["quantidade"] = float(op.get("quantidade") or 0)
+        op["direcao"]    = str(op.get("direcao") or "compra").lower()
+        op["corretagem_rs"] = float(op.get("corretagem_rs") or 0)
+        if op["preco"] <= 0:
+            return jsonify({"error": f"Preço inválido para {op['ticker']}"}), 400
+        if op["direcao"] not in ("compra", "venda", "zerar"):
+            return jsonify({"error": f"Direção inválida para {op['ticker']}"}), 400
+
+    portfolio    = load_portfolio()
+    fund_config  = get_effective_fund_config()
     tickers_cart = [p["yahoo_ticker"] for p in portfolio["positions"]]
 
-    # Inclui o ticker simulado na busca de dados (pode ser novo ativo)
     tickers_all = list(tickers_cart)
-    if ticker not in tickers_all:
-        tickers_all.append(ticker)
+    for op in ops_input:
+        if op["ticker"] not in tickers_all:
+            tickers_all.append(op["ticker"])
 
     prices       = get_cached_prices(tickers_all)
     fundamentals = get_cached_fundamentals(tickers_all)
 
     # ── ESTADO ANTES ──
-    pdata_antes     = build_portfolio_response(portfolio, prices, fundamentals)
-    total_antes     = pdata_antes.get("total_value") or 0
-    quota_antes     = calculate_quota(pdata_antes["rows"], fund_config, prices)
-    conc_antes      = _calcular_concentracao_pretrade(pdata_antes["rows"], total_antes)
-    pct_ativo_antes = conc_antes["por_ativo"].get(ticker, 0.0)
-    pos_existente   = next((p for p in portfolio["positions"] if p["yahoo_ticker"] == ticker), None)
-    sector_ativo    = (fundamentals.get(ticker) or {}).get("sector") or "Outros"
-    pct_setor_antes = conc_antes["por_setor"].get(sector_ativo, 0.0)
+    pdata_antes = build_portfolio_response(portfolio, prices, fundamentals)
+    total_antes = pdata_antes.get("total_value") or 0
+    quota_antes = calculate_quota(pdata_antes["rows"], fund_config, prices)
+    conc_antes  = _calcular_concentracao_pretrade(pdata_antes["rows"], total_antes)
 
-    # ── CLONAR E APLICAR OPERAÇÃO ──
+    # Grupo I antes (ações + BDRs — Res. CVM 175)
+    _GRUPO1_CATS = {"Acao", "BDR", "Acao BDR"}
+    nav_antes = quota_antes.get("nav_total") or total_antes
+    valor_g1_antes = sum(
+        (r.get("valor_liquido") or 0)
+        for r in pdata_antes["rows"]
+        if (r.get("categoria") or "Acao") in _GRUPO1_CATS
+    )
+    pct_g1_antes = (valor_g1_antes / nav_antes * 100) if nav_antes else 0
+
+    # ── CLONAR ──
     portfolio_sim   = copy.deepcopy(portfolio)
     fund_config_sim = copy.deepcopy(fund_config)
     prices_sim      = copy.deepcopy(prices)
 
-    # Substituir preço do ativo pelo preço hipotético
-    if ticker in prices_sim:
-        prices_sim[ticker] = dict(prices_sim[ticker])
-        prices_sim[ticker]["price"] = preco
-    else:
-        prices_sim[ticker] = {"price": preco, "change_pct": 0.0}
+    ops_processadas = []
+    custo_basket    = 0.0
 
-    pos_sim = next((p for p in portfolio_sim["positions"] if p["yahoo_ticker"] == ticker), None)
-    valor_op = preco * quantidade
+    for op in ops_input:
+        ticker     = op["ticker"]
+        quantidade = op["quantidade"]
+        direcao    = op["direcao"]
+        preco      = op["preco"]
+        corretagem = op["corretagem_rs"]
 
-    if direcao == "compra":
-        if pos_sim:
-            pos_sim["quantidade"] = (pos_sim.get("quantidade") or 0) + quantidade
+        # Atualizar preço simulado
+        if ticker in prices_sim:
+            prices_sim[ticker] = dict(prices_sim[ticker])
+            prices_sim[ticker]["price"] = preco
         else:
-            # Descobrir ticker display sem .SA
-            tk_display = ticker.replace(".SA", "")
-            portfolio_sim["positions"].append({
-                "ticker": tk_display, "yahoo_ticker": ticker,
-                "categoria": "Acao", "quantidade": quantidade,
-                "liq_diaria_mm": None, "lucro_mi_26": None, "preco_alvo": None,
-            })
-        fund_config_sim["caixa"] = (fund_config_sim.get("caixa") or 0) - valor_op - corretagem
-    elif direcao == "venda":
-        if pos_sim:
-            pos_sim["quantidade"] = max(0, (pos_sim.get("quantidade") or 0) - quantidade)
-        fund_config_sim["caixa"] = (fund_config_sim.get("caixa") or 0) + valor_op - corretagem
-    elif direcao == "zerar":
-        qtd_atual = (pos_existente or {}).get("quantidade") or 0
-        portfolio_sim["positions"] = [p for p in portfolio_sim["positions"] if p["yahoo_ticker"] != ticker]
-        fund_config_sim["caixa"] = (fund_config_sim.get("caixa") or 0) + preco * qtd_atual - corretagem
-        quantidade = qtd_atual
-        valor_op   = preco * quantidade
+            prices_sim[ticker] = {"price": preco, "change_pct": 0.0}
+
+        pos_existente = next((p for p in portfolio["positions"] if p["yahoo_ticker"] == ticker), None)
+        pos_sim       = next((p for p in portfolio_sim["positions"] if p["yahoo_ticker"] == ticker), None)
+        valor_op      = preco * quantidade
+
+        if direcao == "compra":
+            if pos_sim:
+                pos_sim["quantidade"] = (pos_sim.get("quantidade") or 0) + quantidade
+            else:
+                portfolio_sim["positions"].append({
+                    "ticker": ticker.replace(".SA", ""), "yahoo_ticker": ticker,
+                    "categoria": "Acao", "quantidade": quantidade,
+                    "liq_diaria_mm": None, "lucro_mi_26": None, "preco_alvo": None,
+                })
+            fund_config_sim["caixa"] = (fund_config_sim.get("caixa") or 0) - valor_op - corretagem
+            custo_op = valor_op + corretagem
+        elif direcao == "venda":
+            if pos_sim:
+                pos_sim["quantidade"] = max(0, (pos_sim.get("quantidade") or 0) - quantidade)
+            fund_config_sim["caixa"] = (fund_config_sim.get("caixa") or 0) + valor_op - corretagem
+            custo_op = -(valor_op - corretagem)
+        else:  # zerar
+            qtd_atual  = (pos_sim or {}).get("quantidade") or 0
+            portfolio_sim["positions"] = [p for p in portfolio_sim["positions"] if p["yahoo_ticker"] != ticker]
+            fund_config_sim["caixa"] = (fund_config_sim.get("caixa") or 0) + preco * qtd_atual - corretagem
+            quantidade = qtd_atual
+            valor_op   = preco * quantidade
+            custo_op   = -(valor_op - corretagem)
+
+        custo_basket += custo_op
+        sector_ativo  = (fundamentals.get(ticker) or {}).get("sector") or "Outros"
+        ops_processadas.append({
+            "ticker":       ticker.replace(".SA", ""),
+            "yahoo_ticker": ticker,
+            "is_novo":      pos_existente is None and direcao == "compra",
+            "sector":       sector_ativo,
+            "direcao":      direcao,
+            "quantidade":   quantidade,
+            "preco":        preco,
+            "valor_total_rs": round(valor_op, 2),
+            "corretagem_rs":  corretagem,
+            "custo_op_rs":    round(custo_op, 2),
+        })
 
     # Remover posições zeradas
     portfolio_sim["positions"] = [p for p in portfolio_sim["positions"] if (p.get("quantidade") or 0) > 0]
 
     # ── ESTADO DEPOIS ──
-    pdata_depois    = build_portfolio_response(portfolio_sim, prices_sim, fundamentals)
-    total_depois    = pdata_depois.get("total_value") or 0
-    quota_depois    = calculate_quota(pdata_depois["rows"], fund_config_sim, prices_sim)
-    conc_depois     = _calcular_concentracao_pretrade(pdata_depois["rows"], total_depois) if total_depois else {"por_ativo": {}, "por_setor": {}, "hhi": 0}
-    pct_ativo_depois = conc_depois["por_ativo"].get(ticker, 0.0)
-    pct_setor_depois = conc_depois["por_setor"].get(sector_ativo, 0.0)
+    pdata_depois = build_portfolio_response(portfolio_sim, prices_sim, fundamentals)
+    total_depois = pdata_depois.get("total_value") or 0
+    quota_depois = calculate_quota(pdata_depois["rows"], fund_config_sim, prices_sim)
+    conc_depois  = _calcular_concentracao_pretrade(pdata_depois["rows"], total_depois) if total_depois else {"por_ativo": {}, "por_setor": {}, "hhi": 0}
 
-    # ── COMPLIANCE ──
+    nav_depois = quota_depois.get("nav_total") or total_depois
+    valor_g1_depois = sum(
+        (r.get("valor_liquido") or 0)
+        for r in pdata_depois["rows"]
+        if (r.get("categoria") or "Acao") in _GRUPO1_CATS
+    )
+    pct_g1_depois = (valor_g1_depois / nav_depois * 100) if nav_depois else 0
+
+    cota_antes_v  = quota_antes.get("cota_estimada") or quota_antes.get("quota_fechamento") or 0
+    cota_depois_v = quota_depois.get("cota_estimada") or quota_depois.get("quota_fechamento") or 0
+    imp_por_cota  = round(cota_depois_v - cota_antes_v, 8)
+    caixa_depois  = fund_config_sim.get("caixa") or 0
+
+    # ── COMPLIANCE — Resolução CVM 175 + limites internos ──
     lim_ativo = float(fund_config.get("limite_concentracao_ativo_pct") or 20.0)
     lim_setor = float(fund_config.get("limite_concentracao_setor_pct") or 40.0)
 
-    def _status_compliance(valor, limite):
-        if valor > limite:           return "violacao"
-        if valor > limite * 0.85:    return "alerta"
+    def _status_max(valor, limite):
+        if valor > limite:          return "violacao"
+        if valor > limite * 0.85:   return "alerta"
+        return "ok"
+
+    def _status_min(valor, minimo):
+        if valor < minimo * 0.85:   return "violacao"
+        if valor < minimo:          return "alerta"
         return "ok"
 
     compliance = [
+        # Regra regulatória obrigatória: mínimo 67% Grupo I (Res. CVM 175)
         {
-            "regra": "Concentração por Ativo (CVM 555)",
-            "limite_pct": lim_ativo,
-            "valor_antes_pct": round(pct_ativo_antes, 2),
-            "valor_depois_pct": round(pct_ativo_depois, 2),
-            "status": _status_compliance(pct_ativo_depois, lim_ativo),
-        },
-        {
-            "regra": f"Concentração por Setor ({sector_ativo})",
-            "limite_pct": lim_setor,
-            "valor_antes_pct": round(pct_setor_antes, 2),
-            "valor_depois_pct": round(pct_setor_depois, 2),
-            "status": _status_compliance(pct_setor_depois, lim_setor),
+            "regra": "Mín. 67% em Ações/BDRs — Grupo I (Res. CVM 175)",
+            "limite_pct": 67.0,
+            "valor_antes_pct": round(pct_g1_antes, 2),
+            "valor_depois_pct": round(pct_g1_depois, 2),
+            "status": _status_min(pct_g1_depois, 67.0),
+            "tipo": "minimo",
         },
     ]
 
-    # Alertar se caixa ficar negativo
-    caixa_depois = fund_config_sim.get("caixa") or 0
+    # Limites internos por ativo (para cada ativo do basket)
+    tickers_tocados = {op["yahoo_ticker"] for op in ops_processadas}
+    for ytk in sorted(tickers_tocados):
+        pct_d = conc_depois["por_ativo"].get(ytk, 0.0)
+        pct_a = conc_antes["por_ativo"].get(ytk, 0.0)
+        compliance.append({
+            "regra": f"Conc. por Ativo — {ytk.replace('.SA','')} (interno)",
+            "limite_pct": lim_ativo,
+            "valor_antes_pct": round(pct_a, 2),
+            "valor_depois_pct": round(pct_d, 2),
+            "status": _status_max(pct_d, lim_ativo),
+            "tipo": "maximo",
+        })
+
+    # Limites internos por setor (para setores tocados)
+    setores_tocados = {op["sector"] for op in ops_processadas}
+    for setor in sorted(setores_tocados):
+        pct_d = conc_depois["por_setor"].get(setor, 0.0)
+        pct_a = conc_antes["por_setor"].get(setor, 0.0)
+        compliance.append({
+            "regra": f"Conc. por Setor — {setor} (interno)",
+            "limite_pct": lim_setor,
+            "valor_antes_pct": round(pct_a, 2),
+            "valor_depois_pct": round(pct_d, 2),
+            "status": _status_max(pct_d, lim_setor),
+            "tipo": "maximo",
+        })
+
+    # Caixa disponível
     if caixa_depois < 0:
         compliance.append({
             "regra": "Caixa Disponível",
             "limite_pct": 0,
-            "valor_antes_pct": round((fund_config.get("caixa") or 0), 2),
+            "valor_antes_pct": round(fund_config.get("caixa") or 0, 2),
             "valor_depois_pct": round(caixa_depois, 2),
             "status": "alerta",
+            "tipo": "caixa",
         })
 
-    nav_antes  = quota_antes.get("nav_total") or 0
-    nav_depois = quota_depois.get("nav_total") or 0
-    cota_antes_v = quota_antes.get("cota_estimada") or quota_antes.get("quota_fechamento") or 0
-    cota_depois_v= quota_depois.get("cota_estimada") or quota_depois.get("quota_fechamento") or 0
-    num_cotas    = fund_config.get("num_cotas") or 0
-    imp_por_cota = round((cota_depois_v - cota_antes_v), 8) if cota_antes_v else 0
-
-    custo_total = valor_op + (corretagem if direcao == "compra" else -corretagem if direcao == "venda" else -corretagem)
-
     return jsonify({
-        "ativo": {
-            "ticker": ticker.replace(".SA", ""),
-            "yahoo_ticker": ticker,
-            "is_novo": pos_existente is None and direcao == "compra",
-            "sector": sector_ativo,
-        },
-        "operacao": {
-            "direcao": direcao,
-            "quantidade": quantidade,
-            "preco": preco,
-            "valor_total_rs": round(valor_op, 2),
-            "corretagem_rs": corretagem,
-            "custo_total_rs": round(custo_total, 2),
+        "operacoes": ops_processadas,
+        "basket": {
+            "custo_total_rs": round(custo_basket, 2),
+            "num_operacoes":  len(ops_processadas),
         },
         "antes": {
-            "nav_total": round(nav_antes, 2),
-            "cota_estimada": round(cota_antes_v, 8),
-            "pct_ativo": round(pct_ativo_antes, 2),
-            "pct_setor": round(pct_setor_antes, 2),
-            "weighted_beta": round(pdata_antes.get("weighted_beta") or 0, 4),
+            "nav_total":       round(nav_antes, 2),
+            "cota_estimada":   round(cota_antes_v, 8),
+            "weighted_beta":   round(pdata_antes.get("weighted_beta") or 0, 4),
             "weighted_upside": round(pdata_antes.get("weighted_upside") or 0, 2),
-            "hhi": conc_antes["hhi"],
+            "hhi":   conc_antes["hhi"],
             "caixa": round(fund_config.get("caixa") or 0, 2),
+            "pct_grupo1": round(pct_g1_antes, 2),
         },
         "depois": {
-            "nav_total": round(nav_depois, 2),
-            "cota_estimada": round(cota_depois_v, 8),
-            "pct_ativo": round(pct_ativo_depois, 2),
-            "pct_setor": round(pct_setor_depois, 2),
-            "weighted_beta": round(pdata_depois.get("weighted_beta") or 0, 4),
+            "nav_total":       round(nav_depois, 2),
+            "cota_estimada":   round(cota_depois_v, 8),
+            "weighted_beta":   round(pdata_depois.get("weighted_beta") or 0, 4),
             "weighted_upside": round(pdata_depois.get("weighted_upside") or 0, 2),
-            "hhi": conc_depois["hhi"],
+            "hhi":   conc_depois["hhi"],
             "caixa": round(caixa_depois, 2),
+            "pct_grupo1": round(pct_g1_depois, 2),
         },
         "impactos": {
-            "variacao_cota_pct": round((cota_depois_v / cota_antes_v - 1) * 100, 4) if cota_antes_v else 0,
-            "variacao_nav_rs": round(nav_depois - nav_antes, 2),
-            "variacao_peso_pp": round(pct_ativo_depois - pct_ativo_antes, 2),
-            "variacao_beta": round((pdata_depois.get("weighted_beta") or 0) - (pdata_antes.get("weighted_beta") or 0), 4),
+            "variacao_cota_pct":  round((cota_depois_v / cota_antes_v - 1) * 100, 4) if cota_antes_v else 0,
+            "variacao_nav_rs":    round(nav_depois - nav_antes, 2),
+            "variacao_beta":      round((pdata_depois.get("weighted_beta") or 0) - (pdata_antes.get("weighted_beta") or 0), 4),
             "variacao_upside_pp": round((pdata_depois.get("weighted_upside") or 0) - (pdata_antes.get("weighted_upside") or 0), 2),
-            "variacao_hhi": conc_depois["hhi"] - conc_antes["hhi"],
+            "variacao_hhi":       conc_depois["hhi"] - conc_antes["hhi"],
             "impacto_por_cota_rs": imp_por_cota,
         },
         "compliance": compliance,
         "rows_depois": [
             {
-                "ticker": r["ticker"],
-                "yahoo_ticker": r.get("yahoo_ticker", ""),
-                "pct_total": round(r.get("pct_total") or 0, 2),
+                "ticker":        r["ticker"],
+                "yahoo_ticker":  r.get("yahoo_ticker", ""),
+                "pct_total":     round(r.get("pct_total") or 0, 2),
                 "valor_liquido": round(r.get("valor_liquido") or 0, 2),
             }
             for r in sorted(pdata_depois["rows"], key=lambda x: x.get("pct_total") or 0, reverse=True)
         ],
         "rows_antes": [
             {
-                "ticker": r["ticker"],
-                "yahoo_ticker": r.get("yahoo_ticker", ""),
-                "pct_total": round(r.get("pct_total") or 0, 2),
+                "ticker":        r["ticker"],
+                "yahoo_ticker":  r.get("yahoo_ticker", ""),
+                "pct_total":     round(r.get("pct_total") or 0, 2),
                 "valor_liquido": round(r.get("valor_liquido") or 0, 2),
             }
             for r in sorted(pdata_antes["rows"], key=lambda x: x.get("pct_total") or 0, reverse=True)
