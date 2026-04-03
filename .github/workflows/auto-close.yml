@@ -2,8 +2,8 @@ name: Auto-registrar fechamento da cota
 
 on:
   schedule:
-    # 18:15 BRT = 21:15 UTC, segunda a sexta
-    - cron: '15 21 * * 1-5'
+    # 18:30 BRT = 21:30 UTC, segunda a sexta
+    - cron: '30 21 * * 1-5'
   workflow_dispatch:  # permite disparar manualmente pelo GitHub
 
 jobs:
