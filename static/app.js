@@ -4055,48 +4055,99 @@ async function _ptLoadHistory() {
 
     const fmt = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
 
-    let html = '<div style="display:flex;flex-direction:column;gap:8px">';
+    // Agrupar registros por mês/ano
+    const now = new Date();
+    const currentKey = now.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    const groupOrder = [];
+    const groups = {};
     list.forEach(rec => {
-      const ts    = rec.timestamp || '';
-      const dt    = ts ? new Date(ts) : null;
-      const dtStr = dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '—';
-      const nOps  = (rec.operacoes || []).length;
-      const label = rec.label ? `<span style="color:#aaa"> — ${rec.label}</span>` : '';
-      const recId = rec.id || '';
-      const recIdShort = recId.slice(0, 8);
+      const dt  = rec.timestamp ? new Date(rec.timestamp) : null;
+      const key = dt ? dt.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}) : 'Sem data';
+      if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+      groups[key].push(rec);
+    });
 
-      // Pior status de compliance
-      const comp = rec.compliance || [];
-      let worstStatus = 'ok';
-      comp.forEach(c => {
-        if (c.status === 'violacao') worstStatus = 'violacao';
-        else if (c.status === 'alerta' && worstStatus === 'ok') worstStatus = 'alerta';
+    const worstOfGroup = recs => {
+      let worst = 'ok';
+      recs.forEach(rec => {
+        (rec.compliance || []).forEach(c => {
+          if (c.status === 'violacao') worst = 'violacao';
+          else if (c.status === 'alerta' && worst === 'ok') worst = 'alerta';
+        });
       });
-      const badgeColor = statusColor(worstStatus);
-      const badgeLabel = statusLabel(worstStatus);
+      return worst;
+    };
 
-      // Sumário de impacto
-      const imp = rec.impactos || {};
-      const varCota = imp.variacao_cota_pct;
-      const varCotaStr = varCota != null
-        ? `<span style="color:${Number(varCota)>=0?'#00cc88':'#cc3333'}">${Number(varCota)>=0?'+':''}${fmt(varCota,4)}%</span>`
-        : '';
+    let html = '<div style="display:flex;flex-direction:column;gap:0">';
+    groupOrder.forEach(key => {
+      const recs    = groups[key];
+      const isOpen  = key === currentKey;
+      const gWorst  = worstOfGroup(recs);
+      const gColor  = statusColor(gWorst);
+      const gLabel  = statusLabel(gWorst);
+      const arrow   = isOpen ? '▼' : '▶';
+      const display = isOpen ? 'block' : 'none';
+      const keyCapitalized = key.charAt(0).toUpperCase() + key.slice(1);
 
       html += `
-        <div class="pretrade-history-item" data-id="${recId}">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-family:monospace;font-size:11px;color:#888;white-space:nowrap">${dtStr}</span>
-            <span style="font-family:monospace;font-size:11px;color:#555;white-space:nowrap">ID:${recIdShort}</span>
-            <span style="font-family:monospace;font-size:11px;color:#777;white-space:nowrap">${nOps} op(s)</span>
-            ${varCotaStr ? `<span style="font-family:monospace;font-size:11px">Δ cota: ${varCotaStr}</span>` : ''}
-            <span style="font-family:monospace;font-size:10px;font-weight:bold;color:${badgeColor};border:1px solid ${badgeColor};padding:1px 6px;border-radius:2px">${badgeLabel}</span>
-            ${label}
-            <div style="margin-left:auto;display:flex;gap:6px">
-              <a href="/api/pretrade/history/${recId}/pdf" target="_blank"
-                 style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #555;color:#ccc;text-decoration:none;cursor:pointer;border-radius:2px"
-                 title="Baixar PDF de auditoria">PDF</a>
-              <button class="pt-hist-del bbg-btn" data-id="${recId}"
-                      style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1" title="Excluir">×</button>
+        <div class="pt-hist-group" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:11px;color:#888;cursor:pointer;padding:5px 0;border-bottom:1px solid #222;margin-bottom:6px;user-select:none"
+               onclick="(function(el){const body=el.nextElementSibling;const arr=el.querySelector('.pt-hist-arrow');const open=body.style.display!=='none';body.style.display=open?'none':'';arr.textContent=open?'▶':'▼';})(this)">
+            <span class="pt-hist-arrow">${arrow}</span>
+            <span style="color:#ccc;letter-spacing:0.04em">${keyCapitalized}</span>
+            <span style="color:#555">·  ${recs.length} registro(s)  ·</span>
+            <span style="font-size:10px;font-weight:bold;color:${gColor};border:1px solid ${gColor};padding:1px 6px;border-radius:2px">${gLabel}</span>
+          </div>
+          <div style="display:${display};padding-left:8px">
+            <div style="display:flex;flex-direction:column;gap:8px">`;
+
+      recs.forEach(rec => {
+        const ts    = rec.timestamp || '';
+        const dt    = ts ? new Date(ts) : null;
+        const dtStr = dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '—';
+        const nOps  = (rec.operacoes || []).length;
+        const label = rec.label ? `<span style="color:#aaa"> — ${rec.label}</span>` : '';
+        const recId = rec.id || '';
+        const recIdShort = recId.slice(0, 8);
+
+        // Pior status de compliance
+        const comp = rec.compliance || [];
+        let worstStatus = 'ok';
+        comp.forEach(c => {
+          if (c.status === 'violacao') worstStatus = 'violacao';
+          else if (c.status === 'alerta' && worstStatus === 'ok') worstStatus = 'alerta';
+        });
+        const badgeColor = statusColor(worstStatus);
+        const badgeLabel = statusLabel(worstStatus);
+
+        // Sumário de impacto
+        const imp = rec.impactos || {};
+        const varCota = imp.variacao_cota_pct;
+        const varCotaStr = varCota != null
+          ? `<span style="color:${Number(varCota)>=0?'#00cc88':'#cc3333'}">${Number(varCota)>=0?'+':''}${fmt(varCota,4)}%</span>`
+          : '';
+
+        html += `
+              <div class="pretrade-history-item" data-id="${recId}">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-family:monospace;font-size:11px;color:#888;white-space:nowrap">${dtStr}</span>
+                  <span style="font-family:monospace;font-size:11px;color:#555;white-space:nowrap">ID:${recIdShort}</span>
+                  <span style="font-family:monospace;font-size:11px;color:#777;white-space:nowrap">${nOps} op(s)</span>
+                  ${varCotaStr ? `<span style="font-family:monospace;font-size:11px">Δ cota: ${varCotaStr}</span>` : ''}
+                  <span style="font-family:monospace;font-size:10px;font-weight:bold;color:${badgeColor};border:1px solid ${badgeColor};padding:1px 6px;border-radius:2px">${badgeLabel}</span>
+                  ${label}
+                  <div style="margin-left:auto;display:flex;gap:6px">
+                    <a href="/api/pretrade/history/${recId}/pdf" target="_blank"
+                       style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #555;color:#ccc;text-decoration:none;cursor:pointer;border-radius:2px"
+                       title="Baixar PDF de auditoria">PDF</a>
+                    <button class="pt-hist-del bbg-btn" data-id="${recId}"
+                            style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1" title="Excluir">×</button>
+                  </div>
+                </div>
+              </div>`;
+      });
+
+      html += `
             </div>
           </div>
         </div>`;
