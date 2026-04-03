@@ -120,6 +120,8 @@ def load_fund_config():
         "descricao_fundo": "",
         "limite_concentracao_ativo_pct": 20.0,
         "limite_concentracao_setor_pct": 40.0,
+        "enable_concentracao_ativo": False,
+        "enable_concentracao_setor": False,
     }
     if not os.path.exists(FUND_CONFIG_FILE):
         return defaults
@@ -728,11 +730,14 @@ def api_update_fund_config():
     for key in ["quota_fechamento","data_fechamento","num_cotas","caixa",
                 "proventos_a_receber","custos_provisionados","performance_fee_rate",
                 "performance_fee_acumulada_rs","descricao_fundo",
-                "limite_concentracao_ativo_pct","limite_concentracao_setor_pct"]:
+                "limite_concentracao_ativo_pct","limite_concentracao_setor_pct",
+                "enable_concentracao_ativo","enable_concentracao_setor"]:
         if key not in payload: continue
         val = payload[key]
         if key in _string_keys:
             config[key] = val
+        elif key in ("enable_concentracao_ativo", "enable_concentracao_setor"):
+            config[key] = bool(val)
         elif val in (None, ""):
             config[key] = None
         else:
@@ -3333,9 +3338,11 @@ def api_pretrade_simulate():
     imp_por_cota  = round(cota_depois_v - cota_antes_v, 8)
     caixa_depois  = fund_config_sim.get("caixa") or 0
 
-    # ── COMPLIANCE — Resolução CVM 175 + limites internos ──
-    lim_ativo = float(fund_config.get("limite_concentracao_ativo_pct") or 20.0)
-    lim_setor = float(fund_config.get("limite_concentracao_setor_pct") or 40.0)
+    # ── COMPLIANCE — Resolução CVM 175 + limites internos (condicionais) ──
+    lim_ativo  = float(fund_config.get("limite_concentracao_ativo_pct") or 20.0)
+    lim_setor  = float(fund_config.get("limite_concentracao_setor_pct") or 40.0)
+    ativo_on   = bool(fund_config.get("enable_concentracao_ativo", False))
+    setor_on   = bool(fund_config.get("enable_concentracao_setor", False))
 
     def _status_max(valor, limite):
         if valor > limite:          return "violacao"
@@ -3359,33 +3366,35 @@ def api_pretrade_simulate():
         },
     ]
 
-    # Limites internos por ativo (para cada ativo do basket)
-    tickers_tocados = {op["yahoo_ticker"] for op in ops_processadas}
-    for ytk in sorted(tickers_tocados):
-        pct_d = conc_depois["por_ativo"].get(ytk, 0.0)
-        pct_a = conc_antes["por_ativo"].get(ytk, 0.0)
-        compliance.append({
-            "regra": f"Conc. por Ativo — {ytk.replace('.SA','')} (interno)",
-            "limite_pct": lim_ativo,
-            "valor_antes_pct": round(pct_a, 2),
-            "valor_depois_pct": round(pct_d, 2),
-            "status": _status_max(pct_d, lim_ativo),
-            "tipo": "maximo",
-        })
+    # Limites internos por ativo (apenas se habilitado)
+    if ativo_on:
+        tickers_tocados = {op["yahoo_ticker"] for op in ops_processadas}
+        for ytk in sorted(tickers_tocados):
+            pct_d = conc_depois["por_ativo"].get(ytk, 0.0)
+            pct_a = conc_antes["por_ativo"].get(ytk, 0.0)
+            compliance.append({
+                "regra": f"Conc. por Ativo — {ytk.replace('.SA','')} (interno)",
+                "limite_pct": lim_ativo,
+                "valor_antes_pct": round(pct_a, 2),
+                "valor_depois_pct": round(pct_d, 2),
+                "status": _status_max(pct_d, lim_ativo),
+                "tipo": "maximo",
+            })
 
-    # Limites internos por setor (para setores tocados)
-    setores_tocados = {op["sector"] for op in ops_processadas}
-    for setor in sorted(setores_tocados):
-        pct_d = conc_depois["por_setor"].get(setor, 0.0)
-        pct_a = conc_antes["por_setor"].get(setor, 0.0)
-        compliance.append({
-            "regra": f"Conc. por Setor — {setor} (interno)",
-            "limite_pct": lim_setor,
-            "valor_antes_pct": round(pct_a, 2),
-            "valor_depois_pct": round(pct_d, 2),
-            "status": _status_max(pct_d, lim_setor),
-            "tipo": "maximo",
-        })
+    # Limites internos por setor (apenas se habilitado)
+    if setor_on:
+        setores_tocados = {op["sector"] for op in ops_processadas}
+        for setor in sorted(setores_tocados):
+            pct_d = conc_depois["por_setor"].get(setor, 0.0)
+            pct_a = conc_antes["por_setor"].get(setor, 0.0)
+            compliance.append({
+                "regra": f"Conc. por Setor — {setor} (interno)",
+                "limite_pct": lim_setor,
+                "valor_antes_pct": round(pct_a, 2),
+                "valor_depois_pct": round(pct_d, 2),
+                "status": _status_max(pct_d, lim_setor),
+                "tipo": "maximo",
+            })
 
     # Caixa disponível
     if caixa_depois < 0:
@@ -3431,6 +3440,13 @@ def api_pretrade_simulate():
             "impacto_por_cota_rs": imp_por_cota,
         },
         "compliance": compliance,
+        "parametros_compliance": {
+            "grupo1_minimo_pct":             67.0,
+            "enable_concentracao_ativo":     ativo_on,
+            "limite_concentracao_ativo_pct": lim_ativo,
+            "enable_concentracao_setor":     setor_on,
+            "limite_concentracao_setor_pct": lim_setor,
+        },
         "rows_depois": [
             {
                 "ticker":        r["ticker"],
@@ -3722,6 +3738,40 @@ def _generate_pretrade_pdf(record):
     story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE, spaceAfter=6))
 
     # ── Basket de Operações ──
+    # ── Seção 0: Parâmetros de Compliance Utilizados ──
+    params = record.get("parametros_compliance", {})
+    if params:
+        story.append(Paragraph("0. PARÂMETROS DE COMPLIANCE UTILIZADOS", st_sec))
+        param_rows = [["REGRA", "STATUS", "VALOR"]]
+        param_rows.append([
+            "Grupo I Mín. (CVM 175)",
+            "SEMPRE ATIVO",
+            f"mín {fmt(params.get('grupo1_minimo_pct', 67.0))}%",
+        ])
+        param_rows.append([
+            "Conc. por Ativo (interno)",
+            "ATIVO" if params.get("enable_concentracao_ativo") else "INATIVO",
+            f"máx {fmt(params.get('limite_concentracao_ativo_pct', 20.0))}%",
+        ])
+        param_rows.append([
+            "Conc. por Setor (interno)",
+            "ATIVO" if params.get("enable_concentracao_setor") else "INATIVO",
+            f"máx {fmt(params.get('limite_concentracao_setor_pct', 40.0))}%",
+        ])
+        param_extra = [
+            ("TEXTCOLOR", (1, 1), (1, 1), C_OK),    # Grupo I sempre ativo → verde
+        ]
+        for i, row in enumerate(param_rows[1:], start=1):
+            status = row[1]
+            if status == "ATIVO":
+                param_extra.append(("TEXTCOLOR", (1, i), (1, i), C_OK))
+            elif status == "INATIVO":
+                param_extra.append(("TEXTCOLOR", (1, i), (1, i), C_MUTED))
+        param_tbl = Table(param_rows, colWidths=[6*cm, 3.5*cm, 3.5*cm])
+        param_tbl.setStyle(tbl_style(extra=param_extra))
+        story.append(param_tbl)
+        story.append(Spacer(1, 6))
+
     story.append(Paragraph("1. BASKET DE OPERAÇÕES", st_sec))
     dir_label = {"compra": "COMPRA", "venda": "VENDA", "zerar": "ZERAR"}
     op_data = [["ATIVO", "DIREÇÃO", "QTDE", "PREÇO", "VALOR TOTAL", "CORRETAGEM"]]
@@ -3889,6 +3939,7 @@ def api_pretrade_history_save():
         "compliance": payload.get("compliance", []),
         "rows_antes": payload.get("rows_antes", []),
         "rows_depois": payload.get("rows_depois", []),
+        "parametros_compliance": payload.get("parametros_compliance", {}),
     }
 
     history = load_pretrade_history()

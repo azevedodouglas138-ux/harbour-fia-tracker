@@ -3495,6 +3495,7 @@ let _ptRowId = 0;
 let _ptPortfolioOptions = [];   // [{value, label}] populado na primeira abertura
 let _pretradeLastResult = null; // último resultado de simulação (para salvar)
 let _ptHistoryOpen = false;
+let _ptParamsOpen  = false;
 
 function loadPretradeTab() {
   if (_pretradeListenersSet) return;
@@ -3513,6 +3514,7 @@ function loadPretradeTab() {
 
   document.getElementById('btn-pt-add-row').addEventListener('click', () => _ptAddRow());
   document.getElementById('btn-pt-simular').addEventListener('click', _pretradeSubmit);
+  document.getElementById('btn-pt-params').addEventListener('click', _ptToggleParams);
   document.getElementById('btn-pt-historico').addEventListener('click', _ptToggleHistory);
   document.getElementById('btn-pt-save').addEventListener('click', _ptSaveSimulation);
   document.getElementById('btn-pt-limpar').addEventListener('click', () => {
@@ -3865,6 +3867,125 @@ function _pretradeRender(d) {
 
 // ── Histórico de Pré-Trades ──
 
+function _ptToggleParams() {
+  const panel = document.getElementById('pretrade-params-panel');
+  const btn   = document.getElementById('btn-pt-params');
+  _ptParamsOpen = !_ptParamsOpen;
+  panel.style.display = _ptParamsOpen ? '' : 'none';
+  btn.style.color = _ptParamsOpen ? '#f5a623' : '#888';
+  btn.style.borderColor = _ptParamsOpen ? '#f5a623' : '';
+  if (_ptParamsOpen) _ptLoadParams();
+}
+
+async function _ptLoadParams() {
+  const content = document.getElementById('pretrade-params-content');
+  content.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>';
+  try {
+    const res = await fetch('/api/fund-config');
+    if (!res.ok) { content.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar.</p>'; return; }
+    const cfg = await res.json();
+
+    const ativoOn  = !!cfg.enable_concentracao_ativo;
+    const setorOn  = !!cfg.enable_concentracao_setor;
+    const limAtivo = cfg.limite_concentracao_ativo_pct ?? 20.0;
+    const limSetor = cfg.limite_concentracao_setor_pct ?? 40.0;
+
+    const row = (label, alwaysOn, enabled, idToggle, idLimit, limitVal, hint) => `
+      <div style="padding:10px 0;border-bottom:1px solid #1a1a1a">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <span style="font-family:monospace;font-size:11px;color:#aaa">${label}</span>
+            ${hint ? `<div style="font-family:monospace;font-size:10px;color:#555;margin-top:2px">${hint}</div>` : ''}
+          </div>
+          ${alwaysOn
+            ? `<span style="font-family:monospace;font-size:10px;font-weight:bold;color:#00cc88;border:1px solid #00cc88;padding:2px 8px;border-radius:2px">SEMPRE ATIVO</span>`
+            : `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
+                <input type="checkbox" id="${idToggle}" ${enabled ? 'checked' : ''} style="accent-color:#f5a623;width:14px;height:14px;cursor:pointer">
+                <span id="${idToggle}-label" style="font-family:monospace;font-size:10px;font-weight:bold;color:${enabled ? '#f5a623' : '#555'}">${enabled ? 'ATIVO' : 'INATIVO'}</span>
+              </label>`
+          }
+        </div>
+        ${!alwaysOn ? `
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:monospace;font-size:10px;color:#666">Limite máximo:</span>
+          <input type="number" id="${idLimit}" value="${limitVal}" step="0.5" min="1" max="100"
+                 style="width:70px;font-size:11px;text-align:right" class="bbg-input"
+                 ${!enabled ? 'disabled' : ''}>
+          <span style="font-family:monospace;font-size:10px;color:#666">%</span>
+        </div>` : `
+        <div style="font-family:monospace;font-size:10px;color:#555">Limite mínimo: 67,00%</div>`}
+      </div>`;
+
+    content.innerHTML = `
+      <div>
+        ${row('Grupo I — Mín. 67% em Ações/BDRs', true, true, '', '', '', 'Resolução CVM 175 — obrigatório')}
+        ${row('Concentração por Ativo (interno)', false, ativoOn, 'pt-param-ativo-on', 'pt-param-ativo-lim', limAtivo, 'Limite máximo de exposição por ativo individual')}
+        ${row('Concentração por Setor (interno)', false, setorOn, 'pt-param-setor-on', 'pt-param-setor-lim', limSetor, 'Limite máximo de exposição por setor')}
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;padding-top:12px">
+          <span id="pt-params-feedback" style="display:none;font-family:monospace;font-size:11px"></span>
+          <button id="btn-pt-save-params" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 16px">SALVAR PARÂMETROS</button>
+        </div>
+      </div>`;
+
+    // Toggle habilita/desabilita o campo de limite e muda label
+    ['ativo', 'setor'].forEach(tipo => {
+      const chk = document.getElementById(`pt-param-${tipo}-on`);
+      const lbl = document.getElementById(`pt-param-${tipo}-on-label`);
+      const inp = document.getElementById(`pt-param-${tipo}-lim`);
+      if (!chk) return;
+      chk.addEventListener('change', () => {
+        inp.disabled = !chk.checked;
+        lbl.textContent = chk.checked ? 'ATIVO' : 'INATIVO';
+        lbl.style.color  = chk.checked ? '#f5a623' : '#555';
+      });
+    });
+
+    document.getElementById('btn-pt-save-params').addEventListener('click', _ptSaveParams);
+  } catch(e) {
+    content.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar configurações.</p>';
+  }
+}
+
+async function _ptSaveParams() {
+  const feedEl = document.getElementById('pt-params-feedback');
+  const btn    = document.getElementById('btn-pt-save-params');
+  btn.disabled = true;
+  btn.textContent = 'SALVANDO...';
+  feedEl.style.display = 'none';
+
+  const ativoOn  = document.getElementById('pt-param-ativo-on')?.checked ?? false;
+  const setorOn  = document.getElementById('pt-param-setor-on')?.checked ?? false;
+  const limAtivo = parseFloat(document.getElementById('pt-param-ativo-lim')?.value) || 20.0;
+  const limSetor = parseFloat(document.getElementById('pt-param-setor-lim')?.value) || 40.0;
+
+  try {
+    const res = await fetch('/api/fund-config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        enable_concentracao_ativo:     ativoOn,
+        enable_concentracao_setor:     setorOn,
+        limite_concentracao_ativo_pct: limAtivo,
+        limite_concentracao_setor_pct: limSetor,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      feedEl.textContent = data.error || 'Erro ao salvar.';
+      feedEl.style.color = '#cc3333';
+    } else {
+      feedEl.textContent = 'Parâmetros salvos.';
+      feedEl.style.color = '#00cc88';
+    }
+  } catch(e) {
+    feedEl.textContent = 'Erro de comunicação.';
+    feedEl.style.color = '#cc3333';
+  }
+  feedEl.style.display = '';
+  btn.disabled = false;
+  btn.textContent = 'SALVAR PARÂMETROS';
+}
+
 function _ptToggleHistory() {
   const panel = document.getElementById('pretrade-history-panel');
   const btn   = document.getElementById('btn-pt-historico');
@@ -3888,7 +4009,11 @@ async function _ptSaveSimulation() {
     const res = await fetch('/api/pretrade/history/save', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({..._pretradeLastResult, label}),
+      body: JSON.stringify({
+        ..._pretradeLastResult,
+        label,
+        parametros_compliance: _pretradeLastResult.parametros_compliance,
+      }),
     });
     const data = await res.json();
     if (!res.ok || data.error) {

@@ -977,6 +977,7 @@
       <div class="chart-card-header" style="justify-content:space-between">
         <span class="chart-card-title">BASKET DE OPERAÇÕES</span>
         <div style="display:flex;gap:6px;align-items:center">
+          <button id="btn-pt-params" class="bbg-btn" style="font-size:11px;padding:3px 10px;color:#888">PARÂMETROS</button>
           <button id="btn-pt-historico" class="bbg-btn" style="font-size:11px;padding:3px 10px;color:#888">HISTÓRICO</button>
           <button id="btn-pt-add-row" class="bbg-btn" style="font-size:11px;padding:3px 10px">+ ADICIONAR ATIVO</button>
         </div>
@@ -1053,6 +1054,19 @@
       </button>
     </div>
     <div id="pt-save-feedback" style="display:none;font-family:monospace;font-size:11px;text-align:right;margin-top:4px"></div>
+  </div>
+
+  <!-- Painel de Parâmetros de Compliance (colapsável) -->
+  <div id="pretrade-params-panel" style="display:none;margin-top:12px">
+    <div class="chart-card risk-card" style="margin:0">
+      <div class="chart-card-header" style="justify-content:space-between">
+        <span class="chart-card-title">PARÂMETROS DE COMPLIANCE — PRÉ-TRADE</span>
+        <span style="font-family:monospace;font-size:10px;color:#555">Alterações entram em vigor na próxima simulação</span>
+      </div>
+      <div id="pretrade-params-content" style="padding:14px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>
+      </div>
+    </div>
   </div>
 
   <!-- Painel de Histórico (colapsável) -->
