@@ -8,6 +8,8 @@
   "performance_fee_rate": 20.0,
   "performance_fee_acumulada_rs": 0.0,
   "descricao_fundo": "",
-  "limite_concentracao_ativo_pct": 20.0,
-  "limite_concentracao_setor_pct": 40.0
+  "limite_concentracao_ativo_pct": 25.0,
+  "limite_concentracao_setor_pct": 40.0,
+  "enable_concentracao_ativo": true,
+  "enable_concentracao_setor": true
 }
