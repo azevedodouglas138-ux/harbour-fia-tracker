@@ -4324,6 +4324,10 @@ async function _phLoadHistory() {
                   <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
                     <button class="ph-hist-view bbg-btn" data-id="${recId}" data-label="${dateLabel}"
                             style="font-size:11px;padding:2px 10px;color:#ccc">VER</button>
+                    <a href="/api/portfolio-history/${recId}/pdf" target="_blank"
+                       style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #555;
+                              color:#ccc;text-decoration:none;cursor:pointer;border-radius:2px"
+                       title="Baixar PDF de auditoria">PDF</a>
                     <button class="ph-hist-del bbg-btn" data-id="${recId}"
                             style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1"
                             title="Excluir">×</button>

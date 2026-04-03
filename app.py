@@ -4084,6 +4084,262 @@ def api_portfolio_history_delete(record_id):
     save_portfolio_history(new_history)
     return jsonify({"ok": True})
 
+@app.route("/api/portfolio-history/<record_id>/pdf", methods=["GET"])
+@require_admin
+def api_portfolio_history_pdf(record_id):
+    history = load_portfolio_history()
+    record  = next((r for r in history if r.get("id") == record_id), None)
+    if not record:
+        return jsonify({"error": "Registro não encontrado"}), 404
+    try:
+        pdf_bytes = _generate_portfolio_snapshot_pdf(record)
+    except Exception as e:
+        return jsonify({"error": f"Erro ao gerar PDF: {str(e)}"}), 500
+    ts = record.get("date", record.get("timestamp", ""))[:10].replace("-", "")
+    filename = f"carteira_{ts}_{record_id[:8]}.pdf"
+    from flask import make_response
+    resp = make_response(pdf_bytes)
+    resp.headers["Content-Type"]        = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return resp
+
+
+def _generate_portfolio_snapshot_pdf(record):
+    """Gera PDF de auditoria de um snapshot da carteira. Retorna bytes."""
+    from io import BytesIO
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+
+    buf = BytesIO()
+    PAGE = landscape(A4)
+    doc = SimpleDocTemplate(
+        buf, pagesize=PAGE,
+        leftMargin=1.4*cm, rightMargin=1.4*cm,
+        topMargin=1.2*cm, bottomMargin=1.2*cm,
+    )
+
+    C_BG      = colors.HexColor("#0d0d1a")
+    C_ALT     = colors.HexColor("#0f0f22")
+    C_HDR     = colors.HexColor("#1a1a2e")
+    C_HDR_TXT = colors.white
+    C_OK      = colors.HexColor("#00cc88")
+    C_NEG     = colors.HexColor("#cc3333")
+    C_WARN    = colors.HexColor("#f5a623")
+    C_BODY    = colors.HexColor("#cccccc")
+    C_MUTED   = colors.HexColor("#888888")
+    C_LINE    = colors.HexColor("#333333")
+    C_MANUAL  = colors.HexColor("#00aacc")
+
+    mono = "Courier"
+
+    st_title = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=13,
+                               textColor=C_HDR_TXT, spaceAfter=3)
+    st_sub   = ParagraphStyle("sub",   fontName="Helvetica",      fontSize=8,
+                               textColor=C_MUTED,   spaceAfter=2)
+    st_sec   = ParagraphStyle("sec",   fontName="Helvetica-Bold", fontSize=9,
+                               textColor=C_HDR_TXT, spaceBefore=8, spaceAfter=3)
+    st_foot  = ParagraphStyle("foot",  fontName="Helvetica",      fontSize=7,
+                               textColor=C_MUTED,   alignment=1, spaceBefore=4)
+
+    def tbl_style(extra=None):
+        base = [
+            ("BACKGROUND",    (0, 0), (-1, 0), C_HDR),
+            ("TEXTCOLOR",     (0, 0), (-1, 0), C_HDR_TXT),
+            ("FONTNAME",      (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 7),
+            ("FONTNAME",      (0, 1), (-1, -1), mono),
+            ("TEXTCOLOR",     (0, 1), (-1, -1), C_BODY),
+            ("ROWBACKGROUNDS",(0, 1), (-1, -1), [C_BG, C_ALT]),
+            ("GRID",          (0, 0), (-1, -1), 0.25, C_LINE),
+            ("TOPPADDING",    (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+            ("ALIGN",         (0, 0), (-1, -1), "RIGHT"),
+            ("ALIGN",         (0, 0), (0, -1),  "LEFT"),
+        ]
+        if extra:
+            base.extend(extra)
+        return TableStyle(base)
+
+    def fmt(v, dec=2):
+        try:
+            return f"{float(v):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except Exception:
+            return str(v) if v is not None else "—"
+
+    def fmtpct(v):
+        return fmt(v) + "%" if v is not None else "—"
+
+    def fmtmm(v):
+        return "R$" + fmt(v/1e6, 1) + "MM" if v is not None else "—"
+
+    # ── Metadados ──
+    ts_raw = record.get("timestamp", "")
+    try:
+        dt       = datetime.fromisoformat(ts_raw)
+        data_str = dt.strftime("%d/%m/%Y")
+        hora_str = dt.strftime("%H:%M:%S")
+    except Exception:
+        data_str = hora_str = ts_raw
+
+    rec_id  = record.get("id", "")[:8]
+    source  = record.get("source", "auto")
+    s       = record.get("summary", {})
+    rows    = record.get("rows", [])
+
+    story = []
+
+    # ── Cabeçalho ──
+    src_label = "MANUAL" if source == "manual" else "AUTO (FECHAMENTO)"
+    story.append(Paragraph("HARBOUR IAT FIF AÇÕES RL — SNAPSHOT DA CARTEIRA", st_title))
+    story.append(Paragraph(
+        f"Data: {data_str}  |  Hora: {hora_str}  |  ID: {rec_id}  |  Origem: {src_label}",
+        st_sub
+    ))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE, spaceAfter=5))
+
+    # ── Bloco de resumo (uma linha de métricas) ──
+    nav_val  = s.get("total_value")
+    cota_val = s.get("cota_estimada")
+    var_val  = s.get("variacao_pct")
+    n_pos    = s.get("num_positions", len(rows))
+
+    sum_data = [[
+        "NAV TOTAL", "COTA ESTIMADA", "VAR. DIA", "POSIÇÕES",
+        "UPSIDE POND.", "BETA POND.", "P/L FWD POND.", "ROE POND.",
+    ], [
+        fmtmm(nav_val),
+        fmt(cota_val, 8) if cota_val else "—",
+        fmtpct(var_val),
+        str(n_pos),
+        fmtpct(s.get("w_upside_pct")),
+        fmt(s.get("w_beta"), 2) if s.get("w_beta") is not None else "—",
+        fmt(s.get("w_forward_pe"), 1) if s.get("w_forward_pe") is not None else "—",
+        fmtpct(s.get("w_return_on_equity")),
+    ]]
+
+    sum_extra = [("ALIGN", (0, 1), (-1, 1), "CENTER")]
+    if var_val is not None:
+        c = C_OK if float(var_val) >= 0 else C_NEG
+        sum_extra.append(("TEXTCOLOR", (2, 1), (2, 1), c))
+
+    W = PAGE[0] - 2.8*cm
+    sum_tbl = Table(sum_data, colWidths=[W/8]*8)
+    sum_tbl.setStyle(tbl_style(extra=sum_extra))
+    story.append(sum_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Tabela 1: Composição & Preços ──
+    story.append(Paragraph("1. COMPOSIÇÃO E PREÇOS", st_sec))
+    t1_hdr = ["ATIVO", "CATEG.", "SETOR", "% TOTAL", "VALOR LÍQ.", "PREÇO", "VAR. DIA", "QTDE", "P. ALVO", "UPSIDE"]
+    t1_rows = [t1_hdr]
+    for r in sorted(rows, key=lambda x: (x.get("pct_total") or 0), reverse=True):
+        vd = r.get("var_dia_pct")
+        up = r.get("upside_pct")
+        t1_rows.append([
+            r.get("ticker", ""),
+            r.get("categoria", ""),
+            (r.get("sector") or "")[:18],
+            fmtpct(r.get("pct_total")),
+            fmtmm(r.get("valor_liquido")),
+            fmt(r.get("preco"), 2) if r.get("preco") is not None else "—",
+            fmtpct(vd),
+            fmt(r.get("quantidade"), 0) if r.get("quantidade") is not None else "—",
+            fmt(r.get("preco_alvo"), 2) if r.get("preco_alvo") is not None else "—",
+            fmtpct(up),
+        ])
+
+    # Linha de totais
+    total_nav = s.get("total_value")
+    t1_rows.append([
+        "TOTAL", "", "", "100,00%",
+        fmtmm(total_nav), "", "", "", "", fmtpct(s.get("w_upside_pct")),
+    ])
+
+    t1_extra = []
+    for i, r in enumerate(rows, start=1):
+        vd = r.get("var_dia_pct")
+        up = r.get("upside_pct")
+        if vd is not None:
+            t1_extra.append(("TEXTCOLOR", (6, i), (6, i), C_OK if float(vd) >= 0 else C_NEG))
+        if up is not None:
+            t1_extra.append(("TEXTCOLOR", (9, i), (9, i), C_OK if float(up) >= 0 else C_NEG))
+    # Total row
+    ti = len(rows) + 1
+    t1_extra += [
+        ("BACKGROUND", (0, ti), (-1, ti), C_HDR),
+        ("TEXTCOLOR",  (0, ti), (-1, ti), C_WARN),
+        ("FONTNAME",   (0, ti), (-1, ti), "Helvetica-Bold"),
+    ]
+
+    cw1 = [2.0*cm, 1.6*cm, 3.2*cm, 1.5*cm, 2.2*cm, 1.6*cm, 1.6*cm, 2.0*cm, 1.6*cm, 1.6*cm]
+    t1_tbl = Table(t1_rows, colWidths=cw1)
+    t1_tbl.setStyle(tbl_style(extra=t1_extra))
+    story.append(t1_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Tabela 2: Valuation & Fundamentos ──
+    story.append(Paragraph("2. VALUATION E FUNDAMENTOS", st_sec))
+    t2_hdr = ["ATIVO", "P/L TRAIL.", "P/L FWD.", "PEG", "EV/EBITDA", "ROE %", "BETA", "P/VPA", "DIV. YIELD", "MKT CAP", "LUCRO MI 26"]
+    t2_rows = [t2_hdr]
+    for r in sorted(rows, key=lambda x: (x.get("pct_total") or 0), reverse=True):
+        t2_rows.append([
+            r.get("ticker", ""),
+            fmt(r.get("trailing_pe"), 1)    if r.get("trailing_pe")    is not None else "—",
+            fmt(r.get("forward_pe"), 1)     if r.get("forward_pe")     is not None else "—",
+            fmt(r.get("peg_ratio"), 2)      if r.get("peg_ratio")      is not None else "—",
+            fmt(r.get("enterprise_to_ebitda"), 1) if r.get("enterprise_to_ebitda") is not None else "—",
+            fmtpct(r.get("return_on_equity")),
+            fmt(r.get("beta"), 2)           if r.get("beta")           is not None else "—",
+            fmt(r.get("price_to_book"), 2)  if r.get("price_to_book")  is not None else "—",
+            fmtpct(r.get("dividend_yield")),
+            fmt(r.get("market_cap_bi"), 1) + "bi" if r.get("market_cap_bi") is not None else "—",
+            fmt(r.get("lucro_mi_26"), 0)    if r.get("lucro_mi_26")    is not None else "—",
+        ])
+
+    # Linha de médias ponderadas
+    t2_rows.append([
+        "POND.",
+        fmt(s.get("w_trailing_pe"), 1)          if s.get("w_trailing_pe")          is not None else "—",
+        fmt(s.get("w_forward_pe"), 1)            if s.get("w_forward_pe")           is not None else "—",
+        fmt(s.get("w_peg_ratio"), 2)             if s.get("w_peg_ratio")            is not None else "—",
+        fmt(s.get("w_enterprise_to_ebitda"), 1)  if s.get("w_enterprise_to_ebitda") is not None else "—",
+        fmtpct(s.get("w_return_on_equity")),
+        fmt(s.get("w_beta"), 2)                  if s.get("w_beta")                 is not None else "—",
+        fmt(s.get("w_price_to_book"), 2)         if s.get("w_price_to_book")        is not None else "—",
+        fmtpct(s.get("w_dividend_yield")),
+        "—",
+        fmt(s.get("w_lucro_mi_26"), 0)           if s.get("w_lucro_mi_26")          is not None else "—",
+    ])
+
+    ti2 = len(rows) + 1
+    t2_extra = [
+        ("BACKGROUND", (0, ti2), (-1, ti2), C_HDR),
+        ("TEXTCOLOR",  (0, ti2), (-1, ti2), C_WARN),
+        ("FONTNAME",   (0, ti2), (-1, ti2), "Helvetica-Bold"),
+    ]
+
+    cw2 = [2.0*cm, 1.8*cm, 1.8*cm, 1.5*cm, 2.2*cm, 1.8*cm, 1.5*cm, 1.5*cm, 2.0*cm, 2.0*cm, 2.2*cm]
+    t2_tbl = Table(t2_rows, colWidths=cw2)
+    t2_tbl.setStyle(tbl_style(extra=t2_extra))
+    story.append(t2_tbl)
+
+    # ── Rodapé ──
+    story.append(Spacer(1, 8))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE, spaceAfter=3))
+    story.append(Paragraph(
+        f"Relatório gerado automaticamente para fins de auditoria interna. "
+        f"ID: {record.get('id', '')}  |  Gerado em: {data_str} {hora_str}  |  Origem: {src_label}",
+        st_foot
+    ))
+
+    doc.build(story)
+    return buf.getvalue()
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
