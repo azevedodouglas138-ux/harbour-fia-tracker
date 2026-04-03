@@ -1573,3 +1573,9 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .pretrade-history-item:hover {
   border-color: #444;
 }
+.ph-history-item {
+  transition: border-color 0.15s;
+}
+.ph-history-item:hover {
+  border-color: #444;
+}

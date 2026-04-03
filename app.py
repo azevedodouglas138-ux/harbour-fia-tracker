@@ -64,6 +64,7 @@ FUND_CONFIG_FILE       = os.path.join(DATA_DIR, "fund_config.json")
 QUOTA_HISTORY_FILE     = os.path.join(DATA_DIR, "quota_history.json")
 VIEWER_CONFIG_FILE     = os.path.join(DATA_DIR, "viewer_config.json")
 PRETRADE_HISTORY_FILE  = os.path.join(DATA_DIR, "pretrade_history.json")
+PORTFOLIO_HISTORY_FILE = os.path.join(DATA_DIR, "portfolio_history.json")
 
 _price_cache = {"data": {}, "expires_at": 0}
 FUNDAMENTALS_TTL = 4 * 3600
@@ -158,6 +159,18 @@ def save_pretrade_history(data):
     with open(PRETRADE_HISTORY_FILE, "w", encoding="utf-8") as f:
         f.write(content)
     github_push_async("data/pretrade_history.json", content, "chore: update pretrade_history.json via UI")
+
+def load_portfolio_history():
+    if not os.path.exists(PORTFOLIO_HISTORY_FILE):
+        return []
+    with open(PORTFOLIO_HISTORY_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_portfolio_history(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    with open(PORTFOLIO_HISTORY_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    github_push_async("data/portfolio_history.json", content, "chore: update portfolio_history.json")
 
 def get_effective_fund_config():
     """Returns fund_config, overriding quota_fechamento/data_fechamento with the last history entry."""
@@ -601,6 +614,35 @@ def build_portfolio_response(portfolio, prices, fundamentals):
         "weighted_upside": weighted_upside, "weighted_beta": weighted_beta,
         "weighted_stats": weighted_stats,
         "last_price_update": datetime.now().isoformat(), "rows": rows,
+    }
+
+def _build_portfolio_snapshot(data, quota, source="auto"):
+    import uuid
+    now = datetime.now()
+    q, ws = quota or {}, data.get("weighted_stats", {})
+    return {
+        "id":        str(uuid.uuid4()),
+        "date":      now.strftime("%Y-%m-%d"),
+        "timestamp": now.isoformat(timespec="seconds"),
+        "source":    source,
+        "summary": {
+            "total_value":            data.get("total_value"),
+            "num_positions":          len(data.get("rows", [])),
+            "cota_estimada":          q.get("cota_estimada"),
+            "variacao_pct":           q.get("variacao_pct"),
+            "w_trailing_pe":          ws.get("w_trailing_pe"),
+            "w_forward_pe":           ws.get("w_forward_pe"),
+            "w_peg_ratio":            ws.get("w_peg_ratio"),
+            "w_enterprise_to_ebitda": ws.get("w_enterprise_to_ebitda"),
+            "w_return_on_equity":     ws.get("w_return_on_equity"),
+            "w_beta":                 ws.get("w_beta"),
+            "w_price_to_book":        ws.get("w_price_to_book"),
+            "w_dividend_yield":       ws.get("w_dividend_yield"),
+            "w_var_dia_pct":          ws.get("w_var_dia_pct"),
+            "w_upside_pct":           ws.get("w_upside_pct"),
+            "w_lucro_mi_26":          ws.get("w_lucro_mi_26"),
+        },
+        "rows": data.get("rows", []),
     }
 
 # ---------------------------------------------------------------------------
@@ -1108,6 +1150,15 @@ def api_auto_close():
     history.append({"data": today, "cota_fechamento": round(cota_est, 8)})
     history.sort(key=lambda x: x["data"])
     save_quota_history(history)
+
+    # ── save portfolio snapshot ──────────────────────────────────────────────
+    snap = _build_portfolio_snapshot(data, quota, source="auto")
+    ph   = load_portfolio_history()
+    ph   = [r for r in ph if not (r.get("date") == snap["date"] and r.get("source") == "auto")]
+    ph.append(snap)
+    ph.sort(key=lambda x: x["timestamp"])
+    save_portfolio_history(ph)
+    # ────────────────────────────────────────────────────────────────────────
 
     return jsonify({"ok": True, "data": today, "cota_fechamento": round(cota_est, 8)})
 
@@ -3981,6 +4032,57 @@ def api_pretrade_history_pdf(record_id):
     resp.headers["Content-Type"]        = "application/pdf"
     resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
     return resp
+
+
+# ---------------------------------------------------------------------------
+# Portfolio History
+# ---------------------------------------------------------------------------
+
+@app.route("/api/portfolio-history", methods=["GET"])
+@require_admin
+def api_portfolio_history_list():
+    history = load_portfolio_history()
+    result  = [{k: v for k, v in r.items() if k != "rows"} for r in history]
+    result.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return jsonify(result)
+
+@app.route("/api/portfolio-history/save", methods=["POST"])
+@require_admin
+def api_portfolio_history_save():
+    portfolio   = load_portfolio()
+    tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    prices      = fetch_prices(tickers)
+    funds       = get_cached_fundamentals(tickers)
+    data        = build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    quota       = calculate_quota(data["rows"], fund_config, prices)
+    if not quota.get("cota_estimada"):
+        return jsonify({"error": "Cota estimada indisponível — preços não carregados"}), 500
+    snap = _build_portfolio_snapshot(data, quota, source="manual")
+    ph   = load_portfolio_history()
+    ph.append(snap)
+    ph.sort(key=lambda x: x["timestamp"])
+    save_portfolio_history(ph)
+    return jsonify({"id": snap["id"], "timestamp": snap["timestamp"]}), 201
+
+@app.route("/api/portfolio-history/<record_id>", methods=["GET"])
+@require_admin
+def api_portfolio_history_detail(record_id):
+    history = load_portfolio_history()
+    record  = next((r for r in history if r.get("id") == record_id), None)
+    if not record:
+        return jsonify({"error": "Registro não encontrado"}), 404
+    return jsonify(record)
+
+@app.route("/api/portfolio-history/<record_id>", methods=["DELETE"])
+@require_admin
+def api_portfolio_history_delete(record_id):
+    history     = load_portfolio_history()
+    new_history = [r for r in history if r.get("id") != record_id]
+    if len(new_history) == len(history):
+        return jsonify({"error": "Registro não encontrado"}), 404
+    save_portfolio_history(new_history)
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

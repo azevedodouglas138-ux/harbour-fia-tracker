@@ -31,6 +31,10 @@ const _stockHistCache   = new Map();
 const STOCK_HIST_CACHE_TTL = 5 * 60 * 1000;
 const TABLE_COL_COUNT   = 22;
 
+// ── Portfolio history state ───────────────────────────────────────
+let _phHistoryOpen    = false;
+let _phHistoricalMode = false;
+
 // ── Benchmark config ─────────────────────────────────────────────
 const BENCH_CONFIG = {
   ibov:   { label: 'IBOV',      color: '#00aacc', dash: [5, 4] },
@@ -71,7 +75,7 @@ async function fetchPortfolio() {
     const res = await fetch('/api/portfolio');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     portfolioData = await res.json();
-    renderTable();
+    if (!_phHistoricalMode) renderTable();
     renderTopBar();
     renderStatsBar();
     renderChartsIfVisible();
@@ -636,6 +640,11 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-events')       loadEventsTab();
   });
 });
+
+// ── Portfolio history buttons (admin only — elements may not exist for viewers) ──
+document.getElementById('btn-ph-salvar')?.addEventListener('click', _phSaveSnapshot);
+document.getElementById('btn-ph-historico')?.addEventListener('click', _phToggleHistory);
+document.getElementById('btn-ph-voltar-vivo')?.addEventListener('click', _phVoltarVivo);
 
 function renderChartsIfVisible() {
   if (document.getElementById('tab-charts')?.classList.contains('active')) {
@@ -4162,6 +4171,183 @@ async function _ptLoadHistory() {
         if (!confirm('Excluir este registro de pré-trade do histórico?')) return;
         const r = await fetch(`/api/pretrade/history/${id}`, {method: 'DELETE'});
         if (r.ok) _ptLoadHistory();
+      });
+    });
+  } catch(e) {
+    listEl.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar histórico.</p>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 200B) HISTÓRICO DE SNAPSHOTS DA CARTEIRA
+// ═══════════════════════════════════════════════════════════════════
+
+function _phToggleHistory() {
+  const panel = document.getElementById('portfolio-history-panel');
+  const btn   = document.getElementById('btn-ph-historico');
+  if (!panel) return;
+  _phHistoryOpen = !_phHistoryOpen;
+  panel.style.display   = _phHistoryOpen ? '' : 'none';
+  btn.style.color       = _phHistoryOpen ? '#f5a623' : '#888';
+  btn.style.borderColor = _phHistoryOpen ? '#f5a623' : '';
+  if (_phHistoryOpen) _phLoadHistory();
+}
+
+async function _phSaveSnapshot() {
+  const btn = document.getElementById('btn-ph-salvar');
+  if (!btn || !confirm('Salvar snapshot manual da carteira agora?')) return;
+  btn.disabled    = true;
+  btn.textContent = 'SALVANDO...';
+  try {
+    const res  = await fetch('/api/portfolio-history/save', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      alert('Erro ao salvar snapshot: ' + (data.error || res.status));
+    } else {
+      btn.textContent = 'SALVO ✓';
+      setTimeout(() => { btn.textContent = '↓ SALVAR SNAPSHOT'; btn.disabled = false; }, 2000);
+      if (_phHistoryOpen) _phLoadHistory();
+      return;
+    }
+  } catch(e) { alert('Erro de comunicação ao salvar snapshot.'); }
+  btn.disabled    = false;
+  btn.textContent = '↓ SALVAR SNAPSHOT';
+}
+
+async function _phLoadSnapshot(recordId, dateLabel) {
+  try {
+    const res  = await fetch(`/api/portfolio-history/${recordId}`);
+    if (!res.ok) { alert('Erro ao carregar snapshot.'); return; }
+    const snap = await res.json();
+    portfolioData.rows            = snap.rows;
+    portfolioData.total_value     = snap.summary.total_value;
+    portfolioData.weighted_upside = snap.summary.w_upside_pct;
+    portfolioData.weighted_beta   = snap.summary.w_beta;
+    recalcWeightedStats();
+    renderTable();
+    _phHistoricalMode = true;
+    document.getElementById('ph-modo-historico').style.display = '';
+    document.getElementById('ph-modo-date').textContent = dateLabel;
+    document.getElementById('btn-ph-voltar-vivo').style.display = '';
+  } catch(e) { alert('Erro ao carregar snapshot: ' + e.message); }
+}
+
+function _phVoltarVivo() {
+  _phHistoricalMode = false;
+  document.getElementById('ph-modo-historico').style.display = 'none';
+  document.getElementById('btn-ph-voltar-vivo').style.display = 'none';
+  fetchPortfolio();
+}
+
+async function _phLoadHistory() {
+  const listEl  = document.getElementById('portfolio-history-list');
+  const countEl = document.getElementById('ph-history-count');
+  if (!listEl) return;
+  listEl.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>';
+  try {
+    const res  = await fetch('/api/portfolio-history');
+    if (!res.ok) {
+      listEl.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar histórico.</p>';
+      return;
+    }
+    const list = await res.json();
+    if (countEl) countEl.textContent = list.length ? `${list.length} snapshot(s)` : '';
+
+    if (!list.length) {
+      listEl.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Nenhum snapshot salvo.</p>';
+      return;
+    }
+
+    const fmt2 = (v, d=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
+    const now        = new Date();
+    const currentKey = now.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    const groupOrder = [];
+    const groups     = {};
+    list.forEach(rec => {
+      const dt  = rec.timestamp ? new Date(rec.timestamp) : null;
+      const key = dt ? dt.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}) : 'Sem data';
+      if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+      groups[key].push(rec);
+    });
+
+    let html = '<div style="display:flex;flex-direction:column;gap:0">';
+    groupOrder.forEach(key => {
+      const recs    = groups[key];
+      const isOpen  = key === currentKey;
+      const arrow   = isOpen ? '▼' : '▶';
+      const display = isOpen ? 'block' : 'none';
+      const keyCapitalized = key.charAt(0).toUpperCase() + key.slice(1);
+
+      html += `
+        <div class="ph-hist-group" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:11px;
+                      color:#888;cursor:pointer;padding:5px 0;border-bottom:1px solid #222;
+                      margin-bottom:6px;user-select:none"
+               onclick="(function(el){const body=el.nextElementSibling;const arr=el.querySelector('.ph-hist-arrow');
+                        const open=body.style.display!=='none';body.style.display=open?'none':'';
+                        arr.textContent=open?'▶':'▼';})(this)">
+            <span class="ph-hist-arrow">${arrow}</span>
+            <span style="color:#ccc;letter-spacing:0.04em">${keyCapitalized}</span>
+            <span style="color:#555">· ${recs.length} snapshot(s) ·</span>
+          </div>
+          <div style="display:${display};padding-left:8px">
+            <div style="display:flex;flex-direction:column;gap:8px">`;
+
+      recs.forEach(rec => {
+        const ts     = rec.timestamp || '';
+        const dt     = ts ? new Date(ts) : null;
+        const dtStr  = dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '—';
+        const recId  = rec.id || '';
+        const dateLabel = dt ? dt.toLocaleDateString('pt-BR') : rec.date || '—';
+        const s      = rec.summary || {};
+        const navStr = s.total_value != null ? 'R$' + fmt2(s.total_value / 1e6, 1) + 'MM' : '—';
+        const cotaStr = s.cota_estimada != null ? Number(s.cota_estimada).toFixed(6) : '—';
+        const varPct  = s.variacao_pct;
+        const varStr  = varPct != null
+          ? `<span style="color:${Number(varPct)>=0?'#00cc88':'#cc3333'}">${Number(varPct)>=0?'+':''}${fmt2(varPct,2)}%</span>`
+          : '';
+        const isAuto   = rec.source === 'auto';
+        const srcColor = isAuto ? '#555' : '#00aacc';
+        const srcLabel = isAuto ? 'AUTO' : 'MANUAL';
+
+        html += `
+              <div class="ph-history-item" style="border:1px solid #222;padding:7px 10px;border-radius:2px">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-family:monospace;font-size:11px;color:#ccc;white-space:nowrap">${dtStr}</span>
+                  <span style="font-family:monospace;font-size:10px;font-weight:bold;
+                               color:${srcColor};border:1px solid ${srcColor};
+                               padding:1px 5px;border-radius:2px">${srcLabel}</span>
+                  <span style="font-family:monospace;font-size:11px;color:#888">${s.num_positions ?? '—'} posições</span>
+                  <span style="font-family:monospace;font-size:11px;color:#888">NAV: ${navStr}</span>
+                  <span style="font-family:monospace;font-size:11px;color:#888">Cota: ${cotaStr}</span>
+                  ${varStr ? `<span style="font-family:monospace;font-size:11px">Δdia: ${varStr}</span>` : ''}
+                  <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+                    <button class="ph-hist-view bbg-btn" data-id="${recId}" data-label="${dateLabel}"
+                            style="font-size:11px;padding:2px 10px;color:#ccc">VER</button>
+                    <button class="ph-hist-del bbg-btn" data-id="${recId}"
+                            style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1"
+                            title="Excluir">×</button>
+                  </div>
+                </div>
+              </div>`;
+      });
+
+      html += `
+            </div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+
+    listEl.querySelectorAll('.ph-hist-view').forEach(btn => {
+      btn.addEventListener('click', () => _phLoadSnapshot(btn.dataset.id, btn.dataset.label));
+    });
+    listEl.querySelectorAll('.ph-hist-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Excluir este snapshot da carteira?')) return;
+        const r = await fetch(`/api/portfolio-history/${btn.dataset.id}`, {method: 'DELETE'});
+        if (r.ok) _phLoadHistory();
       });
     });
   } catch(e) {

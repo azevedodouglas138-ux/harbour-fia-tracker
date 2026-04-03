@@ -154,6 +154,30 @@
 {% if role == 'admin' or viewer_config.tab_table %}
 <div id="tab-table" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
+  {% if role == 'admin' %}
+  <div id="portfolio-history-toolbar"
+       style="display:flex;align-items:center;gap:8px;padding:6px 0 8px;flex-wrap:wrap">
+    <div id="ph-modo-historico"
+         style="display:none;font-family:monospace;font-size:11px;color:#f5a623;
+                border:1px solid #f5a623;padding:2px 10px;border-radius:2px">
+      MODO HIST&Oacute;RICO &mdash; <span id="ph-modo-date"></span>
+    </div>
+    <button id="btn-ph-voltar-vivo" class="bbg-btn"
+            style="display:none;font-size:11px;padding:3px 10px;color:#00cc88;border-color:#00cc88">
+      &#8617; VOLTAR AO VIVO
+    </button>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button id="btn-ph-salvar" class="bbg-btn"
+              style="font-size:11px;padding:3px 12px;color:#00cc88;border-color:#00cc88">
+        &#8681; SALVAR SNAPSHOT
+      </button>
+      <button id="btn-ph-historico" class="bbg-btn"
+              style="font-size:11px;padding:3px 10px;color:#888">
+        HIST&Oacute;RICO
+      </button>
+    </div>
+  </div>
+  {% endif %}
   <div class="table-wrapper">
     <table id="portfolio-table">
       <thead>
@@ -188,6 +212,20 @@
       <tfoot id="portfolio-foot"></tfoot>
     </table>
   </div>
+  {% if role == 'admin' %}
+  <div id="portfolio-history-panel" style="display:none;margin-top:12px">
+    <div class="chart-card risk-card" style="margin:0">
+      <div class="chart-card-header" style="justify-content:space-between">
+        <span class="chart-card-title">HIST&Oacute;RICO DE SNAPSHOTS DA CARTEIRA</span>
+        <span id="ph-history-count"
+              style="font-family:monospace;font-size:11px;color:#555"></span>
+      </div>
+      <div id="portfolio-history-list" style="padding:12px;min-height:48px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 
