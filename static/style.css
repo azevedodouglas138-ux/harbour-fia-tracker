@@ -1560,3 +1560,16 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .fin-row-highlight .fin-positive,
 .fin-row-highlight .fin-negative { color: var(--amber) !important; }
 
+
+
+/* ── Pré-Trade Histórico ── */
+.pretrade-history-item {
+  padding: 8px 10px;
+  background: #0a0a14;
+  border: 1px solid #222;
+  border-radius: 2px;
+  transition: border-color 0.15s;
+}
+.pretrade-history-item:hover {
+  border-color: #444;
+}

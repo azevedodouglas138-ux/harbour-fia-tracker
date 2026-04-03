@@ -3493,6 +3493,8 @@ function loadFinancialsTab() {
 let _pretradeListenersSet = false;
 let _ptRowId = 0;
 let _ptPortfolioOptions = [];   // [{value, label}] populado na primeira abertura
+let _pretradeLastResult = null; // último resultado de simulação (para salvar)
+let _ptHistoryOpen = false;
 
 function loadPretradeTab() {
   if (_pretradeListenersSet) return;
@@ -3511,6 +3513,8 @@ function loadPretradeTab() {
 
   document.getElementById('btn-pt-add-row').addEventListener('click', () => _ptAddRow());
   document.getElementById('btn-pt-simular').addEventListener('click', _pretradeSubmit);
+  document.getElementById('btn-pt-historico').addEventListener('click', _ptToggleHistory);
+  document.getElementById('btn-pt-save').addEventListener('click', _ptSaveSimulation);
   document.getElementById('btn-pt-limpar').addEventListener('click', () => {
     document.getElementById('pt-basket-body').innerHTML = '';
     document.getElementById('pt-basket-summary').textContent = '';
@@ -3664,7 +3668,11 @@ async function _pretradeSubmit() {
       errEl.classList.remove('hidden');
       return;
     }
+    _pretradeLastResult = data;
     _pretradeRender(data);
+    document.getElementById('pretrade-save-bar').style.display = '';
+    document.getElementById('pt-save-feedback').style.display = 'none';
+    document.getElementById('pt-save-label').value = '';
   } catch(e) {
     loadEl.classList.add('hidden');
     errEl.textContent = 'Erro de comunicação com o servidor.';
@@ -3854,6 +3862,136 @@ function _pretradeRender(d) {
   document.getElementById('pretrade-portfolio-content').innerHTML = tblHtml;
 }
 
+
+// ── Histórico de Pré-Trades ──
+
+function _ptToggleHistory() {
+  const panel = document.getElementById('pretrade-history-panel');
+  const btn   = document.getElementById('btn-pt-historico');
+  _ptHistoryOpen = !_ptHistoryOpen;
+  panel.style.display = _ptHistoryOpen ? '' : 'none';
+  btn.style.color = _ptHistoryOpen ? '#f5a623' : '#888';
+  btn.style.borderColor = _ptHistoryOpen ? '#f5a623' : '';
+  if (_ptHistoryOpen) _ptLoadHistory();
+}
+
+async function _ptSaveSimulation() {
+  if (!_pretradeLastResult) return;
+  const label   = (document.getElementById('pt-save-label').value || '').trim();
+  const feedEl  = document.getElementById('pt-save-feedback');
+  const btn     = document.getElementById('btn-pt-save');
+  btn.disabled  = true;
+  btn.textContent = 'SALVANDO...';
+  feedEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/pretrade/history/save', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({..._pretradeLastResult, label}),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      feedEl.textContent = data.error || 'Erro ao salvar.';
+      feedEl.style.color = '#cc3333';
+    } else {
+      feedEl.textContent = `Simulação salva. ID: ${data.id.slice(0,8)}`;
+      feedEl.style.color = '#00cc88';
+      // Atualiza painel de histórico se estiver aberto
+      if (_ptHistoryOpen) _ptLoadHistory();
+    }
+  } catch(e) {
+    feedEl.textContent = 'Erro de comunicação.';
+    feedEl.style.color = '#cc3333';
+  }
+  feedEl.style.display = '';
+  btn.disabled = false;
+  btn.textContent = 'SALVAR SIMULAÇÃO';
+}
+
+async function _ptLoadHistory() {
+  const listEl  = document.getElementById('pretrade-history-list');
+  const countEl = document.getElementById('pt-history-count');
+  listEl.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>';
+
+  try {
+    const res = await fetch('/api/pretrade/history');
+    if (!res.ok) { listEl.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar histórico.</p>'; return; }
+    const list = await res.json();
+    countEl.textContent = list.length ? `${list.length} registro(s)` : '';
+
+    if (!list.length) {
+      listEl.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Nenhuma simulação salva.</p>';
+      return;
+    }
+
+    const statusColor = s => s === 'ok' ? '#00cc88' : s === 'alerta' ? '#f5a623' : '#cc3333';
+    const statusLabel = s => s === 'ok' ? 'OK' : s === 'alerta' ? 'ALERTA' : 'VIOLAÇÃO';
+
+    const fmt = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+
+    let html = '<div style="display:flex;flex-direction:column;gap:8px">';
+    list.forEach(rec => {
+      const ts    = rec.timestamp || '';
+      const dt    = ts ? new Date(ts) : null;
+      const dtStr = dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '—';
+      const nOps  = (rec.operacoes || []).length;
+      const label = rec.label ? `<span style="color:#aaa"> — ${rec.label}</span>` : '';
+      const recId = rec.id || '';
+      const recIdShort = recId.slice(0, 8);
+
+      // Pior status de compliance
+      const comp = rec.compliance || [];
+      let worstStatus = 'ok';
+      comp.forEach(c => {
+        if (c.status === 'violacao') worstStatus = 'violacao';
+        else if (c.status === 'alerta' && worstStatus === 'ok') worstStatus = 'alerta';
+      });
+      const badgeColor = statusColor(worstStatus);
+      const badgeLabel = statusLabel(worstStatus);
+
+      // Sumário de impacto
+      const imp = rec.impactos || {};
+      const varCota = imp.variacao_cota_pct;
+      const varCotaStr = varCota != null
+        ? `<span style="color:${Number(varCota)>=0?'#00cc88':'#cc3333'}">${Number(varCota)>=0?'+':''}${fmt(varCota,4)}%</span>`
+        : '';
+
+      html += `
+        <div class="pretrade-history-item" data-id="${recId}">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-family:monospace;font-size:11px;color:#888;white-space:nowrap">${dtStr}</span>
+            <span style="font-family:monospace;font-size:11px;color:#555;white-space:nowrap">ID:${recIdShort}</span>
+            <span style="font-family:monospace;font-size:11px;color:#777;white-space:nowrap">${nOps} op(s)</span>
+            ${varCotaStr ? `<span style="font-family:monospace;font-size:11px">Δ cota: ${varCotaStr}</span>` : ''}
+            <span style="font-family:monospace;font-size:10px;font-weight:bold;color:${badgeColor};border:1px solid ${badgeColor};padding:1px 6px;border-radius:2px">${badgeLabel}</span>
+            ${label}
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <a href="/api/pretrade/history/${recId}/pdf" target="_blank"
+                 style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #555;color:#ccc;text-decoration:none;cursor:pointer;border-radius:2px"
+                 title="Baixar PDF de auditoria">PDF</a>
+              <button class="pt-hist-del bbg-btn" data-id="${recId}"
+                      style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1" title="Excluir">×</button>
+            </div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+
+    // Listeners de exclusão
+    listEl.querySelectorAll('.pt-hist-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        if (!confirm('Excluir este registro de pré-trade do histórico?')) return;
+        const r = await fetch(`/api/pretrade/history/${id}`, {method: 'DELETE'});
+        if (r.ok) _ptLoadHistory();
+      });
+    });
+  } catch(e) {
+    listEl.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar histórico.</p>';
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // 210) EVENTOS CORPORATIVOS

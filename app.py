@@ -58,11 +58,12 @@ def github_push_async(relative_path, content_str, commit_msg):
                          args=(relative_path, content_str, commit_msg),
                          daemon=True)
     t.start()
-PORTFOLIO_FILE      = os.path.join(DATA_DIR, "portfolio.json")
-CACHE_FILE          = os.path.join(DATA_DIR, "cache.json")
-FUND_CONFIG_FILE    = os.path.join(DATA_DIR, "fund_config.json")
-QUOTA_HISTORY_FILE  = os.path.join(DATA_DIR, "quota_history.json")
-VIEWER_CONFIG_FILE  = os.path.join(DATA_DIR, "viewer_config.json")
+PORTFOLIO_FILE         = os.path.join(DATA_DIR, "portfolio.json")
+CACHE_FILE             = os.path.join(DATA_DIR, "cache.json")
+FUND_CONFIG_FILE       = os.path.join(DATA_DIR, "fund_config.json")
+QUOTA_HISTORY_FILE     = os.path.join(DATA_DIR, "quota_history.json")
+VIEWER_CONFIG_FILE     = os.path.join(DATA_DIR, "viewer_config.json")
+PRETRADE_HISTORY_FILE  = os.path.join(DATA_DIR, "pretrade_history.json")
 
 _price_cache = {"data": {}, "expires_at": 0}
 FUNDAMENTALS_TTL = 4 * 3600
@@ -143,6 +144,18 @@ def save_quota_history(data):
     with open(QUOTA_HISTORY_FILE, "w", encoding="utf-8") as f:
         f.write(content)
     github_push_async("data/quota_history.json", content, "chore: update quota_history.json via auto-close")
+
+def load_pretrade_history():
+    if not os.path.exists(PRETRADE_HISTORY_FILE):
+        return []
+    with open(PRETRADE_HISTORY_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_pretrade_history(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    with open(PRETRADE_HISTORY_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    github_push_async("data/pretrade_history.json", content, "chore: update pretrade_history.json via UI")
 
 def get_effective_fund_config():
     """Returns fund_config, overriding quota_fechamento/data_fechamento with the last history entry."""
@@ -3592,6 +3605,331 @@ def api_events():
         "por_ativo":  por_ativo,
         "gerado_em":  datetime.now().isoformat(),
     })
+
+
+# ---------------------------------------------------------------------------
+# PRÉ-TRADE HISTORY — persistência e PDF
+# ---------------------------------------------------------------------------
+
+def _generate_pretrade_pdf(record):
+    """Gera PDF de auditoria de uma simulação de pré-trade. Retorna bytes."""
+    from io import BytesIO
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    )
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=1.8*cm, rightMargin=1.8*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm,
+    )
+
+    # ── Cores ──
+    C_BG      = colors.HexColor("#0d0d1a")
+    C_HDR     = colors.HexColor("#1a1a2e")
+    C_HDR_TXT = colors.white
+    C_OK      = colors.HexColor("#00cc88")
+    C_ALERTA  = colors.HexColor("#f5a623")
+    C_VIOL    = colors.HexColor("#cc3333")
+    C_COMPRA  = colors.HexColor("#f5a623")
+    C_VENDA   = colors.HexColor("#00cc88")
+    C_ZERAR   = colors.HexColor("#cc3333")
+    C_BODY    = colors.HexColor("#cccccc")
+    C_MUTED   = colors.HexColor("#888888")
+    C_LINE    = colors.HexColor("#333333")
+
+    def status_color(s):
+        return C_OK if s == "ok" else C_ALERTA if s == "alerta" else C_VIOL
+
+    def dir_color(d):
+        return C_COMPRA if d == "compra" else C_VENDA if d == "venda" else C_ZERAR
+
+    styles = getSampleStyleSheet()
+    mono   = "Courier"
+
+    st_title = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=14,
+                               textColor=C_HDR_TXT, spaceAfter=4)
+    st_sub   = ParagraphStyle("sub",   fontName="Helvetica",      fontSize=9,
+                               textColor=C_MUTED,   spaceAfter=2)
+    st_sec   = ParagraphStyle("sec",   fontName="Helvetica-Bold", fontSize=10,
+                               textColor=C_HDR_TXT, spaceBefore=10, spaceAfter=4)
+    st_foot  = ParagraphStyle("foot",  fontName="Helvetica",      fontSize=8,
+                               textColor=C_MUTED,   alignment=1, spaceBefore=6)
+
+    def tbl_style(header_rows=1, extra=None):
+        base = [
+            ("BACKGROUND",  (0, 0), (-1, header_rows - 1), C_HDR),
+            ("TEXTCOLOR",   (0, 0), (-1, header_rows - 1), C_HDR_TXT),
+            ("FONTNAME",    (0, 0), (-1, header_rows - 1), "Helvetica-Bold"),
+            ("FONTSIZE",    (0, 0), (-1, -1), 8),
+            ("FONTNAME",    (0, header_rows), (-1, -1), mono),
+            ("TEXTCOLOR",   (0, header_rows), (-1, -1), C_BODY),
+            ("BACKGROUND",  (0, header_rows), (-1, -1), C_BG),
+            ("ROWBACKGROUNDS", (0, header_rows), (-1, -1), [C_BG, colors.HexColor("#0f0f22")]),
+            ("GRID",        (0, 0), (-1, -1), 0.3, C_LINE),
+            ("TOPPADDING",  (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]
+        if extra:
+            base.extend(extra)
+        return TableStyle(base)
+
+    def fmt(v, dec=2):
+        try:
+            return f"{float(v):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except Exception:
+            return str(v) if v is not None else "—"
+
+    def fmtR(v, dec=2):
+        return f"R$ {fmt(v, dec)}" if v is not None else "—"
+
+    # ── Timestamp e label ──
+    ts_raw = record.get("timestamp", "")
+    try:
+        dt = datetime.fromisoformat(ts_raw)
+        data_str = dt.strftime("%d/%m/%Y")
+        hora_str = dt.strftime("%H:%M:%S")
+    except Exception:
+        data_str = hora_str = ts_raw
+
+    rec_id    = record.get("id", "")[:8]
+    label_str = record.get("label", "") or ""
+    antes     = record.get("antes", {})
+    depois    = record.get("depois", {})
+    impactos  = record.get("impactos", {})
+    operacoes = record.get("operacoes", [])
+    basket    = record.get("basket", {})
+    compliance = record.get("compliance", [])
+    rows_antes  = {r["ticker"]: r for r in record.get("rows_antes", [])}
+    rows_depois = record.get("rows_depois", [])
+
+    story = []
+
+    # ── Cabeçalho ──
+    story.append(Paragraph("HARBOUR IAT FIF AÇÕES RL — RELATÓRIO PRÉ-TRADE", st_title))
+    story.append(Paragraph(
+        f"Data: {data_str}  |  Hora: {hora_str}  |  ID: {rec_id}" +
+        (f"  |  Ref: {label_str}" if label_str else ""),
+        st_sub
+    ))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE, spaceAfter=6))
+
+    # ── Basket de Operações ──
+    story.append(Paragraph("1. BASKET DE OPERAÇÕES", st_sec))
+    dir_label = {"compra": "COMPRA", "venda": "VENDA", "zerar": "ZERAR"}
+    op_data = [["ATIVO", "DIREÇÃO", "QTDE", "PREÇO", "VALOR TOTAL", "CORRETAGEM"]]
+    for op in operacoes:
+        op_data.append([
+            op.get("ticker", ""),
+            dir_label.get(op.get("direcao", ""), op.get("direcao", "")),
+            fmt(op.get("quantidade", 0), 0),
+            fmtR(op.get("preco")),
+            fmtR(op.get("valor_total_rs")),
+            fmtR(op.get("corretagem_rs", 0)),
+        ])
+    # Linha total
+    op_data.append([
+        f"CUSTO LÍQUIDO TOTAL: {fmtR(basket.get('custo_total_rs'))}",
+        "", "", "", "", "",
+    ])
+
+    # Cores por direção nas linhas de operações
+    op_extra = []
+    for i, op in enumerate(operacoes, start=1):
+        c = dir_color(op.get("direcao", ""))
+        op_extra.append(("TEXTCOLOR", (1, i), (1, i), c))
+    op_extra.append(("SPAN",       (0, len(operacoes) + 1), (-1, len(operacoes) + 1)))
+    op_extra.append(("TEXTCOLOR",  (0, len(operacoes) + 1), (-1, len(operacoes) + 1), C_ALERTA))
+    op_extra.append(("FONTNAME",   (0, len(operacoes) + 1), (-1, len(operacoes) + 1), "Helvetica-Bold"))
+    op_extra.append(("BACKGROUND", (0, len(operacoes) + 1), (-1, len(operacoes) + 1), C_HDR))
+
+    op_tbl = Table(op_data, colWidths=[3.5*cm, 1.8*cm, 1.8*cm, 2.2*cm, 2.8*cm, 2.8*cm])
+    op_tbl.setStyle(tbl_style(extra=op_extra))
+    story.append(op_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Impacto no Fundo ──
+    story.append(Paragraph("2. IMPACTO NO FUNDO", st_sec))
+    metrics = [
+        ("Cota Estimada",     fmt(antes.get("cota_estimada"), 8), fmt(depois.get("cota_estimada"), 8), f"{fmt(impactos.get('variacao_cota_pct'), 4)}%"),
+        ("NAV Total",         fmtR(antes.get("nav_total")),        fmtR(depois.get("nav_total")),        fmtR(impactos.get("variacao_nav_rs"))),
+        ("Caixa Resultante",  fmtR(antes.get("caixa")),            fmtR(depois.get("caixa")),            fmtR((depois.get("caixa") or 0) - (antes.get("caixa") or 0))),
+        ("Grupo I (Ações/BDRs)", f"{fmt(antes.get('pct_grupo1'))}%", f"{fmt(depois.get('pct_grupo1'))}%", f"{fmt((depois.get('pct_grupo1') or 0) - (antes.get('pct_grupo1') or 0))} pp"),
+        ("Beta Pond.",        fmt(antes.get("weighted_beta"), 4),  fmt(depois.get("weighted_beta"), 4),  fmt(impactos.get("variacao_beta"), 4)),
+        ("Upside Pond.",      f"{fmt(antes.get('weighted_upside'))}%", f"{fmt(depois.get('weighted_upside'))}%", f"{fmt(impactos.get('variacao_upside_pp'))} pp"),
+        ("HHI Concentração",  str(antes.get("hhi", "—")),          str(depois.get("hhi", "—")),          str(impactos.get("variacao_hhi", "—"))),
+    ]
+    imp_data = [["MÉTRICA", "ANTES", "DEPOIS", "Δ"]] + [list(m) for m in metrics]
+
+    # Cor vermelha para caixa negativo
+    imp_extra = []
+    for i, m in enumerate(metrics, start=1):
+        nome = m[0]
+        if nome == "Caixa Resultante":
+            try:
+                val = float(str(depois.get("caixa") or 0))
+                if val < 0:
+                    imp_extra.append(("TEXTCOLOR", (2, i), (2, i), C_VIOL))
+            except Exception:
+                pass
+        if nome == "Grupo I (Ações/BDRs)":
+            try:
+                val = float(str(depois.get("pct_grupo1") or 0))
+                if val < 67:
+                    imp_extra.append(("TEXTCOLOR", (2, i), (2, i), C_VIOL))
+            except Exception:
+                pass
+
+    imp_tbl = Table(imp_data, colWidths=[4.2*cm, 3.8*cm, 3.8*cm, 2.9*cm])
+    imp_tbl.setStyle(tbl_style(extra=imp_extra))
+    story.append(imp_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Checklist de Compliance ──
+    story.append(Paragraph("3. CHECKLIST DE COMPLIANCE — RESOLUÇÃO CVM 175", st_sec))
+    comp_data = [["REGRA", "LIMITE", "ANTES", "DEPOIS", "STATUS"]]
+    comp_extra = []
+    for i, c in enumerate(compliance, start=1):
+        s = c.get("status", "ok")
+        sc = status_color(s)
+        sl = "OK" if s == "ok" else "ALERTA" if s == "alerta" else "VIOLAÇÃO"
+        tipo = c.get("tipo", "")
+        lim_str = f"mín {fmt(c.get('limite_pct'))}%" if tipo == "minimo" else \
+                  f"máx {fmt(c.get('limite_pct'))}%" if tipo != "caixa" else "—"
+        if tipo == "caixa":
+            antes_str  = fmtR(c.get("valor_antes_pct"))
+            depois_str = fmtR(c.get("valor_depois_pct"))
+        else:
+            antes_str  = f"{fmt(c.get('valor_antes_pct'))}%"
+            depois_str = f"{fmt(c.get('valor_depois_pct'))}%"
+        comp_data.append([c.get("regra", ""), lim_str, antes_str, depois_str, sl])
+        comp_extra.append(("TEXTCOLOR", (4, i), (4, i), sc))
+        comp_extra.append(("FONTNAME",  (4, i), (4, i), "Helvetica-Bold"))
+        if s != "ok":
+            comp_extra.append(("BACKGROUND", (0, i), (-1, i), colors.HexColor("#1a0a0a")))
+
+    comp_tbl = Table(comp_data, colWidths=[5.5*cm, 2.2*cm, 2.5*cm, 2.5*cm, 2*cm])
+    comp_tbl.setStyle(tbl_style(extra=comp_extra))
+    story.append(comp_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Carteira Antes vs Depois ──
+    story.append(Paragraph("4. CARTEIRA — ANTES vs DEPOIS", st_sec))
+    cart_data = [["ATIVO", "ANTES %", "DEPOIS %", "Δ pp"]]
+    tickers_ops = {op.get("ticker") for op in operacoes}
+    for r in rows_depois:
+        tk  = r.get("ticker", "")
+        ra  = rows_antes.get(tk, {"pct_total": 0})
+        d_pp = (r.get("pct_total") or 0) - (ra.get("pct_total") or 0)
+        cart_data.append([tk, f"{fmt(ra.get('pct_total'))}%", f"{fmt(r.get('pct_total'))}%", f"{'+' if d_pp > 0 else ''}{fmt(d_pp)}"])
+    # Ativos zerados
+    for tk, ra in rows_antes.items():
+        if not any(r.get("ticker") == tk for r in rows_depois):
+            cart_data.append([f"{tk} [ZERADO]", f"{fmt(ra.get('pct_total'))}%", "0,00%", f"-{fmt(ra.get('pct_total'))}"])
+
+    cart_extra = []
+    for i, row in enumerate(cart_data[1:], start=1):
+        tk = row[0].split(" ")[0]
+        if tk in tickers_ops:
+            cart_extra.append(("TEXTCOLOR", (0, i), (0, i), C_ALERTA))
+        if "[ZERADO]" in row[0]:
+            cart_extra.append(("TEXTCOLOR", (0, i), (-1, i), C_VIOL))
+
+    cart_tbl = Table(cart_data, colWidths=[4*cm, 3*cm, 3*cm, 3*cm])
+    cart_tbl.setStyle(tbl_style(extra=cart_extra))
+    story.append(cart_tbl)
+
+    # ── Rodapé de auditoria ──
+    story.append(Spacer(1, 10))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE, spaceAfter=4))
+    story.append(Paragraph(
+        f"Este relatório foi gerado automaticamente para fins de auditoria e compliance conforme "
+        f"Resolução CVM 175. ID: {record.get('id', '')} | Gerado em: {data_str} {hora_str}",
+        st_foot
+    ))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+@app.route("/api/pretrade/history", methods=["GET"])
+@require_admin
+def api_pretrade_history_list():
+    history = load_pretrade_history()
+    history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return jsonify(history)
+
+
+@app.route("/api/pretrade/history/save", methods=["POST"])
+@require_admin
+def api_pretrade_history_save():
+    import uuid
+    payload = request.json or {}
+    required = ["antes", "depois", "operacoes", "compliance"]
+    for k in required:
+        if k not in payload:
+            return jsonify({"error": f"Campo obrigatório ausente: {k}"}), 400
+
+    record = {
+        "id":        str(uuid.uuid4()),
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "label":     (payload.get("label") or "").strip()[:120],
+        "operacoes": payload.get("operacoes", []),
+        "basket":    payload.get("basket", {}),
+        "antes":     payload.get("antes", {}),
+        "depois":    payload.get("depois", {}),
+        "impactos":  payload.get("impactos", {}),
+        "compliance": payload.get("compliance", []),
+        "rows_antes": payload.get("rows_antes", []),
+        "rows_depois": payload.get("rows_depois", []),
+    }
+
+    history = load_pretrade_history()
+    history.append(record)
+    save_pretrade_history(history)
+
+    return jsonify({"id": record["id"], "timestamp": record["timestamp"]}), 201
+
+
+@app.route("/api/pretrade/history/<record_id>", methods=["DELETE"])
+@require_admin
+def api_pretrade_history_delete(record_id):
+    history = load_pretrade_history()
+    new_history = [r for r in history if r.get("id") != record_id]
+    if len(new_history) == len(history):
+        return jsonify({"error": "Registro não encontrado"}), 404
+    save_pretrade_history(new_history)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/pretrade/history/<record_id>/pdf", methods=["GET"])
+@require_admin
+def api_pretrade_history_pdf(record_id):
+    history = load_pretrade_history()
+    record  = next((r for r in history if r.get("id") == record_id), None)
+    if not record:
+        return jsonify({"error": "Registro não encontrado"}), 404
+
+    try:
+        pdf_bytes = _generate_pretrade_pdf(record)
+    except Exception as e:
+        return jsonify({"error": f"Erro ao gerar PDF: {str(e)}"}), 500
+
+    ts = record.get("timestamp", "")[:10].replace("-", "")
+    filename = f"pretrade_{ts}_{record_id[:8]}.pdf"
+
+    from flask import make_response
+    resp = make_response(pdf_bytes)
+    resp.headers["Content-Type"]        = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return resp
 
 
 if __name__ == "__main__":
