@@ -65,6 +65,7 @@ QUOTA_HISTORY_FILE     = os.path.join(DATA_DIR, "quota_history.json")
 VIEWER_CONFIG_FILE     = os.path.join(DATA_DIR, "viewer_config.json")
 PRETRADE_HISTORY_FILE  = os.path.join(DATA_DIR, "pretrade_history.json")
 PORTFOLIO_HISTORY_FILE = os.path.join(DATA_DIR, "portfolio_history.json")
+INDEX_MEMBERS_FILE     = os.path.join(DATA_DIR, "index_members.json")
 
 _price_cache = {"data": {}, "expires_at": 0}
 FUNDAMENTALS_TTL = 4 * 3600
@@ -4339,6 +4340,170 @@ def _generate_portfolio_snapshot_pdf(record):
 
     doc.build(story)
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Index Members (Bloomberg-style Leaders / Laggards)
+# ---------------------------------------------------------------------------
+
+INDEX_TICKER_MAP = {
+    "IBOV":    "^BVSP",
+    "IBRX100": "BRAX11.SA",
+    "SMLL":    "SMAL11.SA",
+}
+INDEX_MEMBERS_TTL = 3600  # 1 hour cache
+
+@app.route("/api/index-members")
+def api_index_members():
+    """GET /api/index-members?index=IBOV&start=2026-01-01&end=2026-04-02"""
+    import pandas as pd
+
+    index_name = request.args.get("index", "IBOV").upper()
+    start_str  = request.args.get("start", "")
+    end_str    = request.args.get("end", "")
+
+    if index_name not in INDEX_TICKER_MAP:
+        return jsonify({"error": f"Índice inválido: {index_name}"}), 400
+
+    if not os.path.exists(INDEX_MEMBERS_FILE):
+        return jsonify({"error": "index_members.json não encontrado"}), 404
+
+    with open(INDEX_MEMBERS_FILE, "r", encoding="utf-8") as f:
+        all_members = json.load(f)
+
+    members = all_members.get(index_name, [])
+    if not members:
+        return jsonify({"error": f"Índice {index_name} sem constituintes"}), 404
+
+    # Parse dates
+    try:
+        dt_start = datetime.strptime(start_str, "%Y-%m-%d") if start_str else datetime(datetime.now().year, 1, 1)
+        dt_end   = datetime.strptime(end_str,   "%Y-%m-%d") if end_str   else datetime.now()
+    except ValueError:
+        return jsonify({"error": "Formato de data inválido (use AAAA-MM-DD)"}), 400
+
+    # Cache lookup
+    cache_key = f"idx_members_{index_name}_{dt_start.date()}_{dt_end.date()}"
+    cache = load_cache()
+    now   = time.time()
+    if cache.get(cache_key) and now < cache[cache_key].get("expires_at", 0):
+        return jsonify(cache[cache_key]["data"])
+
+    # Normalise weights to sum to 100
+    total_w = sum(m.get("weight_pct", 0) for m in members)
+    if total_w > 0:
+        for m in members:
+            m["weight_pct"] = round(m.get("weight_pct", 0) / total_w * 100, 4)
+
+    # Build tickers list (members + index level)
+    index_ticker = INDEX_TICKER_MAP[index_name]
+    member_tickers = [m["ticker"] for m in members]
+    all_tickers = member_tickers + [index_ticker]
+
+    # Portfolio tickers for cross-reference
+    try:
+        portfolio = load_portfolio()
+        portfolio_tickers = set(
+            p.get("yahoo_ticker") or p.get("ticker", "")
+            for p in portfolio.get("positions", [])
+        )
+    except Exception:
+        portfolio_tickers = set()
+
+    # Fetch price history in bulk
+    try:
+        df = yf.download(
+            all_tickers,
+            start=dt_start,
+            end=dt_end + timedelta(days=1),
+            auto_adjust=True,
+            progress=False,
+            threads=True,
+        )
+    except Exception as e:
+        return jsonify({"error": f"Erro ao buscar dados: {str(e)}"}), 500
+
+    # Extract Close prices
+    if isinstance(df.columns, pd.MultiIndex):
+        close = df["Close"] if "Close" in df.columns.get_level_values(0) else df.iloc[:, :]
+    else:
+        close = df
+
+    def get_series(ticker):
+        if ticker in close.columns:
+            return close[ticker].dropna()
+        return pd.Series(dtype=float)
+
+    # Index level start/end
+    idx_series = get_series(index_ticker)
+    idx_start_val = float(idx_series.iloc[0])  if len(idx_series) >= 2 else None
+    idx_end_val   = float(idx_series.iloc[-1]) if len(idx_series) >= 2 else None
+    idx_change    = (idx_end_val - idx_start_val) if idx_start_val and idx_end_val else None
+    idx_return_pct = ((idx_end_val / idx_start_val) - 1) * 100 if idx_start_val and idx_end_val else None
+
+    results = []
+    for m in members:
+        ticker = m["ticker"]
+        name   = m["name"]
+        weight = m["weight_pct"]
+
+        series = get_series(ticker)
+        if len(series) < 2:
+            continue
+
+        start_price = float(series.iloc[0])
+        end_price   = float(series.iloc[-1])
+        if start_price == 0:
+            continue
+        change_pct = (end_price / start_price - 1) * 100
+
+        # Points contributed to index (in index units)
+        if idx_start_val and idx_start_val > 0:
+            points = (change_pct / 100) * (weight / 100) * idx_start_val
+        else:
+            points = 0.0
+
+        # % of total index move from this stock
+        if idx_return_pct and idx_return_pct != 0:
+            idx_mv_pct = ((change_pct / 100) * (weight / 100)) / (idx_return_pct / 100) * 100
+        else:
+            idx_mv_pct = 0.0
+
+        results.append({
+            "ticker":      ticker,
+            "name":        name,
+            "weight_pct":  round(weight, 2),
+            "end_price":   round(end_price, 2),
+            "change_pct":  round(change_pct, 2),
+            "points":      round(points, 3),
+            "idx_mv_pct":  round(idx_mv_pct, 2),
+            "in_portfolio": ticker in portfolio_tickers,
+        })
+
+    results.sort(key=lambda x: x["change_pct"], reverse=True)
+    max_rows = 35
+    leaders  = results[:max_rows]
+    laggards = sorted(results, key=lambda x: x["change_pct"])[:max_rows]
+
+    data = {
+        "index":        index_name,
+        "start":        dt_start.strftime("%Y-%m-%d"),
+        "end":          dt_end.strftime("%Y-%m-%d"),
+        "idx_start":    round(idx_start_val, 2)  if idx_start_val  else None,
+        "idx_end":      round(idx_end_val, 2)    if idx_end_val    else None,
+        "idx_change":   round(idx_change, 2)     if idx_change     else None,
+        "idx_return_pct": round(idx_return_pct, 2) if idx_return_pct else None,
+        "n_total":      len(results),
+        "n_up":         sum(1 for r in results if r["change_pct"] > 0),
+        "n_down":       sum(1 for r in results if r["change_pct"] < 0),
+        "n_unch":       sum(1 for r in results if r["change_pct"] == 0),
+        "leaders":      leaders,
+        "laggards":     laggards,
+    }
+
+    cache[cache_key] = {"data": data, "expires_at": now + INDEX_MEMBERS_TTL}
+    save_cache(cache)
+    return jsonify(data)
 
 
 if __name__ == "__main__":

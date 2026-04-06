@@ -139,6 +139,8 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-events"><span class="fn-num">210)</span> EVENTOS</button>
   {% set ns.first = false %}
   {% endif %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-indices"><span class="fn-num">211)</span> ÍNDICES</button>
+  {% set ns.first = false %}
 </div>
 
 <!-- Loading -->
@@ -1153,6 +1155,117 @@
 
 </div>
 {% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     211) ÍNDICES — Leaders / Laggards estilo Bloomberg
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-indices" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <!-- Toolbar -->
+  <div class="fin-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span class="risk-ctrl-label">ÍNDICE:</span>
+      <button class="bbg-btn risk-btn active" data-idx-name="IBOV">IBOV</button>
+      <button class="bbg-btn risk-btn" data-idx-name="IBRX100">IBRX100</button>
+      <button class="bbg-btn risk-btn" data-idx-name="SMLL">SMLL</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span class="risk-ctrl-label">DE:</span>
+      <input type="date" id="idx-start-date" class="bbg-input-date">
+      <span class="risk-ctrl-label">ATÉ:</span>
+      <input type="date" id="idx-end-date" class="bbg-input-date">
+      <button class="bbg-btn bbg-btn-primary" id="btn-idx-load">&#8635; CARREGAR</button>
+    </div>
+    <div id="idx-treemap-toggle-wrap" style="display:flex;align-items:center;gap:6px">
+      <span class="risk-ctrl-label">VISUALIZAÇÃO:</span>
+      <button class="bbg-btn risk-btn active" data-idx-view="table">TABELA</button>
+      <button class="bbg-btn risk-btn" data-idx-view="treemap">TREEMAP</button>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="idx-stats-bar" class="idx-stats-bar" style="display:none">
+    <span id="idx-stat-index" class="idx-stat-label"></span>
+    <span class="idx-stat-sep">|</span>
+    <span class="risk-ctrl-label">Nível:</span>
+    <span id="idx-stat-level" class="idx-stat-val"></span>
+    <span class="idx-stat-sep">|</span>
+    <span class="risk-ctrl-label">Variação:</span>
+    <span id="idx-stat-chg" class="idx-stat-val"></span>
+    <span class="idx-stat-sep">|</span>
+    <span class="risk-ctrl-label">#Alta:</span>
+    <span id="idx-stat-up" class="idx-stat-val positive"></span>
+    <span class="risk-ctrl-label">#Baixa:</span>
+    <span id="idx-stat-down" class="idx-stat-val negative"></span>
+    <span class="risk-ctrl-label">#Neutro:</span>
+    <span id="idx-stat-unch" class="idx-stat-val"></span>
+    <span class="idx-stat-sep">|</span>
+    <span class="risk-ctrl-label" style="font-size:9px">&#9733; = na carteira</span>
+  </div>
+
+  <div id="idx-loading" class="risk-loading" style="display:none">BUSCANDO DADOS DOS CONSTITUINTES...</div>
+  <div id="idx-error" class="risk-error hidden"></div>
+
+  <!-- Table view: Leaders + Laggards -->
+  <div id="idx-table-view">
+    <div class="idx-panels">
+
+      <!-- Leaders -->
+      <div class="idx-panel">
+        <div class="idx-panel-header positive">LEADERS</div>
+        <table class="idx-table">
+          <thead>
+            <tr>
+              <th class="idx-th-rank">#</th>
+              <th class="idx-th-name">Nome</th>
+              <th class="idx-th-num">End Prc</th>
+              <th class="idx-th-num">% Chg</th>
+              <th class="idx-th-num">Points</th>
+              <th class="idx-th-num">%Idx Mv</th>
+            </tr>
+          </thead>
+          <tbody id="idx-leaders-body">
+            <tr><td colspan="6" class="empty-state">Selecione um índice e clique em CARREGAR</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Laggards -->
+      <div class="idx-panel">
+        <div class="idx-panel-header negative">LAGGARDS</div>
+        <table class="idx-table">
+          <thead>
+            <tr>
+              <th class="idx-th-rank">#</th>
+              <th class="idx-th-name">Nome</th>
+              <th class="idx-th-num">End Prc</th>
+              <th class="idx-th-num">% Chg</th>
+              <th class="idx-th-num">Points</th>
+              <th class="idx-th-num">%Idx Mv</th>
+            </tr>
+          </thead>
+          <tbody id="idx-laggards-body">
+            <tr><td colspan="6" class="empty-state">Selecione um índice e clique em CARREGAR</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /.idx-panels -->
+  </div><!-- /#idx-table-view -->
+
+  <!-- Treemap view -->
+  <div id="idx-treemap-view" style="display:none">
+    <div style="padding:8px 0 4px;font-family:monospace;font-size:10px;color:#666">
+      Tamanho = peso no índice &nbsp;|&nbsp; Cor = retorno no período
+    </div>
+    <div style="position:relative;height:480px">
+      <canvas id="idx-treemap-canvas"></canvas>
+    </div>
+  </div>
+
+</div><!-- /#tab-indices -->
 
 
 <!-- ═══════════════════════════════════════════════════════════════

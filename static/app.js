@@ -638,6 +638,7 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-financials')   loadFinancialsTab();
     if (btn.dataset.tab === 'tab-pretrade')     loadPretradeTab();
     if (btn.dataset.tab === 'tab-events')       loadEventsTab();
+    if (btn.dataset.tab === 'tab-indices')      initIndicesTab();
   });
 });
 
@@ -4545,5 +4546,244 @@ function _renderEventsByAsset(porAtivo, filtered) {
   });
 
   el.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   211) ÍNDICES — Leaders / Laggards + Treemap
+   ═══════════════════════════════════════════════════════════════ */
+
+let _idxCurrentName  = 'IBOV';
+let _idxCurrentView  = 'table';
+let _idxTreemapChart = null;
+let _idxInitialized  = false;
+
+function initIndicesTab() {
+  if (_idxInitialized) return;
+  _idxInitialized = true;
+
+  // Default dates: YTD
+  const today = new Date();
+  const ytdStart = `${today.getFullYear()}-01-01`;
+  const todayStr = today.toISOString().slice(0, 10);
+  document.getElementById('idx-start-date').value = ytdStart;
+  document.getElementById('idx-end-date').value   = todayStr;
+
+  // Index selector
+  document.querySelectorAll('[data-idx-name]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-idx-name]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _idxCurrentName = btn.dataset.idxName;
+    });
+  });
+
+  // View toggle (table vs treemap)
+  document.querySelectorAll('[data-idx-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-idx-view]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _idxCurrentView = btn.dataset.idxView;
+      document.getElementById('idx-table-view').style.display   = _idxCurrentView === 'table'   ? '' : 'none';
+      document.getElementById('idx-treemap-view').style.display = _idxCurrentView === 'treemap' ? '' : 'none';
+      if (_idxCurrentView === 'treemap' && window._idxLastData) {
+        const all = [...(window._idxLastData.leaders || []), ...(window._idxLastData.laggards || [])];
+        renderIdxTreemap(all);
+      }
+    });
+  });
+
+  // Load button
+  document.getElementById('btn-idx-load').addEventListener('click', loadIndicesData);
+
+  // Auto-load on first open
+  loadIndicesData();
+}
+
+async function loadIndicesData() {
+  const start = document.getElementById('idx-start-date').value;
+  const end   = document.getElementById('idx-end-date').value;
+  if (!start || !end) return;
+
+  const loading  = document.getElementById('idx-loading');
+  const errEl    = document.getElementById('idx-error');
+  const statsBar = document.getElementById('idx-stats-bar');
+
+  loading.style.display = '';
+  errEl.classList.add('hidden');
+  statsBar.style.display = 'none';
+  document.getElementById('idx-leaders-body').innerHTML  = '<tr><td colspan="6" class="empty-state">CARREGANDO...</td></tr>';
+  document.getElementById('idx-laggards-body').innerHTML = '<tr><td colspan="6" class="empty-state">CARREGANDO...</td></tr>';
+
+  try {
+    const res  = await fetch(`/api/index-members?index=${_idxCurrentName}&start=${start}&end=${end}`);
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (!res.ok || data.error) {
+      errEl.textContent = data.error || 'Erro ao carregar dados.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    window._idxLastData = data;
+    renderIdxStatsBar(data);
+    renderIdxTable('idx-leaders-body',  data.leaders,  true);
+    renderIdxTable('idx-laggards-body', data.laggards, false);
+
+    if (_idxCurrentView === 'treemap') {
+      const all = [...(data.leaders || []), ...(data.laggards || [])];
+      renderIdxTreemap(all);
+    }
+
+  } catch(e) {
+    loading.style.display = 'none';
+    errEl.textContent = 'Erro de rede: ' + e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function renderIdxStatsBar(data) {
+  const bar = document.getElementById('idx-stats-bar');
+  bar.style.display = 'flex';
+
+  document.getElementById('idx-stat-index').textContent = data.index;
+
+  const lvl = data.idx_end != null ? fmt(data.idx_end, 0) : '\u2014';
+  const chgPct = data.idx_return_pct != null
+    ? `${sign(data.idx_return_pct)}${fmt(data.idx_return_pct, 2)}%`
+    : '\u2014';
+
+  document.getElementById('idx-stat-level').textContent = lvl;
+  const chgEl = document.getElementById('idx-stat-chg');
+  chgEl.textContent = chgPct;
+  chgEl.className = 'idx-stat-val ' + colorCls(data.idx_return_pct);
+
+  document.getElementById('idx-stat-up').textContent   = data.n_up   ?? '\u2014';
+  document.getElementById('idx-stat-down').textContent = data.n_down ?? '\u2014';
+  document.getElementById('idx-stat-unch').textContent = data.n_unch ?? '\u2014';
+}
+
+function renderIdxTable(tbodyId, rows, isLeaders) {
+  const tbody = document.getElementById(tbodyId);
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Sem dados</td></tr>';
+    return;
+  }
+
+  let html = '';
+  rows.forEach((r, i) => {
+    const chgCls   = r.change_pct > 0 ? 'positive' : r.change_pct < 0 ? 'negative' : '';
+    const ptsCls   = r.points > 0 ? 'positive' : r.points < 0 ? 'negative' : '';
+    const mvCls    = r.idx_mv_pct > 0 ? 'positive' : r.idx_mv_pct < 0 ? 'negative' : '';
+    const star     = r.in_portfolio ? '<span class="idx-star" title="Na carteira">&#9733;</span> ' : '';
+    const nameFull = r.name || r.ticker;
+    const nameShort = nameFull.length > 24 ? nameFull.slice(0, 23) + '\u2026' : nameFull;
+    const tickerShort = (r.ticker || '').replace('.SA', '');
+    const chgSign  = r.change_pct >= 0 ? '+' : '';
+    const mvSign   = r.idx_mv_pct >= 0 ? '+' : '';
+    const ptsSign  = r.points >= 0 ? '+' : '';
+
+    html += `<tr class="idx-row" title="${r.name} (${r.ticker})">
+      <td class="idx-td-rank">${i + 1}.</td>
+      <td class="idx-td-name">${star}<span class="idx-ticker">${tickerShort}</span>&nbsp;${nameShort}</td>
+      <td class="idx-td-num">${fmt(r.end_price, 2)}</td>
+      <td class="idx-td-num ${chgCls}">${chgSign}${fmt(r.change_pct, 2)}%</td>
+      <td class="idx-td-num ${ptsCls}">${ptsSign}${fmt(Math.round(r.points), 0)}</td>
+      <td class="idx-td-num ${mvCls}">${mvSign}${fmt(r.idx_mv_pct, 2)}%</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function renderIdxTreemap(rows) {
+  const canvas = document.getElementById('idx-treemap-canvas');
+  if (!canvas) return;
+
+  if (_idxTreemapChart) {
+    _idxTreemapChart.destroy();
+    _idxTreemapChart = null;
+  }
+
+  // Deduplicate
+  const seen = new Set();
+  const unique = rows.filter(r => {
+    if (seen.has(r.ticker)) return false;
+    seen.add(r.ticker);
+    return true;
+  });
+
+  function returnColor(pct) {
+    if (pct >= 20)  return 'rgba(0,204,68,0.95)';
+    if (pct >= 10)  return 'rgba(0,180,60,0.85)';
+    if (pct >= 5)   return 'rgba(0,150,50,0.75)';
+    if (pct >= 0)   return 'rgba(0,110,38,0.65)';
+    if (pct >= -5)  return 'rgba(200,50,50,0.65)';
+    if (pct >= -10) return 'rgba(220,30,30,0.80)';
+    return 'rgba(240,0,0,0.95)';
+  }
+
+  const treeData = unique.map(r => ({
+    label:    r.ticker.replace('.SA', ''),
+    sublabel: `${r.change_pct >= 0 ? '+' : ''}${r.change_pct.toFixed(2)}%`,
+    value:    Math.max(r.weight_pct, 0.05),
+    _pct:     r.change_pct,
+  }));
+
+  _idxTreemapChart = new Chart(canvas, {
+    type: 'treemap',
+    data: {
+      datasets: [{
+        label: _idxCurrentName,
+        tree: treeData,
+        key: 'value',
+        labels: {
+          display: true,
+          formatter(ctx) {
+            const raw = ctx.dataset.data[ctx.dataIndex]?.raw || ctx.dataset.data[ctx.dataIndex];
+            if (!raw) return '';
+            return [raw.label || '', raw.sublabel || ''];
+          },
+          color: '#fff',
+          font: [
+            { size: 11, weight: 'bold', family: "'Cascadia Code','Courier New',monospace" },
+            { size: 9,  family: "'Cascadia Code','Courier New',monospace" },
+          ],
+        },
+        backgroundColor(ctx) {
+          const raw = ctx.dataset.data[ctx.dataIndex]?.raw || ctx.dataset.data[ctx.dataIndex];
+          return returnColor(raw?._pct ?? 0);
+        },
+        borderColor: '#000',
+        borderWidth: 1,
+        spacing: 1,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title(items) {
+              const raw = items[0]?.dataset?.data[items[0]?.dataIndex]?.raw
+                       || items[0]?.dataset?.data[items[0]?.dataIndex];
+              return raw?.label || '';
+            },
+            label(item) {
+              const raw = item.dataset.data[item.dataIndex]?.raw
+                       || item.dataset.data[item.dataIndex];
+              const pct  = raw?._pct ?? 0;
+              const s    = pct >= 0 ? '+' : '';
+              return [
+                `Retorno: ${s}${pct.toFixed(2)}%`,
+                `Peso:    ${(raw?.value ?? 0).toFixed(2)}%`,
+              ];
+            },
+          }
+        }
+      }
+    }
+  });
 }
 
