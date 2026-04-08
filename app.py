@@ -472,11 +472,17 @@ def calculate_quota(rows, fund_config, prices):
     nav_carteira = sum(r.get("valor_liquido") or 0 for r in rows)
     nav_total    = nav_carteira + caixa + proventos - custos
 
-    # Fora do horário de mercado: exibe apenas o fechamento, sem variação intraday
-    if not is_market_open():
+    brt_now    = datetime.utcnow() - timedelta(hours=3)
+    today_str  = brt_now.strftime("%Y-%m-%d")
+    data_fech  = fund_config.get("data_fechamento", "")
+    mercado_fechado   = not is_market_open()
+    today_is_official = mercado_fechado and (data_fech == today_str)
+
+    # Fechamento oficial já registrado hoje: exibe apenas o fechamento, sem variação intraday
+    if today_is_official:
         result = {
             "quota_fechamento":         quota_fech,
-            "data_fechamento":          fund_config.get("data_fechamento", ""),
+            "data_fechamento":          data_fech,
             "cota_estimada":            quota_fech if quota_fech else None,
             "variacao_pct":             0.0,
             "variacao_rs_por_cota":     0.0,
@@ -493,6 +499,8 @@ def calculate_quota(rows, fund_config, prices):
         if num_cotas:
             result["variacao_total_rs"] = 0.0
         return result
+    # Se mercado fechado mas fechamento de hoje ainda não registrado, continua calculando
+    # com os preços finais do pregão (mesmo comportamento do horário de mercado aberto).
 
     valid = [r for r in rows if r.get("pct_total") and r.get("var_dia_pct") is not None]
     retorno_carteira = sum((r["var_dia_pct"] / 100) * (r["pct_total"] / 100) for r in valid) if valid else 0.0
@@ -520,7 +528,7 @@ def calculate_quota(rows, fund_config, prices):
         "provisao_performance_pct": round(provisao_pct * 100, 4),
         "provisao_performance_rs": round(provisao_rs, 2),
         "nav_total":               round(nav_total, 2),
-        "mercado_fechado":         False,
+        "mercado_fechado":         mercado_fechado,
         "caixa": caixa, "proventos_a_receber": proventos,
         "custos_provisionados": custos, "num_cotas": num_cotas,
     }
