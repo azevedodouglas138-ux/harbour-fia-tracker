@@ -14,7 +14,7 @@
       "ticker": "MUTC34",
       "yahoo_ticker": "MUTC34.SA",
       "categoria": "BDR",
-      "quantidade": 9000.0,
+      "quantidade": 9500.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 700.0
@@ -25,8 +25,8 @@
       "categoria": "Acao",
       "quantidade": 80000.0,
       "liq_diaria_mm": null,
-      "lucro_mi_26": 600.0,
-      "preco_alvo": 55.0
+      "lucro_mi_26": 400.0,
+      "preco_alvo": 50.0
     },
     {
       "ticker": "BMEB4",
@@ -41,10 +41,10 @@
       "ticker": "TEND3",
       "yahoo_ticker": "TEND3.SA",
       "categoria": "Acao",
-      "quantidade": 50000.0,
+      "quantidade": 45000.0,
       "liq_diaria_mm": null,
-      "lucro_mi_26": 650.0,
-      "preco_alvo": 55.0
+      "lucro_mi_26": 400.0,
+      "preco_alvo": 46.0
     },
     {
       "ticker": "VTRU3",
@@ -113,7 +113,7 @@
       "ticker": "M1TA34",
       "yahoo_ticker": "M1TA34.SA",
       "categoria": "BDR",
-      "quantidade": 700.0,
+      "quantidade": 500.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 200.0
