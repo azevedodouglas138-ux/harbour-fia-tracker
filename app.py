@@ -194,6 +194,7 @@ _VIEWER_CONFIG_DEFAULTS = {
     "tab_risk":          True,
     "tab_financials":    True,
     "tab_events":        False,
+    "tab_research":      False,
 }
 
 def load_viewer_config():
@@ -4512,6 +4513,287 @@ def api_index_members():
     cache[cache_key] = {"data": data, "expires_at": now + INDEX_MEMBERS_TTL}
     save_cache(cache)
     return jsonify(data)
+
+
+# =============================================================================
+# RESEARCH (212) — routes
+# =============================================================================
+
+import research_db as _rdb
+
+# Initialise DB and sync from portfolio/watchlist on startup
+_rdb.init_db()
+_rdb.sync_from_portfolio(PORTFOLIO_FILE, WATCHLIST_FILE, user="system")
+
+def _research_user():
+    return session.get("role", "viewer")
+
+def _require_team(f):
+    """Allow admin and equipe (any logged-in non-viewer) to write."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        role = session.get("role")
+        if role not in ("admin", "equipe"):
+            return jsonify({"error": "forbidden"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── Companies ──────────────────────────────────────────────────────────────
+
+@app.route("/api/research/companies", methods=["GET"])
+def api_research_companies():
+    companies = _rdb.get_companies()
+    pending   = _rdb.get_pending_by_ticker()
+    for c in companies:
+        c["pending"] = pending.get(c["ticker"], 0)
+    return jsonify({"companies": companies})
+
+
+@app.route("/api/research/companies", methods=["POST"])
+@_require_team
+def api_research_companies_create():
+    payload = request.json or {}
+    ticker  = (payload.get("ticker") or "").upper().strip()
+    if not ticker:
+        return jsonify({"error": "ticker required"}), 400
+    _rdb.upsert_company(
+        ticker,
+        name=payload.get("name"),
+        market=payload.get("market", "BR"),
+        status=payload.get("status", "UNIVERSO"),
+        sector=payload.get("sector"),
+        user=_research_user(),
+    )
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/companies/<ticker>", methods=["DELETE"])
+@require_admin
+def api_research_companies_delete(ticker):
+    ok = _rdb.delete_company(ticker.upper(), user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/sync", methods=["POST"])
+@require_admin
+def api_research_sync():
+    """Re-sync companies from portfolio.json and watchlist.json."""
+    _rdb.sync_from_portfolio(PORTFOLIO_FILE, WATCHLIST_FILE, user=_research_user())
+    return jsonify({"ok": True})
+
+
+# ── Theses ─────────────────────────────────────────────────────────────────
+
+@app.route("/api/research/theses/<ticker>", methods=["GET"])
+def api_research_theses_get(ticker):
+    return jsonify({"theses": _rdb.get_theses(ticker.upper())})
+
+
+@app.route("/api/research/theses/<ticker>", methods=["POST"])
+@_require_team
+def api_research_theses_create(ticker):
+    payload = request.json or {}
+    content = payload.get("content", "")
+    new_id  = _rdb.create_thesis(ticker.upper(), content, user=_research_user())
+    return jsonify({"ok": True, "id": new_id})
+
+
+@app.route("/api/research/theses/<int:thesis_id>/approve", methods=["POST"])
+@require_admin
+def api_research_thesis_approve(thesis_id):
+    ok = _rdb.approve_thesis(thesis_id, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/theses/<int:thesis_id>", methods=["PUT"])
+@_require_team
+def api_research_thesis_update(thesis_id):
+    payload = request.json or {}
+    content = payload.get("content", "")
+    ok = _rdb.update_thesis_content(thesis_id, content, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+# ── Notes ──────────────────────────────────────────────────────────────────
+
+@app.route("/api/research/notes/<ticker>", methods=["GET"])
+def api_research_notes_get(ticker):
+    return jsonify({"notes": _rdb.get_notes(ticker.upper())})
+
+
+@app.route("/api/research/notes/<ticker>", methods=["POST"])
+@_require_team
+def api_research_notes_create(ticker):
+    payload   = request.json or {}
+    content   = payload.get("content", "")
+    note_type = payload.get("note_type", "OBSERVACAO")
+    if not content.strip():
+        return jsonify({"error": "content required"}), 400
+    new_id = _rdb.create_note(ticker.upper(), content, note_type, user=_research_user())
+    return jsonify({"ok": True, "id": new_id})
+
+
+@app.route("/api/research/notes/<int:note_id>", methods=["PUT"])
+@_require_team
+def api_research_note_update(note_id):
+    payload   = request.json or {}
+    content   = payload.get("content", "")
+    note_type = payload.get("note_type")
+    ok = _rdb.update_note(note_id, content, note_type, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/notes/<int:note_id>", methods=["DELETE"])
+@_require_team
+def api_research_note_delete(note_id):
+    ok = _rdb.delete_note(note_id, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+# ── Valuations ─────────────────────────────────────────────────────────────
+
+@app.route("/api/research/valuations/<ticker>", methods=["GET"])
+def api_research_valuations_get(ticker):
+    return jsonify({"valuations": _rdb.get_valuations(ticker.upper())})
+
+
+@app.route("/api/research/valuations/<ticker>", methods=["POST"])
+@_require_team
+def api_research_valuations_create(ticker):
+    payload = request.json or {}
+    try:
+        target_price = float(payload["target_price"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "target_price required"}), 400
+    methodology = payload.get("methodology", "DCF")
+    upside_pct  = payload.get("upside_pct")
+    assumptions = payload.get("assumptions")
+    notes       = payload.get("notes")
+    new_id = _rdb.create_valuation(
+        ticker.upper(), target_price, methodology,
+        upside_pct=float(upside_pct) if upside_pct is not None else None,
+        assumptions=assumptions, notes=notes, user=_research_user()
+    )
+    return jsonify({"ok": True, "id": new_id})
+
+
+@app.route("/api/research/valuations/<int:valuation_id>", methods=["DELETE"])
+@_require_team
+def api_research_valuation_delete(valuation_id):
+    ok = _rdb.delete_valuation(valuation_id, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+# ── Filings ────────────────────────────────────────────────────────────────
+
+@app.route("/api/research/filings/<ticker>", methods=["GET"])
+def api_research_filings_get(ticker):
+    review_status = request.args.get("status")
+    return jsonify({"filings": _rdb.get_filings(ticker=ticker.upper(), review_status=review_status)})
+
+
+@app.route("/api/research/filings/<int:filing_id>/review", methods=["POST"])
+@require_admin
+def api_research_filing_review(filing_id):
+    payload = request.json or {}
+    action  = payload.get("action", "").upper()
+    if action not in ("APPROVE", "REJECT"):
+        return jsonify({"error": "action must be APPROVE or REJECT"}), 400
+    ok = _rdb.review_filing(filing_id, action, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+# ── News ───────────────────────────────────────────────────────────────────
+
+@app.route("/api/research/news/<ticker>", methods=["GET"])
+def api_research_news_get(ticker):
+    review_status = request.args.get("status")
+    return jsonify({"news": _rdb.get_news(ticker=ticker.upper(), review_status=review_status)})
+
+
+@app.route("/api/research/news/<int:news_id>/review", methods=["POST"])
+@require_admin
+def api_research_news_review(news_id):
+    payload = request.json or {}
+    action  = payload.get("action", "").upper()
+    if action not in ("APPROVE", "REJECT"):
+        return jsonify({"error": "action must be APPROVE or REJECT"}), 400
+    ok = _rdb.review_news(news_id, action, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+# ── Audit log ──────────────────────────────────────────────────────────────
+
+@app.route("/api/research/audit/<ticker>", methods=["GET"])
+def api_research_audit_get(ticker):
+    limit = int(request.args.get("limit", 100))
+    return jsonify({"audit": _rdb.get_audit_log(ticker=ticker.upper(), limit=limit)})
+
+
+# ── Pending counts ─────────────────────────────────────────────────────────
+
+@app.route("/api/research/pending", methods=["GET"])
+def api_research_pending():
+    return jsonify(_rdb.get_pending_counts())
+
+
+# ── Full-text search ───────────────────────────────────────────────────────
+
+@app.route("/api/research/search", methods=["GET"])
+def api_research_search():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"results": []})
+    results = _rdb.fts_search(q, limit=50)
+    return jsonify({"results": results})
+
+
+# ── Markdown export ────────────────────────────────────────────────────────
+
+@app.route("/api/research/export/<ticker>", methods=["GET"])
+def api_research_export(ticker):
+    md = _rdb.export_company_markdown(ticker.upper())
+    if md is None:
+        return jsonify({"error": "company not found"}), 404
+    filename = f"{ticker.upper()}_research_{datetime.now().strftime('%Y%m%d')}.md"
+    return Response(md, mimetype="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+# ── Company full data (single request for all sub-tabs) ────────────────────
+
+@app.route("/api/research/company/<ticker>", methods=["GET"])
+def api_research_company_full(ticker):
+    ticker = ticker.upper()
+    company = _rdb.get_company(ticker)
+    if not company:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({
+        "company":    company,
+        "theses":     _rdb.get_theses(ticker),
+        "notes":      _rdb.get_notes(ticker),
+        "valuations": _rdb.get_valuations(ticker),
+        "filings":    _rdb.get_filings(ticker=ticker),
+        "news":       _rdb.get_news(ticker=ticker),
+        "audit":      _rdb.get_audit_log(ticker=ticker, limit=50),
+    })
 
 
 if __name__ == "__main__":

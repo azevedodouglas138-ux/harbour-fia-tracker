@@ -141,6 +141,10 @@
   {% endif %}
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-indices"><span class="fn-num">211)</span> ÍNDICES</button>
   {% set ns.first = false %}
+  {% if role == 'admin' or viewer_config.get('tab_research', false) %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-research" id="btn-tab-research"><span class="fn-num">212)</span> RESEARCH <span id="research-pending-badge" class="research-badge" style="display:none"></span></button>
+  {% set ns.first = false %}
+  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -1266,6 +1270,207 @@
   </div>
 
 </div><!-- /#tab-indices -->
+
+{% if role == 'admin' or viewer_config.get('tab_research', false) %}
+<!-- ═══════════════════════════════════════════════════════════════════
+     212) RESEARCH — Knowledge Base por Empresa
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-research" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+<!-- TOP BAR da aba Research -->
+<div class="research-topbar">
+  <div class="research-search-wrap">
+    <input type="text" id="research-search" placeholder="🔍 Buscar em toda a base..." autocomplete="off">
+    <div id="research-search-results" class="research-search-dropdown hidden"></div>
+  </div>
+  <div id="research-pending-count" class="research-pending-btn hidden" title="Itens aguardando revisão"></div>
+  {% if role == 'admin' %}
+  <button class="bbg-btn" id="btn-research-add-company">+ EMPRESA</button>
+  <button class="bbg-btn" id="btn-research-sync">↺ SYNC</button>
+  {% endif %}
+</div>
+
+<!-- LAYOUT 3 colunas: sidebar | company header | sub-tabs -->
+<div class="research-layout">
+
+  <!-- SIDEBAR -->
+  <div class="research-sidebar">
+    <div class="research-sidebar-section">
+      <div class="research-sidebar-label">PORTFÓLIO</div>
+      <div id="research-list-investido"></div>
+    </div>
+    <div class="research-sidebar-section">
+      <div class="research-sidebar-label">WATCHLIST</div>
+      <div id="research-list-watchlist"></div>
+    </div>
+    <div class="research-sidebar-section">
+      <div class="research-sidebar-label">UNIVERSO</div>
+      <div id="research-list-universo"></div>
+    </div>
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div class="research-main" id="research-main">
+    <!-- Estado vazio -->
+    <div id="research-empty-state" class="research-empty">
+      <div class="research-empty-icon">📊</div>
+      <div class="research-empty-text">Selecione uma empresa na lista</div>
+    </div>
+
+    <!-- Company panel (hidden until selected) -->
+    <div id="research-company-panel" class="hidden">
+
+      <!-- Company header -->
+      <div class="research-company-header">
+        <div class="research-company-title-row">
+          <span class="research-company-ticker" id="rc-ticker"></span>
+          <span class="research-company-name" id="rc-name"></span>
+          <span class="research-company-meta" id="rc-meta"></span>
+        </div>
+        <div class="research-company-actions">
+          <span class="research-company-price" id="rc-price"></span>
+          <button class="bbg-btn research-export-btn" id="btn-research-export">↓ EXPORTAR MD</button>
+          {% if role == 'admin' %}
+          <button class="bbg-btn" id="btn-research-edit-company" style="font-size:10px">✏ EDITAR</button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Sub-tabs -->
+      <div class="research-subtabs">
+        <button class="research-subtab active" data-subtab="subtab-tese">TESE</button>
+        <button class="research-subtab" data-subtab="subtab-filings">FILINGS <span class="research-badge" id="badge-filings" style="display:none"></span></button>
+        <button class="research-subtab" data-subtab="subtab-news">NOTÍCIAS <span class="research-badge" id="badge-news" style="display:none"></span></button>
+        <button class="research-subtab" data-subtab="subtab-valuation">VALUATION</button>
+        <button class="research-subtab" data-subtab="subtab-notes">NOTAS</button>
+        <button class="research-subtab" data-subtab="subtab-historico">HISTÓRICO</button>
+      </div>
+
+      <!-- ── TESE ───────────────────────────────────────────── -->
+      <div id="subtab-tese" class="research-subtab-content active">
+        <div id="research-thesis-banner" class="research-claude-banner hidden">
+          <span class="research-claude-dot">●</span>
+          <span id="research-thesis-banner-text"></span>
+        </div>
+        <div id="research-thesis-view" class="research-thesis-view">
+          <div class="research-thesis-meta" id="research-thesis-meta"></div>
+          <div class="research-thesis-content" id="research-thesis-content">
+            <span class="research-empty-inline">Nenhuma tese ativa. Clique em NOVA TESE para começar.</span>
+          </div>
+        </div>
+        <div class="research-thesis-actions">
+          <button class="bbg-btn" id="btn-research-new-thesis">+ NOVA TESE</button>
+          {% if role == 'admin' %}
+          <span id="research-thesis-approve-wrap" class="hidden">
+            <button class="bbg-btn bbg-btn-primary" id="btn-research-approve-thesis">✓ APROVAR TESE</button>
+          </span>
+          {% endif %}
+        </div>
+        <!-- Editor (hidden by default) -->
+        <div id="research-thesis-editor" class="hidden">
+          <textarea id="research-thesis-textarea" rows="14" placeholder="Escreva a tese de investimento..."></textarea>
+          <div class="research-editor-actions">
+            <button class="bbg-btn" id="btn-research-thesis-cancel">CANCELAR</button>
+            <button class="bbg-btn bbg-btn-primary" id="btn-research-thesis-save">SALVAR RASCUNHO</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FILINGS ─────────────────────────────────────────── -->
+      <div id="subtab-filings" class="research-subtab-content hidden">
+        <div class="research-section-header">
+          <span>FILINGS CVM / SEC</span>
+        </div>
+        <div id="research-filings-list" class="research-list-items"></div>
+        <div id="research-filings-empty" class="research-empty-inline hidden">Nenhum filing registrado.</div>
+      </div>
+
+      <!-- ── NOTÍCIAS ────────────────────────────────────────── -->
+      <div id="subtab-news" class="research-subtab-content hidden">
+        <div class="research-section-header">
+          <span>NOTÍCIAS E ARTIGOS</span>
+        </div>
+        <div id="research-news-list" class="research-list-items"></div>
+        <div id="research-news-empty" class="research-empty-inline hidden">Nenhuma notícia registrada.</div>
+      </div>
+
+      <!-- ── VALUATION ───────────────────────────────────────── -->
+      <div id="subtab-valuation" class="research-subtab-content hidden">
+        <div class="research-section-header">
+          <span>VALUATION</span>
+          <button class="bbg-btn" id="btn-research-new-valuation" style="font-size:10px">+ NOVO</button>
+        </div>
+        <div id="research-valuation-list" class="research-list-items"></div>
+        <div id="research-valuation-empty" class="research-empty-inline hidden">Nenhum valuation registrado.</div>
+        <!-- Valuation form -->
+        <div id="research-valuation-form" class="research-form hidden">
+          <div class="research-form-row">
+            <label>METODOLOGIA
+              <select id="val-methodology">
+                <option value="DCF">DCF</option>
+                <option value="EV/EBITDA">EV/EBITDA</option>
+                <option value="P/L">P/L</option>
+                <option value="DDM">DDM</option>
+                <option value="SOMA_PARTES">SOMA DE PARTES</option>
+              </select>
+            </label>
+            <label>PREÇO ALVO (R$)<input type="number" id="val-target-price" step="0.01" min="0"></label>
+            <label>UPSIDE (%)<input type="number" id="val-upside" step="0.1"></label>
+          </div>
+          <div class="research-form-row">
+            <label style="flex:1">NOTAS<textarea id="val-notes" rows="3" style="width:100%"></textarea></label>
+          </div>
+          <div class="research-editor-actions">
+            <button class="bbg-btn" id="btn-val-cancel">CANCELAR</button>
+            <button class="bbg-btn bbg-btn-primary" id="btn-val-save">SALVAR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── NOTAS ───────────────────────────────────────────── -->
+      <div id="subtab-notes" class="research-subtab-content hidden">
+        <div class="research-section-header">
+          <span>NOTAS DA EQUIPE</span>
+          <button class="bbg-btn" id="btn-research-new-note" style="font-size:10px">+ NOVA NOTA</button>
+        </div>
+        <div id="research-notes-list" class="research-list-items"></div>
+        <div id="research-notes-empty" class="research-empty-inline hidden">Nenhuma nota registrada.</div>
+        <!-- Note form -->
+        <div id="research-note-form" class="research-form hidden">
+          <div class="research-form-row">
+            <label>TIPO
+              <select id="note-type">
+                <option value="OBSERVACAO">OBSERVAÇÃO</option>
+                <option value="REUNIAO">REUNIÃO</option>
+                <option value="CALL">CALL</option>
+                <option value="ALERTA">ALERTA</option>
+                <option value="IDEIA">IDEIA</option>
+              </select>
+            </label>
+          </div>
+          <div class="research-form-row">
+            <label style="flex:1">CONTEÚDO<textarea id="note-content" rows="5" style="width:100%"></textarea></label>
+          </div>
+          <div class="research-editor-actions">
+            <button class="bbg-btn" id="btn-note-cancel">CANCELAR</button>
+            <button class="bbg-btn bbg-btn-primary" id="btn-note-save">SALVAR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── HISTÓRICO ───────────────────────────────────────── -->
+      <div id="subtab-historico" class="research-subtab-content hidden">
+        <div class="research-section-header"><span>AUDIT LOG — HISTÓRICO</span></div>
+        <div id="research-audit-list" class="research-list-items"></div>
+        <div id="research-audit-empty" class="research-empty-inline hidden">Nenhum evento registrado.</div>
+      </div>
+
+    </div><!-- /#research-company-panel -->
+  </div><!-- /.research-main -->
+</div><!-- /.research-layout -->
+</div><!-- /#tab-research -->
+{% endif %}
 
 
 <!-- ═══════════════════════════════════════════════════════════════

@@ -661,6 +661,7 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-pretrade')     loadPretradeTab();
     if (btn.dataset.tab === 'tab-events')       loadEventsTab();
     if (btn.dataset.tab === 'tab-indices')      initIndicesTab();
+    if (btn.dataset.tab === 'tab-research')     Research.init();
   });
 });
 
@@ -4808,4 +4809,660 @@ function renderIdxTreemap(rows) {
     }
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// 212) RESEARCH — Knowledge Base
+// ═══════════════════════════════════════════════════════════════════
+
+const Research = (() => {
+  const ROLE = window.USER_ROLE || 'viewer';
+
+  // State
+  let _companies  = [];        // full list from API
+  let _currentTicker = null;   // selected company ticker
+  let _companyData   = null;   // full data for selected company
+  let _editingThesisId = null; // id of thesis being edited (null = new)
+  let _noteEditingId   = null; // id of note being edited (null = new)
+  let _initialized = false;
+
+  // ── DOM helpers ──────────────────────────────────────────────────
+  const $  = id => document.getElementById(id);
+  const el = (tag, cls, txt) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt !== undefined) e.textContent = txt;
+    return e;
+  };
+  const fmt = ts => ts ? ts.slice(0, 16).replace('T', ' ') : '—';
+
+  function sentimentTag(s) {
+    if (!s) return '';
+    const cls = s === 'POSITIVO' ? 'tag-positivo' : s === 'NEGATIVO' ? 'tag-negativo' : 'tag-neutro';
+    return `<span class="research-tag ${cls}">${s}</span>`;
+  }
+  function statusTag(s) {
+    if (!s) return '';
+    const cls = s === 'APROVADO' ? 'tag-aprovado' : s === 'REJEITADO' ? 'tag-rejeitado' : 'tag-pendente';
+    return `<span class="research-tag ${cls}">${s}</span>`;
+  }
+  function noteTypeTag(t) {
+    return t ? `<span class="research-tag tag-note-type">${t}</span>` : '';
+  }
+
+  // ── API calls ─────────────────────────────────────────────────────
+  async function apiGet(url)         { const r = await fetch(url); return r.json(); }
+  async function apiPost(url, body)  { const r = await fetch(url, {method:'POST',  headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); return r.json(); }
+  async function apiPut(url, body)   { const r = await fetch(url, {method:'PUT',   headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); return r.json(); }
+  async function apiDel(url)         { const r = await fetch(url, {method:'DELETE'}); return r.json(); }
+
+  // ── Init ──────────────────────────────────────────────────────────
+  async function init() {
+    if (_initialized) {
+      // Reload pending counts each time we switch to this tab
+      await refreshPending();
+      return;
+    }
+    _initialized = true;
+    _bindSubTabs();
+    _bindSearch();
+    _bindButtons();
+    await loadCompanies();
+    await refreshPending();
+  }
+
+  // ── Pending counts ────────────────────────────────────────────────
+  async function refreshPending() {
+    const data = await apiGet('/api/research/pending');
+    const total = data.total || 0;
+    const badge = $('research-pending-badge');
+    const btn   = $('research-pending-count');
+    if (badge) {
+      badge.textContent = total;
+      badge.style.display = total > 0 ? '' : 'none';
+    }
+    if (btn) {
+      if (total > 0) {
+        btn.textContent = `● ${total} PENDENTE${total > 1 ? 'S' : ''}`;
+        btn.classList.remove('hidden');
+      } else {
+        btn.classList.add('hidden');
+      }
+    }
+  }
+
+  // ── Companies list ────────────────────────────────────────────────
+  async function loadCompanies() {
+    const data = await apiGet('/api/research/companies');
+    _companies = data.companies || [];
+    renderSidebar();
+  }
+
+  function renderSidebar() {
+    const groups = { INVESTIDO: [], WATCHLIST: [], UNIVERSO: [] };
+    for (const c of _companies) {
+      (groups[c.status] || groups.UNIVERSO).push(c);
+    }
+    const containersMap = {
+      INVESTIDO: $('research-list-investido'),
+      WATCHLIST: $('research-list-watchlist'),
+      UNIVERSO:  $('research-list-universo'),
+    };
+    for (const [status, container] of Object.entries(containersMap)) {
+      if (!container) continue;
+      container.innerHTML = '';
+      const items = groups[status] || [];
+      if (items.length === 0) {
+        const empty = el('div', '', '—');
+        empty.style.cssText = 'padding:4px 10px;color:#444;font-size:10px';
+        container.appendChild(empty);
+      }
+      for (const c of items) {
+        const row = el('div', 'research-sidebar-item');
+        if (c.ticker === _currentTicker) row.classList.add('active');
+        row.dataset.ticker = c.ticker;
+        const span = el('span', 'si-ticker', c.ticker);
+        row.appendChild(span);
+        if (c.pending > 0) {
+          const b = el('span', 'research-badge si-badge', c.pending);
+          row.appendChild(b);
+        }
+        row.addEventListener('click', () => selectCompany(c.ticker));
+        container.appendChild(row);
+      }
+    }
+  }
+
+  // ── Select & load company ─────────────────────────────────────────
+  async function selectCompany(ticker) {
+    _currentTicker = ticker;
+
+    // Update sidebar active state
+    document.querySelectorAll('.research-sidebar-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.ticker === ticker);
+    });
+
+    // Show panel, hide empty state
+    $('research-empty-state').classList.add('hidden');
+    $('research-company-panel').classList.remove('hidden');
+
+    // Load full company data
+    const data = await apiGet(`/api/research/company/${ticker}`);
+    _companyData = data;
+
+    renderCompanyHeader(data.company);
+    renderThesisTab(data.theses);
+    renderFilingsTab(data.filings);
+    renderNewsTab(data.news);
+    renderValuationTab(data.valuations);
+    renderNotesTab(data.notes);
+    renderAuditTab(data.audit);
+    updateSubTabBadges(data);
+  }
+
+  function updateSubTabBadges(data) {
+    const filingsPending = (data.filings || []).filter(f => f.review_status === 'PENDENTE').length;
+    const newsPending    = (data.news    || []).filter(n => n.review_status === 'PENDENTE').length;
+    const bf = $('badge-filings');
+    const bn = $('badge-news');
+    if (bf) { bf.textContent = filingsPending; bf.style.display = filingsPending > 0 ? '' : 'none'; }
+    if (bn) { bn.textContent = newsPending;    bn.style.display = newsPending    > 0 ? '' : 'none'; }
+  }
+
+  // ── Company header ────────────────────────────────────────────────
+  function renderCompanyHeader(company) {
+    if (!company) return;
+    $('rc-ticker').textContent = company.ticker;
+    $('rc-name').textContent   = company.name || '';
+    $('rc-meta').textContent   = [company.sector, company.market, company.status]
+                                   .filter(Boolean).join(' · ');
+  }
+
+  // ── Sub-tabs ──────────────────────────────────────────────────────
+  function _bindSubTabs() {
+    document.querySelectorAll('.research-subtab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.research-subtab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.research-subtab-content').forEach(c => c.classList.add('hidden'));
+        btn.classList.add('active');
+        const target = btn.dataset.subtab;
+        const panel  = $(target);
+        if (panel) panel.classList.remove('hidden');
+      });
+    });
+  }
+
+  // ── TESE TAB ──────────────────────────────────────────────────────
+  function renderThesisTab(theses) {
+    const active  = (theses || []).find(t => t.status === 'ATIVA');
+    const drafts  = (theses || []).filter(t => t.status === 'RASCUNHO');
+
+    // Reset editor
+    hideThesisEditor();
+
+    // Banner for draft awaiting approval
+    const banner = $('research-thesis-banner');
+    if (drafts.length > 0 && ROLE === 'admin') {
+      $('research-thesis-banner-text').textContent =
+        `${drafts.length} rascunho(s) aguardando aprovação`;
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
+
+    // Active thesis
+    const metaEl    = $('research-thesis-meta');
+    const contentEl = $('research-thesis-content');
+    if (active) {
+      metaEl.textContent    = `v${active.version} · por ${active.created_by} · ${fmt(active.created_at)}`;
+      contentEl.textContent = active.content || '(sem conteúdo)';
+    } else {
+      metaEl.textContent    = '';
+      contentEl.innerHTML   = '<span class="research-empty-inline">Nenhuma tese ativa. Clique em NOVA TESE para começar.</span>';
+    }
+
+    // Approve button (show if there's an unapproved draft and user is admin)
+    const approveWrap = $('research-thesis-approve-wrap');
+    if (approveWrap) {
+      if (drafts.length > 0 && ROLE === 'admin') {
+        approveWrap.classList.remove('hidden');
+        // Bind to most recent draft
+        const latestDraft = drafts[drafts.length - 1];
+        $('btn-research-approve-thesis').onclick = () => approveThesis(latestDraft.id);
+      } else {
+        approveWrap.classList.add('hidden');
+      }
+    }
+  }
+
+  function showThesisEditor(thesisId, existingContent) {
+    _editingThesisId = thesisId;
+    $('research-thesis-editor').classList.remove('hidden');
+    $('research-thesis-view').style.display = 'none';
+    $('research-thesis-textarea').value = existingContent || '';
+    $('research-thesis-textarea').focus();
+  }
+
+  function hideThesisEditor() {
+    $('research-thesis-editor').classList.add('hidden');
+    $('research-thesis-view').style.display = '';
+    _editingThesisId = null;
+  }
+
+  async function saveThesis() {
+    const content = $('research-thesis-textarea').value.trim();
+    if (!content) return;
+    if (_editingThesisId) {
+      await apiPut(`/api/research/theses/${_editingThesisId}`, { content });
+    } else {
+      await apiPost(`/api/research/theses/${_currentTicker}`, { content });
+    }
+    await reloadCurrent();
+  }
+
+  async function approveThesis(thesisId) {
+    await apiPost(`/api/research/theses/${thesisId}/approve`, {});
+    await reloadCurrent();
+    await refreshPending();
+  }
+
+  // ── FILINGS TAB ───────────────────────────────────────────────────
+  function renderFilingsTab(filings) {
+    const container = $('research-filings-list');
+    const emptyEl   = $('research-filings-empty');
+    container.innerHTML = '';
+    if (!filings || filings.length === 0) {
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    // Sort: pending first
+    const sorted = [...filings].sort((a, b) => {
+      const order = { PENDENTE: 0, APROVADO: 1, REJEITADO: 2 };
+      return (order[a.review_status] || 0) - (order[b.review_status] || 0);
+    });
+
+    for (const f of sorted) {
+      const item = el('div', `research-item ${_reviewClass(f.review_status)}`);
+      item.innerHTML = `
+        <div class="research-item-header">
+          <span class="research-item-title">[${f.source || ''}] ${f.title || ''}</span>
+          <span class="research-item-meta">${f.filing_date || '—'} ${sentimentTag(f.sentiment)} ${statusTag(f.review_status)}</span>
+        </div>
+        ${f.summary ? `<div class="research-item-body">${f.summary}</div>` : ''}
+        ${ROLE === 'admin' && f.review_status === 'PENDENTE' ? `
+        <div class="research-item-actions">
+          <button class="bbg-btn bbg-btn-primary" data-filing-approve="${f.id}">APROVAR</button>
+          <button class="bbg-btn" data-filing-reject="${f.id}">REJEITAR</button>
+        </div>` : ''}
+      `;
+      container.appendChild(item);
+    }
+
+    // Bind approve/reject
+    container.querySelectorAll('[data-filing-approve]').forEach(btn => {
+      btn.onclick = () => reviewFiling(btn.dataset.filingApprove, 'APPROVE');
+    });
+    container.querySelectorAll('[data-filing-reject]').forEach(btn => {
+      btn.onclick = () => reviewFiling(btn.dataset.filingReject, 'REJECT');
+    });
+  }
+
+  async function reviewFiling(filingId, action) {
+    await apiPost(`/api/research/filings/${filingId}/review`, { action });
+    await reloadCurrent();
+    await refreshPending();
+  }
+
+  // ── NEWS TAB ──────────────────────────────────────────────────────
+  function renderNewsTab(news) {
+    const container = $('research-news-list');
+    const emptyEl   = $('research-news-empty');
+    container.innerHTML = '';
+    if (!news || news.length === 0) {
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    const sorted = [...news].sort((a, b) => {
+      const order = { PENDENTE: 0, APROVADO: 1, REJEITADO: 2 };
+      return (order[a.review_status] || 0) - (order[b.review_status] || 0);
+    });
+
+    for (const n of sorted) {
+      const item = el('div', `research-item ${_reviewClass(n.review_status)}`);
+      const date = n.published_at ? n.published_at.slice(0, 10) : '—';
+      item.innerHTML = `
+        <div class="research-item-header">
+          <span class="research-item-title">${n.title || ''}</span>
+          <span class="research-item-meta">${n.source || ''} · ${date} ${sentimentTag(n.sentiment)} ${statusTag(n.review_status)}</span>
+        </div>
+        ${n.summary ? `<div class="research-item-body">${n.summary}</div>` : ''}
+        ${n.url ? `<div class="research-item-body"><a href="${n.url}" target="_blank" style="color:var(--cyan)">Ver artigo →</a></div>` : ''}
+        ${ROLE === 'admin' && n.review_status === 'PENDENTE' ? `
+        <div class="research-item-actions">
+          <button class="bbg-btn bbg-btn-primary" data-news-approve="${n.id}">APROVAR</button>
+          <button class="bbg-btn" data-news-reject="${n.id}">REJEITAR</button>
+        </div>` : ''}
+      `;
+      container.appendChild(item);
+    }
+
+    container.querySelectorAll('[data-news-approve]').forEach(btn => {
+      btn.onclick = () => reviewNews(btn.dataset.newsApprove, 'APPROVE');
+    });
+    container.querySelectorAll('[data-news-reject]').forEach(btn => {
+      btn.onclick = () => reviewNews(btn.dataset.newsReject, 'REJECT');
+    });
+  }
+
+  async function reviewNews(newsId, action) {
+    await apiPost(`/api/research/news/${newsId}/review`, { action });
+    await reloadCurrent();
+    await refreshPending();
+  }
+
+  // ── VALUATION TAB ─────────────────────────────────────────────────
+  function renderValuationTab(valuations) {
+    const container = $('research-valuation-list');
+    const emptyEl   = $('research-valuation-empty');
+    container.innerHTML = '';
+    if (!valuations || valuations.length === 0) {
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    for (const v of valuations) {
+      const upside = v.upside_pct !== null && v.upside_pct !== undefined
+        ? `<span style="color:${v.upside_pct >= 0 ? 'var(--green)' : 'var(--red)'}">${v.upside_pct >= 0 ? '+' : ''}${v.upside_pct.toFixed(1)}%</span>`
+        : '';
+      const item = el('div', 'research-item');
+      item.innerHTML = `
+        <div class="research-item-header">
+          <span class="research-item-title">${v.methodology || '—'} — Alvo: R$ ${v.target_price != null ? Number(v.target_price).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'} ${upside}</span>
+          <span class="research-item-meta">por ${v.created_by} · ${fmt(v.created_at)}</span>
+        </div>
+        ${v.notes ? `<div class="research-item-body">${v.notes}</div>` : ''}
+        ${ROLE === 'admin' || ROLE === 'equipe' ? `
+        <div class="research-item-actions">
+          <button class="btn-icon-delete" data-val-delete="${v.id}">✕ REMOVER</button>
+        </div>` : ''}
+      `;
+      container.appendChild(item);
+    }
+
+    container.querySelectorAll('[data-val-delete]').forEach(btn => {
+      btn.onclick = async () => {
+        if (!confirm('Remover este valuation?')) return;
+        await apiDel(`/api/research/valuations/${btn.dataset.valDelete}`);
+        await reloadCurrent();
+      };
+    });
+  }
+
+  // ── NOTES TAB ────────────────────────────────────────────────────
+  function renderNotesTab(notes) {
+    const container = $('research-notes-list');
+    const emptyEl   = $('research-notes-empty');
+    container.innerHTML = '';
+    if (!notes || notes.length === 0) {
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    for (const n of notes) {
+      const item = el('div', 'research-item');
+      item.innerHTML = `
+        <div class="research-item-header">
+          <span class="research-item-title">${noteTypeTag(n.note_type)} ${fmt(n.created_at)}</span>
+          <span class="research-item-meta">por ${n.created_by}</span>
+        </div>
+        <div class="research-item-body">${_escHtml(n.content)}</div>
+        ${ROLE === 'admin' || ROLE === 'equipe' ? `
+        <div class="research-item-actions">
+          <button class="btn-icon-delete" data-note-delete="${n.id}">✕ REMOVER</button>
+        </div>` : ''}
+      `;
+      container.appendChild(item);
+    }
+
+    container.querySelectorAll('[data-note-delete]').forEach(btn => {
+      btn.onclick = async () => {
+        if (!confirm('Remover esta nota?')) return;
+        await apiDel(`/api/research/notes/${btn.dataset.noteDelete}`);
+        await reloadCurrent();
+      };
+    });
+  }
+
+  // ── AUDIT TAB ────────────────────────────────────────────────────
+  function renderAuditTab(audit) {
+    const container = $('research-audit-list');
+    const emptyEl   = $('research-audit-empty');
+    container.innerHTML = '';
+    if (!audit || audit.length === 0) {
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+
+    for (const e of audit) {
+      const actionCls = `a-${e.action.toLowerCase()}`;
+      const row = el('div', 'research-audit-entry');
+      row.innerHTML = `
+        <span class="research-audit-ts">${fmt(e.timestamp)}</span>
+        <span class="research-audit-action ${actionCls}">${e.action}</span>
+        <span class="research-audit-detail">${e.entity_type} #${e.entity_id || ''} — por ${e.user}</span>
+      `;
+      container.appendChild(row);
+    }
+  }
+
+  // ── Reload current company data ───────────────────────────────────
+  async function reloadCurrent() {
+    if (!_currentTicker) return;
+    const data = await apiGet(`/api/research/company/${_currentTicker}`);
+    _companyData = data;
+    renderThesisTab(data.theses);
+    renderFilingsTab(data.filings);
+    renderNewsTab(data.news);
+    renderValuationTab(data.valuations);
+    renderNotesTab(data.notes);
+    renderAuditTab(data.audit);
+    updateSubTabBadges(data);
+
+    // Refresh sidebar to update pending badges
+    await loadCompanies();
+  }
+
+  // ── Search ────────────────────────────────────────────────────────
+  function _bindSearch() {
+    const input   = $('research-search');
+    const dropdown = $('research-search-results');
+    if (!input) return;
+
+    let _searchTimer = null;
+    input.addEventListener('input', () => {
+      clearTimeout(_searchTimer);
+      const q = input.value.trim();
+      if (!q) { dropdown.classList.add('hidden'); return; }
+      _searchTimer = setTimeout(() => doSearch(q), 300);
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => dropdown.classList.add('hidden'), 200);
+    });
+  }
+
+  async function doSearch(q) {
+    const dropdown = $('research-search-results');
+    const data     = await apiGet(`/api/research/search?q=${encodeURIComponent(q)}`);
+    const results  = data.results || [];
+    dropdown.innerHTML = '';
+    if (results.length === 0) {
+      dropdown.innerHTML = '<div class="research-search-result" style="color:#666">Nenhum resultado.</div>';
+      dropdown.classList.remove('hidden');
+      return;
+    }
+    for (const r of results) {
+      const row = el('div', 'research-search-result');
+      row.innerHTML = `<span class="rs-ticker">${r.ticker}</span><span class="rs-type">${r.content_type}</span><br><span class="rs-snip">${r.snippet || ''}</span>`;
+      row.addEventListener('click', () => {
+        $('research-search').value = '';
+        dropdown.classList.add('hidden');
+        selectCompany(r.ticker);
+      });
+      dropdown.appendChild(row);
+    }
+    dropdown.classList.remove('hidden');
+  }
+
+  // ── Buttons ───────────────────────────────────────────────────────
+  function _bindButtons() {
+    // New thesis
+    $('btn-research-new-thesis')?.addEventListener('click', () => {
+      showThesisEditor(null, '');
+    });
+
+    // Thesis save
+    $('btn-research-thesis-save')?.addEventListener('click', saveThesis);
+
+    // Thesis cancel
+    $('btn-research-thesis-cancel')?.addEventListener('click', hideThesisEditor);
+
+    // Export MD
+    $('btn-research-export')?.addEventListener('click', () => {
+      if (!_currentTicker) return;
+      window.location.href = `/api/research/export/${_currentTicker}`;
+    });
+
+    // Sync companies
+    $('btn-research-sync')?.addEventListener('click', async () => {
+      await apiPost('/api/research/sync', {});
+      await loadCompanies();
+    });
+
+    // Add company
+    $('btn-research-add-company')?.addEventListener('click', showAddCompanyForm);
+
+    // New valuation
+    $('btn-research-new-valuation')?.addEventListener('click', () => {
+      $('research-valuation-form').classList.toggle('hidden');
+    });
+    $('btn-val-cancel')?.addEventListener('click', () => {
+      $('research-valuation-form').classList.add('hidden');
+    });
+    $('btn-val-save')?.addEventListener('click', saveValuation);
+
+    // New note
+    $('btn-research-new-note')?.addEventListener('click', () => {
+      $('research-note-form').classList.toggle('hidden');
+    });
+    $('btn-note-cancel')?.addEventListener('click', () => {
+      $('research-note-form').classList.add('hidden');
+    });
+    $('btn-note-save')?.addEventListener('click', saveNote);
+  }
+
+  // ── Add company form ──────────────────────────────────────────────
+  function showAddCompanyForm() {
+    // Simple inline form built dynamically
+    const existing = $('research-company-add-form');
+    if (existing) { existing.remove(); return; }
+
+    const form = document.createElement('div');
+    form.id = 'research-company-add-form';
+    form.className = 'research-form';
+    form.innerHTML = `
+      <div class="research-form-row">
+        <label>TICKER<input id="add-co-ticker" type="text" placeholder="ex: VALE3" style="text-transform:uppercase"></label>
+        <label>NOME<input id="add-co-name" type="text" placeholder="Nome da empresa"></label>
+        <label>MERCADO
+          <select id="add-co-market">
+            <option value="BR">BR</option>
+            <option value="US">US</option>
+          </select>
+        </label>
+        <label>STATUS
+          <select id="add-co-status">
+            <option value="UNIVERSO">UNIVERSO</option>
+            <option value="WATCHLIST">WATCHLIST</option>
+            <option value="INVESTIDO">INVESTIDO</option>
+          </select>
+        </label>
+        <label>SETOR<input id="add-co-sector" type="text"></label>
+      </div>
+      <div class="research-editor-actions">
+        <button class="bbg-btn" id="btn-add-co-cancel">CANCELAR</button>
+        <button class="bbg-btn bbg-btn-primary" id="btn-add-co-save">ADICIONAR</button>
+      </div>
+    `;
+
+    // Insert after topbar
+    const topbar = document.querySelector('.research-topbar');
+    topbar.insertAdjacentElement('afterend', form);
+
+    $('btn-add-co-cancel').onclick = () => form.remove();
+    $('btn-add-co-save').onclick   = async () => {
+      const ticker = ($('add-co-ticker').value || '').toUpperCase().trim();
+      if (!ticker) return;
+      await apiPost('/api/research/companies', {
+        ticker,
+        name:   $('add-co-name').value.trim() || null,
+        market: $('add-co-market').value,
+        status: $('add-co-status').value,
+        sector: $('add-co-sector').value.trim() || null,
+      });
+      form.remove();
+      await loadCompanies();
+    };
+  }
+
+  // ── Save valuation ────────────────────────────────────────────────
+  async function saveValuation() {
+    const target = parseFloat($('val-target-price').value);
+    if (isNaN(target)) { alert('Informe o preço alvo.'); return; }
+    await apiPost(`/api/research/valuations/${_currentTicker}`, {
+      target_price: target,
+      methodology:  $('val-methodology').value,
+      upside_pct:   $('val-upside').value ? parseFloat($('val-upside').value) : null,
+      notes:        $('val-notes').value.trim() || null,
+    });
+    $('research-valuation-form').classList.add('hidden');
+    $('val-target-price').value = '';
+    $('val-upside').value = '';
+    $('val-notes').value  = '';
+    await reloadCurrent();
+  }
+
+  // ── Save note ─────────────────────────────────────────────────────
+  async function saveNote() {
+    const content = $('note-content').value.trim();
+    if (!content) { alert('Informe o conteúdo da nota.'); return; }
+    await apiPost(`/api/research/notes/${_currentTicker}`, {
+      content,
+      note_type: $('note-type').value,
+    });
+    $('research-note-form').classList.add('hidden');
+    $('note-content').value = '';
+    await reloadCurrent();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  function _reviewClass(status) {
+    if (status === 'PENDENTE')  return 'pending-item';
+    if (status === 'APROVADO')  return 'approved-item';
+    if (status === 'REJEITADO') return 'rejected-item';
+    return '';
+  }
+
+  function _escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  return { init };
+})();
 

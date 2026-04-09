@@ -8,5 +8,6 @@
   "tab_screener": true,
   "tab_risk": true,
   "tab_financials": true,
-  "tab_events": true
+  "tab_events": true,
+  "tab_research": false
 }
