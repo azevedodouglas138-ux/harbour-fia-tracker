@@ -49,7 +49,7 @@ BDR_UNDERLYING = {
     "M1TA34":  "META",
     "TSLA34":  "TSLA",
     "MELI34":  "MELI",
-    "INBR32":  "ING",
+    "INBR32":  "INTR",   # Inter&Co Inc. (Nasdaq: INTR)
 }
 
 # ---------------------------------------------------------------------------
