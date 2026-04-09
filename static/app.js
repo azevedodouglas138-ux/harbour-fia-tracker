@@ -5084,12 +5084,25 @@ const Research = (() => {
 
     for (const f of sorted) {
       const item = el('div', `research-item ${_reviewClass(f.review_status)}`);
+      let kpHtml = '';
+      if (f.key_points) {
+        try {
+          const kp = typeof f.key_points === 'string' ? JSON.parse(f.key_points) : f.key_points;
+          if (kp && kp.length) {
+            kpHtml = `<ul class="research-key-points">${kp.map(p => `<li>${_escHtml(p)}</li>`).join('')}</ul>`;
+          }
+        } catch(e) {}
+      }
+      const updateThesisHtml = f.review_status === 'PENDENTE' && f.key_points
+        ? `<span class="research-update-thesis-flag" title="Claude sugere revisar a tese">⚠ Sugere revisão da tese</span>` : '';
       item.innerHTML = `
         <div class="research-item-header">
-          <span class="research-item-title">[${f.source || ''}] ${f.title || ''}</span>
-          <span class="research-item-meta">${f.filing_date || '—'} ${sentimentTag(f.sentiment)} ${statusTag(f.review_status)}</span>
+          <span class="research-item-title">[${_escHtml(f.source || '')}] ${_escHtml(f.title || '')}</span>
+          <span class="research-item-meta">${f.filing_date || '—'} ${sentimentTag(f.sentiment)} ${statusTag(f.review_status)} ${updateThesisHtml}</span>
         </div>
-        ${f.summary ? `<div class="research-item-body">${f.summary}</div>` : ''}
+        ${f.summary ? `<div class="research-item-body">${_escHtml(f.summary)}</div>` : ''}
+        ${kpHtml}
+        ${f.raw_url ? `<div class="research-item-body"><a href="${_escHtml(f.raw_url)}" target="_blank" style="color:var(--cyan)">Ver documento →</a></div>` : ''}
         ${ROLE === 'admin' && f.review_status === 'PENDENTE' ? `
         <div class="research-item-actions">
           <button class="bbg-btn bbg-btn-primary" data-filing-approve="${f.id}">APROVAR</button>
@@ -5135,11 +5148,11 @@ const Research = (() => {
       const date = n.published_at ? n.published_at.slice(0, 10) : '—';
       item.innerHTML = `
         <div class="research-item-header">
-          <span class="research-item-title">${n.title || ''}</span>
-          <span class="research-item-meta">${n.source || ''} · ${date} ${sentimentTag(n.sentiment)} ${statusTag(n.review_status)}</span>
+          <span class="research-item-title">${_escHtml(n.title || '')}</span>
+          <span class="research-item-meta">${_escHtml(n.source || '')} · ${date} ${sentimentTag(n.sentiment)} ${statusTag(n.review_status)}</span>
         </div>
-        ${n.summary ? `<div class="research-item-body">${n.summary}</div>` : ''}
-        ${n.url ? `<div class="research-item-body"><a href="${n.url}" target="_blank" style="color:var(--cyan)">Ver artigo →</a></div>` : ''}
+        ${n.summary ? `<div class="research-item-body">${_escHtml(n.summary)}</div>` : ''}
+        ${n.url ? `<div class="research-item-body"><a href="${_escHtml(n.url)}" target="_blank" style="color:var(--cyan)">Ver artigo →</a></div>` : ''}
         ${ROLE === 'admin' && n.review_status === 'PENDENTE' ? `
         <div class="research-item-actions">
           <button class="bbg-btn bbg-btn-primary" data-news-approve="${n.id}">APROVAR</button>
@@ -5348,6 +5361,20 @@ const Research = (() => {
     // Add company
     $('btn-research-add-company')?.addEventListener('click', showAddCompanyForm);
 
+    // Pipeline modal (admin)
+    $('btn-research-pipeline')?.addEventListener('click', openPipelineModal);
+    $('btn-pipeline-modal-close')?.addEventListener('click', closePipelineModal);
+    $('btn-pipeline-close')?.addEventListener('click', closePipelineModal);
+    $('btn-pipeline-run-now')?.addEventListener('click', runPipelineNow);
+    $('btn-pipeline-set-interval')?.addEventListener('click', setPipelineInterval);
+    $('btn-cnpj-save')?.addEventListener('click', saveCnpjMapping);
+
+    // Manual article ingestor
+    $('btn-research-add-article')?.addEventListener('click', openIngestModal);
+    $('btn-ingest-modal-close')?.addEventListener('click', closeIngestModal);
+    $('btn-ingest-cancel')?.addEventListener('click', closeIngestModal);
+    $('btn-ingest-submit')?.addEventListener('click', submitIngest);
+
     // New valuation
     $('btn-research-new-valuation')?.addEventListener('click', () => {
       $('research-valuation-form').classList.toggle('hidden');
@@ -5461,6 +5488,148 @@ const Research = (() => {
 
   function _escHtml(str) {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Pipeline modal ────────────────────────────────────────────────────
+  function openPipelineModal() {
+    $('modal-research-pipeline').classList.remove('hidden');
+    loadPipelineStatus();
+    loadCnpjMappings();
+  }
+
+  function closePipelineModal() {
+    $('modal-research-pipeline').classList.add('hidden');
+  }
+
+  async function loadPipelineStatus() {
+    try {
+      const res = await fetch('/api/research/pipeline/status');
+      const s   = await res.json();
+      $('pipeline-status-indicator').textContent = s.running ? '🔄 EXECUTANDO...' : '✓ Aguardando';
+      $('pipeline-last-run').textContent  = s.last_run  ? s.last_run.replace('T', ' ') : '—';
+      $('pipeline-next-run').textContent  = s.next_run  ? s.next_run.replace('T', ' ') : '—';
+      if (s.last_result && Object.keys(s.last_result).length) {
+        const r = s.last_result;
+        $('pipeline-last-result').textContent =
+          `CVM: ${r.cvm || 0}  SEC: ${r.sec || 0}  RSS: ${r.rss || 0}  Erros: ${(r.errors || []).length}`;
+      } else {
+        $('pipeline-last-result').textContent = '—';
+      }
+      const errRow = $('pipeline-error-row');
+      if (s.error) {
+        $('pipeline-error-text').textContent = s.error;
+        errRow.style.display = '';
+      } else {
+        errRow.style.display = 'none';
+      }
+    } catch(e) {
+      console.error('loadPipelineStatus', e);
+    }
+  }
+
+  async function runPipelineNow() {
+    const btn = $('btn-pipeline-run-now');
+    btn.disabled = true;
+    btn.textContent = '▶ INICIANDO...';
+    try {
+      await apiPost('/api/research/pipeline/run', { days_back: 30 });
+      btn.textContent = '▶ INICIADO';
+      setTimeout(() => { btn.textContent = '▶ EXECUTAR AGORA'; btn.disabled = false; }, 3000);
+      setTimeout(loadPipelineStatus, 2000);
+    } catch(e) {
+      btn.textContent = '▶ EXECUTAR AGORA';
+      btn.disabled = false;
+    }
+  }
+
+  async function setPipelineInterval() {
+    const hours = parseFloat($('pipeline-interval-input').value);
+    if (isNaN(hours) || hours < 1) { alert('Intervalo inválido (mínimo 1h)'); return; }
+    await apiPost('/api/research/pipeline/interval', { hours });
+    alert(`Intervalo atualizado para ${hours}h`);
+  }
+
+  async function loadCnpjMappings() {
+    try {
+      const res = await fetch('/api/research/pipeline/cnpj');
+      const map = await res.json();
+      const container = $('pipeline-cnpj-list');
+      container.innerHTML = '';
+      for (const [ticker, cnpj] of Object.entries(map)) {
+        if (ticker.startsWith('_')) continue;
+        const row = document.createElement('div');
+        row.className = 'pipeline-cnpj-row';
+        row.innerHTML = `<span class="pipeline-cnpj-ticker">${_escHtml(ticker)}</span>
+          <span class="pipeline-cnpj-value">${_escHtml(cnpj || '(não configurado)')}</span>`;
+        container.appendChild(row);
+      }
+    } catch(e) { console.error('loadCnpjMappings', e); }
+  }
+
+  async function saveCnpjMapping() {
+    const ticker = ($('cnpj-ticker-input').value || '').trim().toUpperCase();
+    const cnpj   = ($('cnpj-value-input').value  || '').trim();
+    if (!ticker || !cnpj) { alert('Informe ticker e CNPJ'); return; }
+    await apiPost('/api/research/pipeline/cnpj', { ticker, cnpj });
+    $('cnpj-ticker-input').value = '';
+    $('cnpj-value-input').value  = '';
+    await loadCnpjMappings();
+  }
+
+  // ── Manual article ingestor ────────────────────────────────────────────
+  function openIngestModal() {
+    $('modal-research-ingest').classList.remove('hidden');
+    $('ingest-result').classList.add('hidden');
+    $('ingest-result').textContent = '';
+    // Pre-fill ticker if company is selected
+    if (_currentTicker) $('ingest-ticker').value = _currentTicker;
+  }
+
+  function closeIngestModal() {
+    $('modal-research-ingest').classList.add('hidden');
+  }
+
+  async function submitIngest() {
+    const ticker = ($('ingest-ticker').value || '').trim().toUpperCase();
+    const text   = ($('ingest-text').value   || '').trim();
+    const source = ($('ingest-source').value || 'Manual').trim();
+    if (!ticker) { alert('Informe o ticker'); return; }
+    if (!text)   { alert('Cole o conteúdo do artigo'); return; }
+
+    const btn = $('btn-ingest-submit');
+    btn.disabled = true;
+    btn.textContent = 'PROCESSANDO...';
+
+    try {
+      const res = await fetch('/api/research/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, text, source }),
+      });
+      const data = await res.json();
+      const resultEl = $('ingest-result');
+      resultEl.classList.remove('hidden');
+      if (data.ok) {
+        const a = data.analysis || {};
+        resultEl.innerHTML = `
+          <div style="color:var(--green);margin-bottom:6px">✓ Artigo processado e adicionado como PENDENTE</div>
+          <div><strong>Resumo:</strong> ${_escHtml(a.summary || '')}</div>
+          ${a.sentiment ? `<div><strong>Sentiment:</strong> ${a.sentiment}</div>` : ''}
+          ${a.relevance !== undefined ? `<div><strong>Relevância:</strong> ${a.relevance}/10</div>` : ''}
+          ${a.update_thesis ? `<div style="color:var(--yellow)">⚠ Claude sugere revisar a tese de investimento</div>` : ''}
+        `;
+        $('ingest-text').value = '';
+        if (_currentTicker === ticker) await reloadCurrent();
+        await refreshPending();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red)">Erro: ${_escHtml(data.error || 'desconhecido')}</span>`;
+      }
+    } catch(e) {
+      alert('Erro ao processar: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'PROCESSAR COM CLAUDE';
+    }
   }
 
   return { init };

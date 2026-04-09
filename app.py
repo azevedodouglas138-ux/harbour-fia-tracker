@@ -4796,5 +4796,98 @@ def api_research_company_full(ticker):
     })
 
 
+# =============================================================================
+# RESEARCH PIPELINE (Fase 2) — routes + scheduler init
+# =============================================================================
+
+import research_pipeline as _pipeline
+
+# Start background scheduler (first run is deferred by interval_hours)
+_pipeline.scheduler.start()
+
+
+# ── Pipeline status & manual trigger ──────────────────────────────────────
+
+@app.route("/api/research/pipeline/status", methods=["GET"])
+def api_pipeline_status():
+    return jsonify(_pipeline.scheduler.get_status())
+
+
+@app.route("/api/research/pipeline/run", methods=["POST"])
+def api_pipeline_run():
+    """Manually trigger the ingestion pipeline (admin only)."""
+    if session.get("role") != "admin":
+        return jsonify({"error": "forbidden"}), 403
+    data = request.get_json(silent=True) or {}
+    days_back = int(data.get("days_back", 30))
+    _pipeline.scheduler.run_now(days_back=days_back)
+    return jsonify({"ok": True, "message": "Pipeline iniciado em background"})
+
+
+@app.route("/api/research/pipeline/interval", methods=["POST"])
+def api_pipeline_set_interval():
+    """Change the scheduler interval (admin only)."""
+    if session.get("role") != "admin":
+        return jsonify({"error": "forbidden"}), 403
+    data = request.get_json(silent=True) or {}
+    hours = float(data.get("hours", 6))
+    _pipeline.scheduler.set_interval(hours)
+    return jsonify({"ok": True, "interval_hours": hours})
+
+
+# ── CNPJ mapping management ───────────────────────────────────────────────
+
+@app.route("/api/research/pipeline/cnpj", methods=["GET"])
+def api_pipeline_cnpj_get():
+    if session.get("role") != "admin":
+        return jsonify({"error": "forbidden"}), 403
+    return jsonify(_pipeline.get_cnpj_map())
+
+
+@app.route("/api/research/pipeline/cnpj", methods=["POST"])
+def api_pipeline_cnpj_set():
+    """Add or update a ticker→CNPJ mapping (admin only)."""
+    if session.get("role") != "admin":
+        return jsonify({"error": "forbidden"}), 403
+    data = request.get_json(silent=True) or {}
+    ticker = (data.get("ticker") or "").upper().strip()
+    cnpj   = (data.get("cnpj") or "").strip()
+    if not ticker or not cnpj:
+        return jsonify({"error": "ticker e cnpj obrigatórios"}), 400
+    _pipeline.upsert_cnpj(ticker, cnpj)
+    return jsonify({"ok": True, "ticker": ticker, "cnpj": cnpj})
+
+
+# ── Manual ingestor ────────────────────────────────────────────────────────
+
+@app.route("/api/research/ingest", methods=["POST"])
+def api_research_ingest():
+    """
+    Accept a manually pasted article/report and process it with Claude.
+    Body: { ticker, text, source? }
+    """
+    if session.get("role") not in ("admin", "equipe"):
+        return jsonify({"error": "forbidden"}), 403
+    data = request.get_json(silent=True) or {}
+    ticker = (data.get("ticker") or "").upper().strip()
+    text   = (data.get("text") or "").strip()
+    source = (data.get("source") or "Manual").strip()
+    if not ticker or not text:
+        return jsonify({"error": "ticker e text obrigatórios"}), 400
+
+    user = session.get("role", "equipe")
+    news_id, analysis = _pipeline.manual_ingestor.ingest(
+        ticker=ticker, text=text, source=source, user=user
+    )
+    if news_id is None:
+        return jsonify({"error": "Falha ao processar com Claude (verifique ANTHROPIC_API_KEY)"}), 500
+
+    return jsonify({
+        "ok":      True,
+        "news_id": news_id,
+        "analysis": analysis,
+    })
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

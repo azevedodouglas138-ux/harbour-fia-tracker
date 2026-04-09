@@ -1285,9 +1285,13 @@
     <div id="research-search-results" class="research-search-dropdown hidden"></div>
   </div>
   <div id="research-pending-count" class="research-pending-btn hidden" title="Itens aguardando revisão"></div>
+  {% if role in ('admin', 'equipe') %}
+  <button class="bbg-btn" id="btn-research-add-article">+ ADICIONAR ARTIGO</button>
+  {% endif %}
   {% if role == 'admin' %}
   <button class="bbg-btn" id="btn-research-add-company">+ EMPRESA</button>
   <button class="bbg-btn" id="btn-research-sync">↺ SYNC</button>
+  <button class="bbg-btn" id="btn-research-pipeline" title="Controle do pipeline de ingestão">⚙ PIPELINE</button>
   {% endif %}
 </div>
 
@@ -1469,6 +1473,97 @@
     </div><!-- /#research-company-panel -->
   </div><!-- /.research-main -->
 </div><!-- /.research-layout -->
+
+<!-- ── Modal: Adicionar Artigo (manual ingestor) ──────────────────────── -->
+<div id="modal-research-ingest" class="research-modal-overlay hidden">
+  <div class="research-modal">
+    <div class="research-modal-header">
+      <span>ADICIONAR ARTIGO / RELATÓRIO</span>
+      <button class="research-modal-close" id="btn-ingest-modal-close">✕</button>
+    </div>
+    <div class="research-modal-body">
+      <div class="research-form-row">
+        <label>TICKER
+          <input type="text" id="ingest-ticker" placeholder="ex: PRIO3" style="text-transform:uppercase;width:120px">
+        </label>
+        <label>FONTE
+          <input type="text" id="ingest-source" placeholder="Bloomberg, Sell-side, etc." style="width:180px">
+        </label>
+      </div>
+      <div class="research-form-row">
+        <label style="flex:1">CONTEÚDO (cole o texto do artigo/relatório)
+          <textarea id="ingest-text" rows="10" style="width:100%;font-size:11px" placeholder="Cole aqui o texto completo do artigo Bloomberg, relatório de sell-side, transcrição de call, etc."></textarea>
+        </label>
+      </div>
+      <div id="ingest-result" class="research-ingest-result hidden"></div>
+    </div>
+    <div class="research-modal-footer">
+      <button class="bbg-btn" id="btn-ingest-cancel">CANCELAR</button>
+      <button class="bbg-btn bbg-btn-primary" id="btn-ingest-submit">PROCESSAR COM CLAUDE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Pipeline Control (admin only) ───────────────────────────── -->
+{% if role == 'admin' %}
+<div id="modal-research-pipeline" class="research-modal-overlay hidden">
+  <div class="research-modal">
+    <div class="research-modal-header">
+      <span>PIPELINE DE INGESTÃO</span>
+      <button class="research-modal-close" id="btn-pipeline-modal-close">✕</button>
+    </div>
+    <div class="research-modal-body">
+      <div class="research-pipeline-status" id="pipeline-status-block">
+        <div class="pipeline-status-row">
+          <span class="pipeline-label">STATUS</span>
+          <span id="pipeline-status-indicator" class="pipeline-value">—</span>
+        </div>
+        <div class="pipeline-status-row">
+          <span class="pipeline-label">ÚLTIMA EXECUÇÃO</span>
+          <span id="pipeline-last-run" class="pipeline-value">—</span>
+        </div>
+        <div class="pipeline-status-row">
+          <span class="pipeline-label">PRÓXIMA EXECUÇÃO</span>
+          <span id="pipeline-next-run" class="pipeline-value">—</span>
+        </div>
+        <div class="pipeline-status-row">
+          <span class="pipeline-label">ÚLTIMO RESULTADO</span>
+          <span id="pipeline-last-result" class="pipeline-value">—</span>
+        </div>
+        <div class="pipeline-status-row" id="pipeline-error-row" style="display:none">
+          <span class="pipeline-label">ERRO</span>
+          <span id="pipeline-error-text" class="pipeline-value" style="color:var(--red)">—</span>
+        </div>
+      </div>
+
+      <div class="pipeline-actions">
+        <button class="bbg-btn bbg-btn-primary" id="btn-pipeline-run-now">▶ EXECUTAR AGORA</button>
+        <span style="margin-left:12px;font-size:11px;color:var(--muted)">
+          Intervalo:
+          <input type="number" id="pipeline-interval-input" min="1" max="168" step="1" value="6" style="width:50px;text-align:center"> horas
+          <button class="bbg-btn" id="btn-pipeline-set-interval" style="margin-left:6px;font-size:10px">APLICAR</button>
+        </span>
+      </div>
+
+      <div class="pipeline-cnpj-section">
+        <div class="research-section-header" style="margin-top:16px">
+          <span>MAPEAMENTO CNPJ (tickers BR)</span>
+        </div>
+        <div id="pipeline-cnpj-list" class="pipeline-cnpj-list"></div>
+        <div class="pipeline-cnpj-add">
+          <input type="text" id="cnpj-ticker-input" placeholder="Ticker (ex: TEND3)" style="width:100px;text-transform:uppercase">
+          <input type="text" id="cnpj-value-input" placeholder="CNPJ (00.000.000/0000-00)" style="width:200px">
+          <button class="bbg-btn" id="btn-cnpj-save">+ ADICIONAR</button>
+        </div>
+      </div>
+    </div>
+    <div class="research-modal-footer">
+      <button class="bbg-btn" id="btn-pipeline-close">FECHAR</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 </div><!-- /#tab-research -->
 {% endif %}
 

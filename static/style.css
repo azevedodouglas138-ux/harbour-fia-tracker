@@ -2152,3 +2152,175 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   color: var(--red);
   border-color: var(--red);
 }
+
+/* ── RESEARCH PIPELINE & MODALS (Fase 2) ──────────────────────────────── */
+
+/* Modal overlay */
+.research-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.research-modal-overlay.hidden { display: none; }
+
+.research-modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  min-width: 520px;
+  max-width: 720px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+
+.research-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border2);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 0.08em;
+  background: var(--surface2);
+}
+
+.research-modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.research-modal-close:hover { color: var(--fg); }
+
+.research-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.research-modal-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border2);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: var(--surface2);
+}
+
+/* Ingest result block */
+.research-ingest-result {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  padding: 10px;
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* Pipeline status block */
+.research-pipeline-status {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.pipeline-status-row {
+  display: flex;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.pipeline-status-row:last-child { border-bottom: none; }
+
+.pipeline-label {
+  color: var(--muted);
+  width: 140px;
+  flex-shrink: 0;
+  font-family: var(--mono);
+}
+
+.pipeline-value {
+  color: var(--fg);
+}
+
+.pipeline-actions {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* CNPJ management */
+.pipeline-cnpj-section { margin-top: 4px; }
+
+.pipeline-cnpj-list {
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  margin-bottom: 8px;
+}
+
+.pipeline-cnpj-row {
+  display: flex;
+  gap: 12px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.pipeline-cnpj-row:last-child { border-bottom: none; }
+
+.pipeline-cnpj-ticker {
+  color: var(--orange);
+  font-family: var(--mono);
+  width: 80px;
+  flex-shrink: 0;
+}
+.pipeline-cnpj-value { color: var(--muted); }
+
+.pipeline-cnpj-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Key points list in filing items */
+.research-key-points {
+  margin: 4px 0 4px 16px;
+  padding: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.research-key-points li { margin-bottom: 2px; }
+
+/* Update thesis flag */
+.research-update-thesis-flag {
+  background: #2a2000;
+  color: var(--yellow);
+  border: 1px solid var(--yellow);
+  border-radius: 2px;
+  padding: 1px 5px;
+  font-size: 9px;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}

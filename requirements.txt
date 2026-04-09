@@ -8,3 +8,5 @@ numpy>=1.26
 pandas>=2.1
 python-pptx>=1.0
 reportlab>=4.0
+anthropic>=0.40.0
+feedparser>=6.0.0
