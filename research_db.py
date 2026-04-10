@@ -5,10 +5,14 @@ Schema: companies, theses, filings, news_items, notes, valuations, audit_log, re
 """
 
 import json
+import logging
 import os
+import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH  = os.environ.get(
@@ -671,8 +675,21 @@ def save_qa_message(ticker, role, content, sources, user):
 # RAG context builder
 # ---------------------------------------------------------------------------
 
+def _sanitize_fts_query(query):
+    """Sanitize a natural language query for FTS5 MATCH.
+
+    FTS5 treats *, ", (, ), ^, - as operators. Natural language questions
+    also contain ?, °, º and other chars that break the query parser.
+    We extract only alphanumeric tokens (unicode-aware) of length >= 3.
+    """
+    clean = re.sub(r'[^\w\s]', ' ', query, flags=re.UNICODE)
+    tokens = [t for t in clean.split() if len(t) >= 3]
+    return ' '.join(tokens) if tokens else 'a'
+
+
 def fts_search_context(query, ticker=None, limit=5):
     """FTS5 search returning full text for RAG context."""
+    fts_query = _sanitize_fts_query(query)
     try:
         with get_conn() as conn:
             if ticker:
@@ -681,7 +698,7 @@ def fts_search_context(query, ticker=None, limit=5):
                     "snippet(research_fts,3,'','','…',40) AS snippet "
                     "FROM research_fts WHERE research_fts MATCH ? AND ticker=? "
                     "ORDER BY rank LIMIT ?",
-                    (query, ticker, limit)
+                    (fts_query, ticker, limit)
                 ).fetchall()
             else:
                 rows = conn.execute(
@@ -689,7 +706,7 @@ def fts_search_context(query, ticker=None, limit=5):
                     "snippet(research_fts,3,'','','…',40) AS snippet "
                     "FROM research_fts WHERE research_fts MATCH ? "
                     "ORDER BY rank LIMIT ?",
-                    (query, limit)
+                    (fts_query, limit)
                 ).fetchall()
         return [
             {"type": r["content_type"], "id": r["content_id"],
@@ -697,8 +714,7 @@ def fts_search_context(query, ticker=None, limit=5):
             for r in rows
         ]
     except sqlite3.OperationalError as exc:
-        if "syntax error" not in str(exc) and "no such column" not in str(exc):
-            raise
+        logger.warning("fts_search_context error (query=%r): %s", fts_query, exc)
         return []
 
 
