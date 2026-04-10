@@ -1300,6 +1300,9 @@
 
   <!-- SIDEBAR -->
   <div class="research-sidebar">
+    <div class="qa-global-item" id="qaGlobalItem" onclick="openGlobalQA()">
+      <span class="qa-global-icon">✦</span> Q&amp;A GLOBAL
+    </div>
     <div class="research-sidebar-section">
       <div class="research-sidebar-label">PORTFÓLIO</div>
       <div id="research-list-investido"></div>
@@ -1321,6 +1324,14 @@
       <div class="research-empty-icon">📊</div>
       <div class="research-empty-text">Selecione uma empresa na lista</div>
     </div>
+    <div id="qaGlobalPanel" class="qa-global-panel" style="display:none">
+      <div class="qa-global-header">✦ Q&A — BASE COMPLETA</div>
+      <div id="qaGlobalMessages" class="qa-messages"></div>
+      <div class="qa-panel-input">
+        <textarea id="qaGlobalInput" placeholder="Pergunte sobre qualquer empresa da base..." rows="2"></textarea>
+        <button onclick="submitGlobalQA()" id="qaGlobalSubmitBtn">PERGUNTAR</button>
+      </div>
+    </div>
 
     <!-- Company panel (hidden until selected) -->
     <div id="research-company-panel" class="hidden">
@@ -1334,6 +1345,9 @@
         </div>
         <div class="research-company-actions">
           <span class="research-company-price" id="rc-price"></span>
+          <button class="btn-qa-company" id="btnQACompany" onclick="openQAPanel()" style="display:none">
+            ✦ PERGUNTAR
+          </button>
           <button class="bbg-btn research-export-btn" id="btn-research-export">↓ EXPORTAR MD</button>
           {% if role == 'admin' %}
           <button class="bbg-btn" id="btn-research-edit-company" style="font-size:10px">✏ EDITAR</button>
@@ -1353,6 +1367,7 @@
 
       <!-- ── TESE ───────────────────────────────────────────── -->
       <div id="subtab-tese" class="research-subtab-content active">
+        <div id="thesisBanner" style="display:none"></div>
         <div id="research-thesis-banner" class="research-claude-banner hidden">
           <span class="research-claude-dot">●</span>
           <span id="research-thesis-banner-text"></span>
@@ -1641,5 +1656,19 @@
 <div id="col-tooltip"></div>
 <script>window.USER_ROLE = "{{ role }}";</script>
 <script src="/static/app.js"></script>
+
+<!-- Q&A per-company sliding panel -->
+<div id="qaPanel" class="qa-panel" style="display:none">
+  <div class="qa-panel-header">
+    <span id="qaPanelTitle">✦ Q&A — <span id="qaPanelTicker"></span></span>
+    <button onclick="closeQAPanel()" class="qa-panel-close">✕</button>
+  </div>
+  <div id="qaMessages" class="qa-messages"></div>
+  <div class="qa-panel-input">
+    <textarea id="qaInput" placeholder="Faça uma pergunta sobre a empresa..." rows="2"></textarea>
+    <button onclick="submitQAQuestion()" id="qaSubmitBtn">PERGUNTAR</button>
+  </div>
+</div>
+<div id="qaOverlay" class="qa-overlay" onclick="closeQAPanel()" style="display:none"></div>
 </body>
 </html>
