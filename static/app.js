@@ -4936,6 +4936,12 @@ const Research = (() => {
   async function selectCompany(ticker) {
     _currentTicker = ticker;
 
+    // Hide global Q&A if open
+    const gp = $('qaGlobalPanel');
+    if (gp) gp.style.display = 'none';
+    const gi = $('qaGlobalItem');
+    if (gi) gi.classList.remove('active');
+
     // Update sidebar active state
     document.querySelectorAll('.research-sidebar-item').forEach(el => {
       el.classList.toggle('active', el.dataset.ticker === ticker);
@@ -4944,6 +4950,10 @@ const Research = (() => {
     // Show panel, hide empty state
     $('research-empty-state').classList.add('hidden');
     $('research-company-panel').classList.remove('hidden');
+
+    // Show Q&A per-company button
+    const btnQA = $('btnQACompany');
+    if (btnQA) btnQA.style.display = 'inline-flex';
 
     // Load full company data
     const data = await apiGet(`/api/research/company/${ticker}`);
@@ -4998,6 +5008,30 @@ const Research = (() => {
 
     // Reset editor
     hideThesisEditor();
+
+    // Auto-generated thesis suggestion banner
+    const autoDraft = (theses || []).find(t => t.auto_generated === 1 && t.status === 'RASCUNHO');
+    const activeTesis = (theses || []).find(t => t.status === 'ATIVA');
+    const bannerEl = $('thesisBanner');
+    if (bannerEl) {
+      if (autoDraft && ROLE === 'admin') {
+        bannerEl.style.display = 'block';
+        bannerEl.innerHTML = `
+          <div class="thesis-banner">
+            <div class="thesis-banner-icon">⚡</div>
+            <div class="thesis-banner-text">
+              <strong>Claude detectou mudança relevante na tese</strong>
+              <span>Com base em ${autoDraft.trigger_type === 'filing' ? 'filing' : 'notícia'} aprovado, Claude gerou um rascunho de atualização.</span>
+            </div>
+            <div class="thesis-banner-actions">
+              <button onclick="viewThesisDraft(${autoDraft.id}, ${activeTesis ? activeTesis.id : 'null'})" class="btn-view-draft">VER RASCUNHO</button>
+              <button onclick="dismissThesisDraft(${autoDraft.id})" class="btn-dismiss-draft">IGNORAR</button>
+            </div>
+          </div>`;
+      } else {
+        bannerEl.style.display = 'none';
+      }
+    }
 
     // Banner for draft awaiting approval
     const banner = $('research-thesis-banner');
@@ -5631,6 +5665,192 @@ const Research = (() => {
       btn.textContent = 'PROCESSAR COM CLAUDE';
     }
   }
+
+  // ── Q&A Panel (per-company) ─────────────────────────────────────────
+
+  function openQAPanel() {
+    if (!_currentTicker) return;
+    $('qaPanelTicker').textContent = _currentTicker;
+    $('qaPanel').style.display = 'flex';
+    $('qaOverlay').style.display = 'block';
+    loadQAHistory(_currentTicker);
+  }
+
+  function closeQAPanel() {
+    $('qaPanel').style.display = 'none';
+    $('qaOverlay').style.display = 'none';
+  }
+
+  async function loadQAHistory(ticker) {
+    const res = await apiGet(`/api/research/qa?ticker=${encodeURIComponent(ticker)}`);
+    renderQAMessages('qaMessages', (res && res.messages) || []);
+  }
+
+  async function submitQAQuestion() {
+    const input = $('qaInput');
+    const question = input.value.trim();
+    if (!question || !_currentTicker) return;
+
+    input.value = '';
+    const btn = $('qaSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    // Render user message immediately
+    const container = $('qaMessages');
+    container.innerHTML += renderQAMessage({role: 'user', content: question, created_at: new Date().toISOString()});
+    container.scrollTop = container.scrollHeight;
+
+    try {
+      const data = await apiPost('/api/research/qa', {question, ticker: _currentTicker});
+      if (data && data.answer) {
+        container.innerHTML += renderQAMessage({
+          role: 'assistant', content: data.answer,
+          sources: data.sources || [], created_at: new Date().toISOString()
+        });
+        container.scrollTop = container.scrollHeight;
+      }
+    } catch (e) {
+      console.error('Q&A error:', e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'PERGUNTAR';
+    }
+  }
+
+  function renderQAMessages(containerId, messages) {
+    const el = $(containerId);
+    if (!el) return;
+    el.innerHTML = messages.map(renderQAMessage).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function renderQAMessage(msg) {
+    const isUser = msg.role === 'user';
+    const sources = msg.sources ? (typeof msg.sources === 'string' ? JSON.parse(msg.sources) : msg.sources) : [];
+    const sourcesHtml = sources.length
+      ? `<div class="qa-sources">Fontes: ${sources.map(s =>
+          `<span class="qa-citation">[${s.ticker ? s.ticker + '/' : ''}${s.type} #${s.id}]</span>`
+        ).join(' ')}</div>`
+      : '';
+    const timeStr = msg.created_at ? msg.created_at.slice(11, 16) : '';
+    return `
+      <div class="qa-message qa-message-${isUser ? 'user' : 'assistant'}">
+        <div class="qa-message-role">${isUser ? 'Você' : '✦ Claude'} <span class="qa-time">${timeStr}</span></div>
+        <div class="qa-message-content">${_escapeHtml(msg.content)}</div>
+        ${sourcesHtml}
+      </div>`;
+  }
+
+  function _escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Q&A Global ──────────────────────────────────────────────────────
+
+  async function openGlobalQA() {
+    // Hide company panel, show global panel
+    $('research-company-panel').classList.add('hidden');
+    $('research-empty-state').classList.add('hidden');
+    $('qaGlobalPanel').style.display = 'flex';
+
+    // Mark sidebar item active, deselect company
+    document.querySelectorAll('.research-sidebar-item').forEach(el => el.classList.remove('active'));
+    $('qaGlobalItem').classList.add('active');
+
+    loadGlobalQAHistory();
+  }
+
+  async function loadGlobalQAHistory() {
+    const res = await apiGet('/api/research/qa');
+    renderQAMessages('qaGlobalMessages', (res && res.messages) || []);
+  }
+
+  async function submitGlobalQA() {
+    const input = $('qaGlobalInput');
+    const question = input.value.trim();
+    if (!question) return;
+
+    input.value = '';
+    const btn = $('qaGlobalSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    const container = $('qaGlobalMessages');
+    container.innerHTML += renderQAMessage({role: 'user', content: question, created_at: new Date().toISOString()});
+    container.scrollTop = container.scrollHeight;
+
+    try {
+      const data = await apiPost('/api/research/qa', {question}); // no ticker = global
+      if (data && data.answer) {
+        container.innerHTML += renderQAMessage({
+          role: 'assistant', content: data.answer,
+          sources: data.sources || [], created_at: new Date().toISOString()
+        });
+        container.scrollTop = container.scrollHeight;
+      }
+    } catch (e) {
+      console.error('Global Q&A error:', e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'PERGUNTAR';
+    }
+  }
+
+  // ── Thesis Draft Viewer ─────────────────────────────────────────────
+
+  async function dismissThesisDraft(draftId) {
+    await apiPost(`/api/research/theses/${draftId}/dismiss`);
+    $('thesisBanner').style.display = 'none';
+  }
+
+  async function viewThesisDraft(draftId, activeId) {
+    if (!_currentTicker) return;
+    const data = await apiGet(`/api/research/theses/${_currentTicker}`);
+    const theses = (data && data.theses) || [];
+    const draft = theses.find(t => t.id === draftId);
+    const active = activeId ? theses.find(t => t.id === activeId) : null;
+
+    const contentEl = $('research-thesis-content');
+    if (!contentEl || !draft) return;
+
+    contentEl.innerHTML = `
+      <div class="thesis-diff">
+        <div class="thesis-diff-side">
+          <div class="thesis-diff-label">TESE ATUAL</div>
+          <pre class="thesis-diff-text">${_escapeHtml(active ? active.content : '(nenhuma tese ativa)')}</pre>
+        </div>
+        <div class="thesis-diff-side">
+          <div class="thesis-diff-label">RASCUNHO CLAUDE</div>
+          <textarea id="draftEditor" class="thesis-diff-editor">${_escapeHtml(draft.content)}</textarea>
+          <div class="thesis-diff-actions">
+            <button onclick="approveDraft(${draftId})">APROVAR RASCUNHO</button>
+            <button onclick="dismissThesisDraft(${draftId})">DESCARTAR</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function approveDraft(draftId) {
+    const editor = document.getElementById('draftEditor');
+    if (editor) {
+      const content = editor.value;
+      await apiPost(`/api/research/theses/${draftId}`, {content});
+    }
+    await apiPost(`/api/research/theses/${draftId}/approve`);
+    await reloadCurrent();
+  }
+
+  // Expose Q&A and thesis draft functions for onclick handlers in HTML
+  window.openQAPanel = openQAPanel;
+  window.closeQAPanel = closeQAPanel;
+  window.submitQAQuestion = submitQAQuestion;
+  window.openGlobalQA = openGlobalQA;
+  window.submitGlobalQA = submitGlobalQA;
+  window.viewThesisDraft = viewThesisDraft;
+  window.dismissThesisDraft = dismissThesisDraft;
+  window.approveDraft = approveDraft;
 
   return { init };
 })();
