@@ -48,3 +48,54 @@ def test_news_items_has_update_thesis_column(db):
     cols = [r["name"] for r in info]
     assert "update_thesis" in cols
     assert "update_reason" in cols
+
+
+def test_save_and_get_qa_messages_by_ticker(db):
+    research_db.upsert_company("PRIO3", name="PetroRio", user="test")
+    research_db.save_qa_message("PRIO3", "user", "Qual o risco?", None, "analista")
+    research_db.save_qa_message("PRIO3", "assistant", "O risco é X.", None, "claude")
+
+    msgs = research_db.get_qa_messages(ticker="PRIO3")
+    assert len(msgs) == 2
+    assert msgs[0]["role"] == "user"
+    assert msgs[1]["role"] == "assistant"
+    assert msgs[0]["ticker"] == "PRIO3"
+
+
+def test_save_and_get_qa_messages_global(db):
+    research_db.save_qa_message(None, "user", "Qual empresa tem maior upside?", None, "admin")
+    research_db.save_qa_message(None, "assistant", "VALE3 tem...", None, "claude")
+
+    msgs = research_db.get_qa_messages(ticker=None)
+    assert len(msgs) == 2
+    assert msgs[0]["ticker"] is None
+
+
+def test_save_qa_message_stores_sources(db):
+    research_db.upsert_company("PRIO3", name="PetroRio", user="test")
+    sources = [{"type": "filing", "id": 1, "ticker": "PRIO3", "snippet": "..."}]
+    research_db.save_qa_message("PRIO3", "assistant", "Resposta", sources, "claude")
+
+    msgs = research_db.get_qa_messages(ticker="PRIO3")
+    stored = json.loads(msgs[0]["sources"])
+    assert stored[0]["type"] == "filing"
+
+
+def test_build_rag_context_returns_thesis(db):
+    research_db.upsert_company("VALE3", name="Vale", user="test")
+    thesis_id = research_db.create_thesis("VALE3", "A tese da Vale é de longo prazo.", user="test")
+    research_db.approve_thesis(thesis_id, user="test")
+
+    chunks = research_db.build_rag_context("qual a tese", ticker="VALE3")
+    types = [c["type"] for c in chunks]
+    assert "thesis" in types
+
+
+def test_build_rag_context_global_no_thesis(db):
+    research_db.upsert_company("ITUB4", name="Itaú", user="test")
+    research_db.create_thesis("ITUB4", "Tese do banco.", user="test")
+
+    # Global search: no ticker, no thesis chunk expected
+    chunks = research_db.build_rag_context("qual o banco", ticker=None)
+    types = [c["type"] for c in chunks]
+    assert "thesis" not in types

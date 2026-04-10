@@ -605,6 +605,119 @@ def get_audit_log(ticker=None, entity_type=None, limit=200):
 
 
 # ---------------------------------------------------------------------------
+# Q&A messages
+# ---------------------------------------------------------------------------
+
+def get_qa_messages(ticker=None, limit=50):
+    """Return Q&A history. ticker=None returns global messages."""
+    with get_conn() as conn:
+        if ticker is None:
+            rows = conn.execute(
+                "SELECT * FROM qa_messages WHERE ticker IS NULL "
+                "ORDER BY created_at ASC LIMIT ?",
+                (limit,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM qa_messages WHERE ticker=? "
+                "ORDER BY created_at ASC LIMIT ?",
+                (ticker, limit)
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def save_qa_message(ticker, role, content, sources, user):
+    """Persist one Q&A message. Returns new id."""
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO qa_messages (ticker, role, content, sources, created_by) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (ticker, role, content,
+             json.dumps(sources, ensure_ascii=False) if sources is not None else None,
+             user)
+        )
+        return conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+
+
+# ---------------------------------------------------------------------------
+# RAG context builder
+# ---------------------------------------------------------------------------
+
+def fts_search_context(query, ticker=None, limit=5):
+    """FTS5 search returning full text for RAG context."""
+    try:
+        with get_conn() as conn:
+            if ticker:
+                rows = conn.execute(
+                    "SELECT ticker, content_type, content_id, text, "
+                    "snippet(research_fts,3,'','','…',40) AS snippet "
+                    "FROM research_fts WHERE research_fts MATCH ? AND ticker=? "
+                    "ORDER BY rank LIMIT ?",
+                    (query, ticker, limit)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT ticker, content_type, content_id, text, "
+                    "snippet(research_fts,3,'','','…',40) AS snippet "
+                    "FROM research_fts WHERE research_fts MATCH ? "
+                    "ORDER BY rank LIMIT ?",
+                    (query, limit)
+                ).fetchall()
+        return [
+            {"type": r["content_type"], "id": r["content_id"],
+             "ticker": r["ticker"], "snippet": r["snippet"], "text": r["text"]}
+            for r in rows
+        ]
+    except Exception:
+        return []
+
+
+def build_rag_context(question, ticker=None):
+    """
+    Build RAG context chunks for a Q&A question.
+
+    Returns list of dicts: {type, id, ticker, snippet, text}
+    """
+    chunks = []
+
+    # 1. FTS5 full-text search
+    chunks.extend(fts_search_context(question, ticker=ticker, limit=5))
+
+    if ticker:
+        # 2. Active thesis
+        thesis = get_active_thesis(ticker)
+        if thesis:
+            chunks.append({
+                "type": "thesis",
+                "id": thesis["id"],
+                "ticker": ticker,
+                "snippet": thesis["content"][:200],
+                "text": thesis["content"],
+            })
+
+        # 3. Latest valuation
+        vals = get_valuations(ticker)
+        if vals:
+            v = vals[0]
+            text = (
+                f"Preço alvo: R${v.get('target_price')} | "
+                f"Metodologia: {v.get('methodology')} | "
+                f"Upside: {v.get('upside_pct')}%"
+            )
+            if v.get("notes"):
+                text += f"\n{v['notes']}"
+            chunks.append({
+                "type": "valuation",
+                "id": v["id"],
+                "ticker": ticker,
+                "snippet": text[:200],
+                "text": text,
+            })
+
+    return chunks
+
+
+# ---------------------------------------------------------------------------
 # Pending counts
 # ---------------------------------------------------------------------------
 
