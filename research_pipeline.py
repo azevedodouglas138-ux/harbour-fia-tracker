@@ -229,7 +229,7 @@ class CVMFetcher:
             sentiment=analysis["sentiment"] if analysis else None,
             user="pipeline",
         )
-        logger.info("CVMFetcher: novo filing %s [%s] %s", ticker, doc_type, title[:60])
+        logger.info("CVMFetcher: novo filing %s [%s] %s", ticker, categoria, title[:60])
         return 1
 
     def _extract_text(self, url):
