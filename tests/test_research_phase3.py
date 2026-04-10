@@ -137,3 +137,56 @@ def test_create_news_with_update_thesis(db):
     )
     n = research_db.get_news_item(nid)
     assert n["update_thesis"] == 1
+
+
+def test_answer_question_returns_answer_and_sources(monkeypatch):
+    chunks = [
+        {"type": "thesis", "id": 1, "ticker": "PRIO3",
+         "snippet": "Exposição ao Brent é o risco principal",
+         "text": "A tese da PRIO3 aponta exposição ao Brent como risco principal."}
+    ]
+
+    def mock_call(system, user_prompt, max_tokens=1024):
+        return "O principal risco é a exposição ao Brent. [Tese #1: Exposição ao Brent]"
+
+    import research_claude
+    monkeypatch.setattr(research_claude, "_call", mock_call)
+
+    result = research_claude.answer_question("Qual o risco?", "PRIO3", chunks)
+    assert result is not None
+    assert "Brent" in result["answer"]
+    assert isinstance(result["sources"], list)
+    assert result["sources"][0]["type"] == "thesis"
+
+
+def test_answer_question_returns_none_on_error(monkeypatch):
+    import research_claude
+    monkeypatch.setattr(research_claude, "_call", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("fail")))
+
+    result = research_claude.answer_question("Pergunta", "PRIO3", [])
+    assert result is None
+
+
+def test_suggest_thesis_update_returns_string(monkeypatch):
+    def mock_call(system, user_prompt, max_tokens=2048):
+        return "Nova tese atualizada: a empresa aumentou produção [ATUALIZADO]. Mantemos visão positiva."
+
+    import research_claude
+    monkeypatch.setattr(research_claude, "_call", mock_call)
+
+    result = research_claude.suggest_thesis_update(
+        "Tese atual: visão positiva de longo prazo.",
+        "Produção cresceu 8% QoQ no ITR Q4/25.",
+        "filing"
+    )
+    assert result is not None
+    assert "[ATUALIZADO]" in result
+
+
+def test_suggest_thesis_update_handles_empty_thesis(monkeypatch):
+    import research_claude
+    monkeypatch.setattr(research_claude, "_call", lambda *a, **k: "Tese iniciada com base no evento.")
+
+    result = research_claude.suggest_thesis_update("", "Produção recorde.", "filing")
+    assert result is not None
+    assert len(result) > 0

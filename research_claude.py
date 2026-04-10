@@ -97,6 +97,48 @@ Conteúdo:
 
 Responda APENAS com o JSON válido, sem markdown, sem explicações adicionais."""
 
+_QA_SYSTEM = """\
+Você é um analista de research financeiro com acesso à base de conhecimento de um fundo de ações. \
+Responda perguntas sobre empresas com base exclusivamente nas informações fornecidas, \
+citando explicitamente as fontes que embasaram sua resposta."""
+
+_QA_USER = """\
+Base de conhecimento disponível:
+
+{context}
+
+---
+Pergunta: {question}
+
+Instruções:
+- Responda em português de forma direta e objetiva
+- Use apenas as informações fornecidas acima
+- Ao usar uma informação, cite a fonte entre colchetes — exemplos: [Tese #3], [Filing #7: ITR Q3/25], [Nota #2]
+- Se a base não contiver informação suficiente, diga explicitamente
+- Não invente informações nem extrapole além do que está na base
+
+Responda APENAS com o texto da resposta, sem prefácio."""
+
+_THESIS_SUGGEST_SYSTEM = """\
+Você é um analista de research financeiro sênior. \
+Com base em um evento novo (filing ou notícia) e na tese de investimento atual, \
+gere um rascunho atualizado da tese incorporando as novas informações."""
+
+_THESIS_SUGGEST_USER = """\
+TESE ATUAL:
+{current_thesis}
+
+EVENTO NOVO ({trigger_type}):
+{trigger_summary}
+
+Gere um rascunho atualizado da tese de investimento que:
+- Mantenha a estrutura e o estilo da tese atual
+- Incorpore as informações relevantes do evento novo
+- Sinalize o que mudou com o marcador [ATUALIZADO] inline
+- Seja objetivo e direto
+
+Responda APENAS com o texto da nova tese, sem comentários adicionais."""
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -221,4 +263,53 @@ def process_manual(text, ticker=""):
         return result
     except Exception as e:
         logger.error("process_manual error [%s]: %s", ticker, e)
+        return None
+
+
+def answer_question(question, ticker, context_chunks):
+    """
+    Answer a natural language question using RAG context.
+
+    context_chunks: list of dicts with keys: type, id, ticker, snippet, text
+    Returns dict {answer, sources} or None on error.
+    """
+    try:
+        # Build context string
+        parts = []
+        for c in context_chunks:
+            label = {"thesis": "Tese", "filing": "Filing", "news": "Notícia",
+                     "note": "Nota", "valuation": "Valuation"}.get(c["type"], c["type"])
+            ticker_prefix = f"[{c['ticker']}] " if c.get("ticker") else ""
+            parts.append(f"[{ticker_prefix}{label} #{c['id']}]\n{c.get('text', c.get('snippet', ''))}")
+        context = "\n\n---\n\n".join(parts) if parts else "Nenhuma informação encontrada na base."
+
+        prompt = _QA_USER.format(question=question, context=context)
+        answer = _call(_QA_SYSTEM, prompt, max_tokens=1024)
+
+        sources = [
+            {"type": c["type"], "id": c["id"],
+             "ticker": c.get("ticker"), "snippet": c.get("snippet", "")}
+            for c in context_chunks
+        ]
+        return {"answer": answer, "sources": sources}
+    except Exception as e:
+        logger.error("answer_question error [%s]: %s", ticker, e)
+        return None
+
+
+def suggest_thesis_update(current_thesis, trigger_summary, trigger_type="filing"):
+    """
+    Generate a draft thesis update based on current thesis + triggering event.
+
+    Returns str (draft thesis text) or None on error.
+    """
+    try:
+        prompt = _THESIS_SUGGEST_USER.format(
+            current_thesis=_truncate(current_thesis or "Nenhuma tese ativa.", 6000),
+            trigger_type=trigger_type.upper(),
+            trigger_summary=trigger_summary or "Sem resumo disponível.",
+        )
+        return _call(_THESIS_SUGGEST_SYSTEM, prompt, max_tokens=2048).strip()
+    except Exception as e:
+        logger.error("suggest_thesis_update error: %s", e)
         return None
