@@ -190,3 +190,44 @@ def test_suggest_thesis_update_handles_empty_thesis(monkeypatch):
     result = research_claude.suggest_thesis_update("", "Produção recorde.", "filing")
     assert result is not None
     assert len(result) > 0
+
+
+def test_qa_route_logic_saves_messages(db, monkeypatch):
+    """Testa a lógica central da rota POST /api/research/qa sem Flask."""
+    import research_claude
+    monkeypatch.setattr(research_claude, "_call",
+                        lambda *a, **k: "Resposta mockada. [Tese #1]")
+
+    research_db.upsert_company("PRIO3", name="PetroRio", user="test")
+
+    # Simula o que a rota faz internamente
+    question = "Qual o risco da PRIO3?"
+    ticker = "PRIO3"
+    context = research_db.build_rag_context(question, ticker=ticker)
+    research_db.save_qa_message(ticker, "user", question, None, "admin")
+    result = research_claude.answer_question(question, ticker, context)
+    assert result is not None
+    research_db.save_qa_message(ticker, "assistant", result["answer"], result.get("sources"), "claude")
+
+    msgs = research_db.get_qa_messages(ticker="PRIO3")
+    assert len(msgs) == 2
+    assert msgs[0]["role"] == "user"
+    assert msgs[1]["role"] == "assistant"
+    assert "Resposta mockada" in msgs[1]["content"]
+
+
+def test_qa_global_saves_without_ticker(db, monkeypatch):
+    import research_claude
+    monkeypatch.setattr(research_claude, "_call",
+                        lambda *a, **k: "Resposta global. [PRIO3/Tese #1]")
+
+    context = research_db.build_rag_context("qual empresa tem maior upside", ticker=None)
+    research_db.save_qa_message(None, "user", "qual empresa tem maior upside", None, "admin")
+    result = research_claude.answer_question("qual empresa tem maior upside", None, context)
+    research_db.save_qa_message(None, "assistant", result["answer"], result.get("sources"), "claude")
+
+    global_msgs = research_db.get_qa_messages(ticker=None)
+    assert len(global_msgs) == 2
+    # Mensagens globais não aparecem em busca por ticker
+    prio_msgs = research_db.get_qa_messages(ticker="PRIO3")
+    assert len(prio_msgs) == 0

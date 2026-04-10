@@ -4520,6 +4520,7 @@ def api_index_members():
 # =============================================================================
 
 import research_db as _rdb
+import research_claude as _claude
 
 # Initialise DB and sync from portfolio/watchlist on startup
 _rdb.init_db()
@@ -4763,6 +4764,35 @@ def api_research_search():
         return jsonify({"results": []})
     results = _rdb.fts_search(q, limit=50)
     return jsonify({"results": results})
+
+
+# ── Q&A ────────────────────────────────────────────────────────────────────
+
+@app.route("/api/research/qa", methods=["GET"])
+def api_research_qa_get():
+    ticker = (request.args.get("ticker") or "").strip().upper() or None
+    messages = _rdb.get_qa_messages(ticker=ticker)
+    return jsonify({"messages": messages})
+
+
+@app.route("/api/research/qa", methods=["POST"])
+def api_research_qa_post():
+    data    = request.get_json(force=True) or {}
+    question = (data.get("question") or "").strip()
+    ticker   = (data.get("ticker") or "").strip().upper() or None
+    if not question:
+        return jsonify({"error": "question required"}), 400
+
+    user = _research_user()
+    context_chunks = _rdb.build_rag_context(question, ticker=ticker)
+    _rdb.save_qa_message(ticker, "user", question, None, user)
+
+    result = _claude.answer_question(question, ticker, context_chunks)
+    if result is None:
+        return jsonify({"error": "Claude API error"}), 500
+
+    _rdb.save_qa_message(ticker, "assistant", result["answer"], result.get("sources"), "claude")
+    return jsonify(result)
 
 
 # ── Markdown export ────────────────────────────────────────────────────────
