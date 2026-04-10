@@ -1,6 +1,6 @@
 {
-  "_comentario": "Mapeamento ticker B3 → CNPJ para busca CVM. BDRs não precisam de CNPJ (usam SEC EDGAR). Formato CNPJ: '00.000.000/0000-00'. Configure via /api/research/pipeline/cnpj.",
-  "PRIO3":  "09.449.019/0001-55",
+  "_comentario": "Mapeamento ticker B3 → CNPJ para busca CVM IPE. BDRs não precisam de CNPJ (usam SEC EDGAR). CNPJs verificados diretamente no arquivo ipe_cia_aberta_2026.csv da CVM.",
+  "PRIO3":  "10.629.105/0001-68",
   "CSNA3":  "33.042.730/0001-04",
   "BMEB4":  "17.184.037/0001-10",
   "MDNE3":  "12.049.631/0001-84",

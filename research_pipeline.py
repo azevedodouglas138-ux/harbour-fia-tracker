@@ -106,100 +106,104 @@ def _get(url, timeout=20, **kwargs):
 # CVMFetcher
 # ---------------------------------------------------------------------------
 
-CVM_DOC_TYPES = {
-    "FATO_RELEVANTE": "FATO_RELEVANTE",
-    "ITR":            "ITR",
-    "DFP":            "DFP",
-    "FRE":            "FRE",
+# Correct CVM IPE endpoint (Informações Periódicas e Eventuais — includes Fatos Relevantes)
+CVM_IPE_ZIP_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{year}.zip"
+CVM_IPE_CSV_NAME = "ipe_cia_aberta_{year}.csv"
+
+# Categories of interest from the IPE file
+CVM_RELEVANT_CATEGORIES = {
+    "Fato Relevante",
+    "Comunicado ao Mercado",
+    "Dados Econ\u00f4mico-Financeiros",
+    "Aviso aos Acionistas",
+    "Reuni\u00e3o da Administra\u00e7\u00e3o",
 }
-
-CVM_BASE = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/{doc_type}/DADOS/{filename}"
-
-def _cvm_csv_filename(doc_type, year):
-    """Return the expected CSV filename for a CVM doc type and year."""
-    key = {
-        "FATO_RELEVANTE": "fato_relevante_cia_aberta",
-        "ITR":            "itr_cia_aberta_con_demonstracao_financeira",
-        "DFP":            "dfp_cia_aberta_con_demonstracao_financeira",
-        "FRE":            "fre_cia_aberta_geral",
-    }.get(doc_type, doc_type.lower() + "_cia_aberta")
-    return f"{key}_{year}.csv"
-
 
 def _cnpj_normalise(cnpj):
     """Strip formatting from CNPJ for comparison: '09.449.019/0001-55' → '09449019000155'."""
     return "".join(c for c in cnpj if c.isdigit())
 
 
+# In-memory cache for the IPE CSV rows (per year, expires after 6h)
+_ipe_cache = {}   # year → (rows, loaded_at)
+_ipe_cache_lock = threading.Lock()
+
+def _load_ipe_rows(year):
+    """Download and cache IPE ZIP for the given year. Returns list of row dicts."""
+    import zipfile
+    with _ipe_cache_lock:
+        cached = _ipe_cache.get(year)
+        if cached:
+            rows, loaded_at = cached
+            if time.time() - loaded_at < 6 * 3600:
+                return rows
+
+    url = CVM_IPE_ZIP_URL.format(year=year)
+    r = _get(url, timeout=60)
+    if not r:
+        return []
+    try:
+        z = zipfile.ZipFile(io.BytesIO(r.content))
+        csv_name = CVM_IPE_CSV_NAME.format(year=year)
+        with z.open(csv_name) as f:
+            text = f.read().decode("latin-1", errors="replace")
+        rows = list(csv.DictReader(io.StringIO(text), delimiter=";"))
+        with _ipe_cache_lock:
+            _ipe_cache[year] = (rows, time.time())
+        logger.info("_load_ipe_rows: carregadas %d linhas do IPE %d", len(rows), year)
+        return rows
+    except Exception as e:
+        logger.error("_load_ipe_rows [%d]: %s", year, e)
+        return []
+
+
 class CVMFetcher:
-    """Fetch new CVM filings for BR tickers using dados.cvm.gov.br open data."""
+    """Fetch new CVM filings for BR tickers using dados.cvm.gov.br IPE open data."""
 
     def fetch_all(self, tickers, days_back=30):
-        """
-        Fetch recent CVM documents for the given tickers.
-        Returns total count of new items inserted.
-        """
         cnpj_map = _load_cnpj_map()
         since = (datetime.now(timezone.utc) - timedelta(days=days_back)).strftime("%Y-%m-%d")
         total = 0
 
+        # Load IPE rows for current year (and previous if days_back crosses year boundary)
+        current_year = datetime.now().year
+        all_rows = _load_ipe_rows(current_year)
+        if days_back > (datetime.now().timetuple().tm_yday):
+            all_rows = _load_ipe_rows(current_year - 1) + all_rows
+
         for ticker in tickers:
-            # Skip BDRs — they file with SEC, not CVM
             if ticker in BDR_UNDERLYING:
                 continue
-            cnpj = cnpj_map.get(ticker.upper())
+            cnpj = cnpj_map.get(ticker.upper(), "").strip()
             if not cnpj:
                 logger.info("CVMFetcher: sem CNPJ para %s — pulando", ticker)
                 continue
-            total += self._fetch_ticker(ticker, cnpj, since)
+            cnpj_raw = _cnpj_normalise(cnpj)
+            total += self._fetch_ticker(ticker, cnpj_raw, all_rows, since)
         return total
 
-    def _fetch_ticker(self, ticker, cnpj, since):
-        """Fetch Fatos Relevantes for a single ticker. Returns count of new items."""
-        cnpj_raw = _cnpj_normalise(cnpj)
+    def _fetch_ticker(self, ticker, cnpj_raw, all_rows, since):
         count = 0
-        years = {datetime.now().year, datetime.now().year - 1}
-
-        for year in sorted(years, reverse=True):
-            count += self._fetch_doc_type(ticker, cnpj_raw, "FATO_RELEVANTE", year, since)
-
+        for row in all_rows:
+            if _cnpj_normalise(row.get("CNPJ_Companhia", "")) != cnpj_raw:
+                continue
+            categoria = row.get("Categoria", "")
+            if categoria not in CVM_RELEVANT_CATEGORIES:
+                continue
+            dt_entrega = (row.get("Data_Entrega") or "")[:10]
+            if dt_entrega < since:
+                continue
+            count += self._ingest_row(ticker, row)
         return count
 
-    def _fetch_doc_type(self, ticker, cnpj_raw, doc_type, year, since):
-        filename = _cvm_csv_filename(doc_type, year)
-        url = CVM_BASE.format(doc_type=doc_type, filename=filename)
-        r = _get(url, timeout=30)
-        if not r:
-            return 0
-
-        count = 0
-        try:
-            # CVM CSVs use ';' separator and latin-1 encoding
-            text = r.content.decode("latin-1", errors="replace")
-            reader = csv.DictReader(io.StringIO(text), delimiter=";")
-            for row in reader:
-                row_cnpj = _cnpj_normalise(row.get("CNPJ_CIA", ""))
-                if row_cnpj != cnpj_raw:
-                    continue
-                dt_receb = (row.get("DT_RECEB") or row.get("DT_REFER") or "")[:10]
-                if dt_receb < since:
-                    continue
-                count += self._ingest_row(ticker, doc_type, row)
-        except Exception as e:
-            logger.error("CVMFetcher._fetch_doc_type [%s/%s]: %s", ticker, doc_type, e)
-
-        return count
-
-    def _ingest_row(self, ticker, doc_type, row):
-        """Insert a CVM row as a filing (PENDENTE) if not already present."""
-        link = row.get("LINK_DOC", "")
-        title = (
-            row.get("ASSUNTO")
-            or row.get("DSCR_TIPO_DOC")
-            or row.get("CATEGORIA")
-            or doc_type
-        )
-        filing_date = (row.get("DT_REFER") or row.get("DT_RECEB") or "")[:10]
+    def _ingest_row(self, ticker, row):
+        """Insert a CVM IPE row as a filing (PENDENTE) if not already present."""
+        link     = row.get("Link_Download", "")
+        categoria = row.get("Categoria", "")
+        assunto   = row.get("Assunto", "") or ""
+        tipo      = row.get("Tipo", "")
+        title     = assunto or tipo or categoria
+        filing_date = (row.get("Data_Entrega") or row.get("Data_Referencia") or "")[:10]
 
         # Deduplicate by URL
         existing = _rdb.get_filings(ticker=ticker, review_status=None)
@@ -207,16 +211,16 @@ class CVMFetcher:
             if f.get("raw_url") == link:
                 return 0
 
-        # Try to extract text for Claude processing
+        # Best-effort text extraction for Claude
         text = self._extract_text(link) or title
         analysis = _claude.process_filing(
-            text, ticker=ticker, doc_type=doc_type, doc_title=title
+            text, ticker=ticker, doc_type=categoria, doc_title=title
         ) if _claude.ANTHROPIC_API_KEY else None
 
         _rdb.create_filing(
             ticker=ticker,
             source="CVM",
-            type_=doc_type,
+            type_=categoria,
             title=title,
             filing_date=filing_date,
             raw_url=link,
@@ -411,11 +415,28 @@ class SECFetcher:
 
 RSS_FEEDS = [
     ("InfoMoney",    "https://www.infomoney.com.br/feed/"),
-    ("Reuters BR",   "https://feeds.reuters.com/reuters/BRbusinessNews"),
-    ("Valor Online", "https://www.valor.com.br/rss"),
     ("Exame",        "https://exame.com/feed/"),
     ("E-Investidor", "https://einvestidor.estadao.com.br/feed/"),
 ]
+
+# Ticker → termos de busca em notícias (ticker + nomes alternativos da empresa)
+TICKER_SEARCH_TERMS = {
+    "PRIO3":   ["PRIO3", "PRIO S.A", "PetroRio", "Petro Rio"],
+    "CSNA3":   ["CSNA3", "CSN", "Siderúrgica Nacional", "Siderurgica Nacional"],
+    "BMEB4":   ["BMEB4", "Mercantil Brasil", "Banco Mercantil"],
+    "MDNE3":   ["MDNE3", "Moura Dubeux"],
+    "TEND3":   ["TEND3", "Tenda", "Construtora Tenda"],
+    "VTRU3":   ["VTRU3", "Vitru", "UniCesumar", "Uniasselvi"],
+    "TTEN3":   ["TTEN3", "3Tentos", "Três Tentos", "Tres Tentos"],
+    "SIMH3":   ["SIMH3", "Simpar", "JSL", "Movida", "Vamos"],
+    "RAPT4":   ["RAPT4", "Randon", "Randoncorp"],
+    "MUTC34":  ["MUTC34", "Micron", "MU"],
+    "NVDC34":  ["NVDC34", "Nvidia", "NVDA"],
+    "A1MD34":  ["A1MD34", "AMD", "Advanced Micro"],
+    "M1TA34":  ["M1TA34", "Meta", "Facebook"],
+    "MELI34":  ["MELI34", "MercadoLibre", "Mercado Livre", "MELI"],
+    "INBR32":  ["INBR32", "Inter&Co", "Banco Inter", "INTR"],
+}
 
 
 class RSSFetcher:
@@ -530,9 +551,14 @@ class RSSFetcher:
         return count
 
     def _match_tickers(self, text, ticker_set):
-        """Return set of tickers mentioned in text."""
+        """Return set of tickers mentioned in text (by ticker symbol or company name)."""
         text_upper = text.upper()
-        return {t for t in ticker_set if t in text_upper}
+        matched = set()
+        for ticker in ticker_set:
+            terms = TICKER_SEARCH_TERMS.get(ticker, [ticker])
+            if any(term.upper() in text_upper for term in terms):
+                matched.add(ticker)
+        return matched
 
     def _ingest_news(self, ticker, title, source, url, published_dt, text):
         """Insert news item if not already in DB."""
