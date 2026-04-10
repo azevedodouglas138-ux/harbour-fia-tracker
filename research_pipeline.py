@@ -211,11 +211,9 @@ class CVMFetcher:
             if f.get("raw_url") == link:
                 return 0
 
-        # Best-effort text extraction for Claude
+        # Extract raw text for storage (no Claude analysis — cost control)
         text = self._extract_text(link) or title
-        analysis = _claude.process_filing(
-            text, ticker=ticker, doc_type=categoria, doc_title=title
-        ) if _claude.ANTHROPIC_API_KEY else None
+        raw_summary = text[:2000] if text else None
 
         _rdb.create_filing(
             ticker=ticker,
@@ -224,11 +222,11 @@ class CVMFetcher:
             title=title,
             filing_date=filing_date,
             raw_url=link,
-            summary=analysis["summary"] if analysis else None,
-            key_points=analysis["key_points"] if analysis else None,
-            sentiment=analysis["sentiment"] if analysis else None,
-            update_thesis=analysis.get("update_thesis", False) if analysis else False,
-            update_reason=analysis.get("update_reason") if analysis else None,
+            summary=raw_summary,
+            key_points=None,
+            sentiment=None,
+            update_thesis=False,
+            update_reason=None,
             user="pipeline",
         )
         logger.info("CVMFetcher: novo filing %s [%s] %s", ticker, categoria, title[:60])
@@ -375,11 +373,9 @@ class SECFetcher:
             if f.get("raw_url") == doc_url:
                 return 0
 
-        # Best-effort text extraction (HTML filings)
+        # Extract raw text for storage (no Claude analysis — cost control)
         text = self._extract_html(doc_url) or title
-        analysis = _claude.process_filing(
-            text, ticker=br_ticker, doc_type=form, doc_title=title
-        ) if _claude.ANTHROPIC_API_KEY else None
+        raw_summary = text[:2000] if text else None
 
         _rdb.create_filing(
             ticker=br_ticker,
@@ -388,11 +384,11 @@ class SECFetcher:
             title=title,
             filing_date=date,
             raw_url=doc_url,
-            summary=analysis["summary"] if analysis else None,
-            key_points=analysis["key_points"] if analysis else None,
-            sentiment=analysis["sentiment"] if analysis else None,
-            update_thesis=analysis.get("update_thesis", False) if analysis else False,
-            update_reason=analysis.get("update_reason") if analysis else None,
+            summary=raw_summary,
+            key_points=None,
+            sentiment=None,
+            update_thesis=False,
+            update_reason=None,
             user="pipeline",
         )
         logger.info("SECFetcher: novo filing %s [%s] %s", br_ticker, form, date)
@@ -577,10 +573,8 @@ class RSSFetcher:
                     return 0
 
         pub_str = published_dt.strftime("%Y-%m-%dT%H:%M:%S") if published_dt else None
-
-        analysis = _claude.process_news(
-            text=text, ticker=ticker, headline=title, source=source
-        ) if _claude.ANTHROPIC_API_KEY else None
+        # Store raw text for Q&A context (no Claude analysis — cost control)
+        raw_summary = (text or title)[:1000] if (text or title) else None
 
         _rdb.create_news(
             ticker=ticker,
@@ -588,11 +582,11 @@ class RSSFetcher:
             source=source,
             url=url,
             published_at=pub_str,
-            summary=analysis["summary"] if analysis else None,
-            sentiment=analysis["sentiment"] if analysis else None,
-            relevance=analysis["relevance"] if analysis else 5,
-            update_thesis=analysis.get("update_thesis", False) if analysis else False,
-            update_reason=analysis.get("update_reason") if analysis else None,
+            summary=raw_summary,
+            sentiment=None,
+            relevance=5,
+            update_thesis=False,
+            update_reason=None,
             user="pipeline",
         )
         return 1
@@ -686,17 +680,14 @@ class PipelineScheduler:
     # ── internal ──────────────────────────────────────────────────────────
 
     def _loop(self):
-        """Main scheduler loop: wait interval, then run."""
-        # Set next run immediately so status shows up
-        next_run = datetime.now(timezone.utc) + timedelta(hours=self.interval_hours)
-        with self._lock:
-            self._status["next_run"] = next_run.strftime("%Y-%m-%dT%H:%M:%S")
-
-        while not self._stop_event.wait(self.interval_hours * 3600):
+        """Main scheduler loop: run immediately on startup, then repeat every interval_hours."""
+        while not self._stop_event.is_set():
             self._run_once()
             next_run = datetime.now(timezone.utc) + timedelta(hours=self.interval_hours)
             with self._lock:
                 self._status["next_run"] = next_run.strftime("%Y-%m-%dT%H:%M:%S")
+            if self._stop_event.wait(self.interval_hours * 3600):
+                break
 
     def _run_once(self, days_back=30):
         with self._lock:

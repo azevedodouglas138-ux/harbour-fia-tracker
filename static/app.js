@@ -5709,9 +5709,12 @@ const Research = (() => {
           sources: data.sources || [], created_at: new Date().toISOString()
         });
         container.scrollTop = container.scrollHeight;
+      } else {
+        container.innerHTML += renderQAMessage({role: 'assistant', content: '⚠ Erro ao processar resposta. Verifique os créditos da API Claude.', created_at: new Date().toISOString()});
       }
     } catch (e) {
       console.error('Q&A error:', e);
+      container.innerHTML += renderQAMessage({role: 'assistant', content: '⚠ Erro de comunicação com a API Claude. Tente novamente mais tarde.', created_at: new Date().toISOString()});
     } finally {
       btn.disabled = false;
       btn.textContent = 'PERGUNTAR';
@@ -5789,9 +5792,12 @@ const Research = (() => {
           sources: data.sources || [], created_at: new Date().toISOString()
         });
         container.scrollTop = container.scrollHeight;
+      } else {
+        container.innerHTML += renderQAMessage({role: 'assistant', content: '⚠ Erro ao processar resposta. Verifique os créditos da API Claude.', created_at: new Date().toISOString()});
       }
     } catch (e) {
       console.error('Global Q&A error:', e);
+      container.innerHTML += renderQAMessage({role: 'assistant', content: '⚠ Erro de comunicação com a API Claude. Tente novamente mais tarde.', created_at: new Date().toISOString()});
     } finally {
       btn.disabled = false;
       btn.textContent = 'PERGUNTAR';
