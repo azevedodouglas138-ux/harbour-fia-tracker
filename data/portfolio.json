@@ -74,15 +74,6 @@
       "preco_alvo": 18.0
     },
     {
-      "ticker": "NVDC34",
-      "yahoo_ticker": "NVDC34.SA",
-      "categoria": "BDR",
-      "quantidade": 3500.0,
-      "liq_diaria_mm": null,
-      "lucro_mi_26": null,
-      "preco_alvo": 30.0
-    },
-    {
       "ticker": "RAPT4",
       "yahoo_ticker": "RAPT4.SA",
       "categoria": "Acao",
