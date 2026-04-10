@@ -117,6 +117,15 @@
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 11.0
+    },
+    {
+      "ticker": "ROXO34",
+      "yahoo_ticker": "ROXO34.SA",
+      "categoria": "BDR",
+      "quantidade": 200.0,
+      "liq_diaria_mm": null,
+      "lucro_mi_26": null,
+      "preco_alvo": 22.0
     }
   ]
 }
