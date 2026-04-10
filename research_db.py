@@ -49,13 +49,16 @@ CREATE TABLE IF NOT EXISTS companies (
 );
 
 CREATE TABLE IF NOT EXISTS theses (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticker      TEXT NOT NULL REFERENCES companies(ticker),
-    content     TEXT NOT NULL DEFAULT '',
-    version     INTEGER NOT NULL DEFAULT 1,
-    status      TEXT CHECK(status IN ('ATIVA','RASCUNHO','ARQUIVADA')) DEFAULT 'RASCUNHO',
-    created_by  TEXT NOT NULL DEFAULT 'admin',
-    created_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker         TEXT NOT NULL REFERENCES companies(ticker),
+    content        TEXT NOT NULL DEFAULT '',
+    version        INTEGER NOT NULL DEFAULT 1,
+    status         TEXT CHECK(status IN ('ATIVA','RASCUNHO','ARQUIVADA')) DEFAULT 'RASCUNHO',
+    created_by     TEXT NOT NULL DEFAULT 'admin',
+    created_at     TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
+    auto_generated INTEGER DEFAULT 0,
+    trigger_type   TEXT,
+    trigger_id     INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS filings (
@@ -72,7 +75,9 @@ CREATE TABLE IF NOT EXISTS filings (
     review_status TEXT CHECK(review_status IN ('PENDENTE','APROVADO','REJEITADO')) DEFAULT 'PENDENTE',
     reviewed_by   TEXT,
     reviewed_at   TEXT,
-    processed_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+    processed_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
+    update_thesis  INTEGER DEFAULT 0,
+    update_reason  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS news_items (
@@ -88,7 +93,9 @@ CREATE TABLE IF NOT EXISTS news_items (
     relevance     REAL DEFAULT 0,
     review_status TEXT CHECK(review_status IN ('PENDENTE','APROVADO','REJEITADO')) DEFAULT 'PENDENTE',
     reviewed_by   TEXT,
-    reviewed_at   TEXT
+    reviewed_at   TEXT,
+    update_thesis  INTEGER DEFAULT 0,
+    update_reason  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS notes (
@@ -132,12 +139,43 @@ CREATE VIRTUAL TABLE IF NOT EXISTS research_fts USING fts5(
     text,
     tokenize='unicode61'
 );
+
+CREATE TABLE IF NOT EXISTS qa_messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker      TEXT,
+    role        TEXT CHECK(role IN ('user','assistant')) NOT NULL,
+    content     TEXT NOT NULL,
+    sources     TEXT,
+    created_by  TEXT NOT NULL DEFAULT 'admin',
+    created_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+);
 """
 
+_MIGRATIONS = [
+    "ALTER TABLE theses ADD COLUMN auto_generated INTEGER DEFAULT 0",
+    "ALTER TABLE theses ADD COLUMN trigger_type TEXT",
+    "ALTER TABLE theses ADD COLUMN trigger_id INTEGER",
+    "ALTER TABLE filings ADD COLUMN update_thesis INTEGER DEFAULT 0",
+    "ALTER TABLE filings ADD COLUMN update_reason TEXT",
+    "ALTER TABLE news_items ADD COLUMN update_thesis INTEGER DEFAULT 0",
+    "ALTER TABLE news_items ADD COLUMN update_reason TEXT",
+]
+
+
+def _run_migrations(conn):
+    """Apply ALTER TABLE migrations safely — ignores 'duplicate column' errors."""
+    for sql in _MIGRATIONS:
+        try:
+            conn.execute(sql)
+        except Exception:
+            pass  # column already exists (fresh install or re-run)
+
+
 def init_db():
-    """Create tables if they don't exist."""
+    """Create tables if they don't exist and run migrations."""
     with get_conn() as conn:
         conn.executescript(SCHEMA_SQL)
+        _run_migrations(conn)
 
 
 # ---------------------------------------------------------------------------
