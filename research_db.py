@@ -142,7 +142,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS research_fts USING fts5(
 
 CREATE TABLE IF NOT EXISTS qa_messages (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticker      TEXT,
+    ticker      TEXT REFERENCES companies(ticker),
     role        TEXT CHECK(role IN ('user','assistant')) NOT NULL,
     content     TEXT NOT NULL,
     sources     TEXT,
@@ -167,8 +167,9 @@ def _run_migrations(conn):
     for sql in _MIGRATIONS:
         try:
             conn.execute(sql)
-        except Exception:
-            pass  # column already exists (fresh install or re-run)
+        except sqlite3.OperationalError as exc:
+            if "duplicate column" not in str(exc):
+                raise
 
 
 def init_db():
