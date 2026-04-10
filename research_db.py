@@ -11,7 +11,10 @@ from contextlib import contextmanager
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH  = os.path.join(BASE_DIR, "data", "research.db")
+DB_PATH  = os.environ.get(
+    "RESEARCH_DB_PATH",
+    os.path.join(BASE_DIR, "data", "research.db")
+)
 
 # ---------------------------------------------------------------------------
 # Connection helper

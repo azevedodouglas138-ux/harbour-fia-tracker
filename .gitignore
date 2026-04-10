@@ -11,3 +11,4 @@ data/cache.json
 # OS
 .DS_Store
 Thumbs.db
+data/research.db
