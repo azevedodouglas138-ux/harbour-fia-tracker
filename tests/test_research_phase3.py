@@ -99,3 +99,41 @@ def test_build_rag_context_global_no_thesis(db):
     chunks = research_db.build_rag_context("qual o banco", ticker=None)
     types = [c["type"] for c in chunks]
     assert "thesis" not in types
+
+
+def test_create_thesis_auto_generated(db):
+    research_db.upsert_company("GGBR4", name="Gerdau", user="test")
+    tid = research_db.create_thesis(
+        "GGBR4", "Rascunho gerado pelo Claude.",
+        user="claude", auto_generated=1, trigger_type="filing", trigger_id=42
+    )
+    with research_db.get_conn() as conn:
+        row = conn.execute("SELECT * FROM theses WHERE id=?", (tid,)).fetchone()
+    assert row["auto_generated"] == 1
+    assert row["trigger_type"] == "filing"
+    assert row["trigger_id"] == 42
+
+
+def test_create_filing_with_update_thesis(db):
+    research_db.upsert_company("PRIO3", name="PetroRio", user="test")
+    fid = research_db.create_filing(
+        "PRIO3", "CVM", "FATO_RELEVANTE", "Produção recorde",
+        update_thesis=True, update_reason="Produção +8% muda premissa de volumes"
+    )
+    f = research_db.get_filing(fid)
+    assert f["update_thesis"] == 1
+    assert "volumes" in f["update_reason"]
+
+
+def test_get_filing_returns_none_for_unknown(db):
+    assert research_db.get_filing(9999) is None
+
+
+def test_create_news_with_update_thesis(db):
+    research_db.upsert_company("VALE3", name="Vale", user="test")
+    nid = research_db.create_news(
+        "VALE3", "Minério sobe 15%",
+        update_thesis=True, update_reason="Preço do minério impacta receita"
+    )
+    n = research_db.get_news_item(nid)
+    assert n["update_thesis"] == 1

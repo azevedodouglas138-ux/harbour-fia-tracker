@@ -301,21 +301,25 @@ def get_active_thesis(ticker):
     return dict(row) if row else None
 
 
-def create_thesis(ticker, content, user="admin"):
+def create_thesis(ticker, content, user="admin",
+                  auto_generated=0, trigger_type=None, trigger_id=None):
     """Creates a new RASCUNHO thesis. Returns new id."""
     with get_conn() as conn:
-        # Next version number
         last = conn.execute(
             "SELECT COALESCE(MAX(version),0) AS v FROM theses WHERE ticker=?", (ticker,)
         ).fetchone()["v"]
         version = last + 1
         conn.execute(
-            "INSERT INTO theses (ticker, content, version, status, created_by) VALUES (?, ?, ?, 'RASCUNHO', ?)",
-            (ticker, content, version, user)
+            "INSERT INTO theses (ticker, content, version, status, created_by, "
+            "auto_generated, trigger_type, trigger_id) "
+            "VALUES (?, ?, ?, 'RASCUNHO', ?, ?, ?, ?)",
+            (ticker, content, version, user, auto_generated, trigger_type, trigger_id)
         )
         new_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         new = {"id": new_id, "ticker": ticker, "content": content, "version": version,
-               "status": "RASCUNHO", "created_by": user}
+               "status": "RASCUNHO", "created_by": user,
+               "auto_generated": auto_generated, "trigger_type": trigger_type,
+               "trigger_id": trigger_id}
         audit(conn, "thesis", new_id, ticker, "CREATE", user, None, new)
         _fts_upsert(conn, ticker, "thesis", new_id, content)
     return new_id
@@ -481,20 +485,38 @@ def get_filings(ticker=None, review_status=None, limit=100):
 
 
 def create_filing(ticker, source, type_, title, filing_date=None, raw_url=None,
-                  summary=None, key_points=None, sentiment=None, user="admin"):
+                  summary=None, key_points=None, sentiment=None,
+                  update_thesis=False, update_reason=None, user="admin"):
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO filings (ticker, source, type, title, filing_date, raw_url, summary, key_points, sentiment) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO filings (ticker, source, type, title, filing_date, raw_url, "
+            "summary, key_points, sentiment, update_thesis, update_reason) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (ticker, source, type_, title, filing_date, raw_url, summary,
-             json.dumps(key_points, ensure_ascii=False) if key_points else None, sentiment)
+             json.dumps(key_points, ensure_ascii=False) if key_points else None,
+             sentiment, 1 if update_thesis else 0, update_reason)
         )
         new_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         new = {"id": new_id, "ticker": ticker, "source": source, "type": type_,
                "title": title, "filing_date": filing_date, "summary": summary,
-               "sentiment": sentiment, "review_status": "PENDENTE"}
+               "sentiment": sentiment, "review_status": "PENDENTE",
+               "update_thesis": update_thesis, "update_reason": update_reason}
         audit(conn, "filing", new_id, ticker, "CREATE", user, None, new)
     return new_id
+
+
+def get_filing(filing_id):
+    """Return a single filing by id, or None."""
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM filings WHERE id=?", (filing_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def get_news_item(news_id):
+    """Return a single news_item by id, or None."""
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM news_items WHERE id=?", (news_id,)).fetchone()
+    return dict(row) if row else None
 
 
 def review_filing(filing_id, action, user="admin"):
@@ -544,16 +566,19 @@ def get_news(ticker=None, review_status=None, limit=100):
 
 
 def create_news(ticker, title, source=None, url=None, published_at=None,
-                summary=None, sentiment=None, relevance=0, sector=None, user="admin"):
+                summary=None, sentiment=None, relevance=0, sector=None,
+                update_thesis=False, update_reason=None, user="admin"):
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO news_items (ticker, sector, title, source, url, published_at, summary, sentiment, relevance) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (ticker, sector, title, source, url, published_at, summary, sentiment, relevance)
+            "INSERT INTO news_items (ticker, sector, title, source, url, published_at, "
+            "summary, sentiment, relevance, update_thesis, update_reason) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (ticker, sector, title, source, url, published_at, summary, sentiment,
+             relevance, 1 if update_thesis else 0, update_reason)
         )
         new_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         new = {"id": new_id, "ticker": ticker, "title": title, "source": source,
-               "review_status": "PENDENTE"}
+               "review_status": "PENDENTE", "update_thesis": update_thesis}
         audit(conn, "news", new_id, ticker, "CREATE", user, None, new)
     return new_id
 
