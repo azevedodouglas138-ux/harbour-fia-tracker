@@ -724,16 +724,24 @@ def build_rag_context(question, ticker=None):
 
     Returns list of dicts: {type, id, ticker, snippet, text}
     """
+    seen = set()
     chunks = []
 
+    def _add(chunk):
+        key = (chunk["type"], str(chunk["id"]))
+        if key not in seen:
+            seen.add(key)
+            chunks.append(chunk)
+
     # 1. FTS5 full-text search
-    chunks.extend(fts_search_context(question, ticker=ticker, limit=5))
+    for c in fts_search_context(question, ticker=ticker, limit=5):
+        _add(c)
 
     if ticker:
         # 2. Active thesis
         thesis = get_active_thesis(ticker)
         if thesis:
-            chunks.append({
+            _add({
                 "type": "thesis",
                 "id": thesis["id"],
                 "ticker": ticker,
@@ -752,12 +760,32 @@ def build_rag_context(question, ticker=None):
             )
             if v.get("notes"):
                 text += f"\n{v['notes']}"
-            chunks.append({
+            _add({
                 "type": "valuation",
                 "id": v["id"],
                 "ticker": ticker,
                 "snippet": text[:200],
                 "text": text,
+            })
+
+        # 4. Recent approved filings (always included — FTS may miss keyword mismatches)
+        for f in get_filings(ticker=ticker, review_status="APROVADO")[:4]:
+            _add({
+                "type": "filing",
+                "id": f["id"],
+                "ticker": ticker,
+                "snippet": (f.get("title") or "")[:200],
+                "text": f"{f.get('title', '')} {f.get('summary') or ''}".strip(),
+            })
+
+        # 5. Recent approved news
+        for n in get_news(ticker=ticker, review_status="APROVADO")[:3]:
+            _add({
+                "type": "news",
+                "id": n["id"],
+                "ticker": ticker,
+                "snippet": (n.get("title") or "")[:200],
+                "text": f"{n.get('title', '')} {n.get('summary') or ''}".strip(),
             })
 
     return chunks
