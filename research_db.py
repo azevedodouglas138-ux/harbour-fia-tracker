@@ -668,7 +668,9 @@ def fts_search_context(query, ticker=None, limit=5):
              "ticker": r["ticker"], "snippet": r["snippet"], "text": r["text"]}
             for r in rows
         ]
-    except Exception:
+    except sqlite3.OperationalError as exc:
+        if "syntax error" not in str(exc) and "no such column" not in str(exc):
+            raise
         return []
 
 
