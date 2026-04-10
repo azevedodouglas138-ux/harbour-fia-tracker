@@ -227,6 +227,8 @@ class CVMFetcher:
             summary=analysis["summary"] if analysis else None,
             key_points=analysis["key_points"] if analysis else None,
             sentiment=analysis["sentiment"] if analysis else None,
+            update_thesis=analysis.get("update_thesis", False) if analysis else False,
+            update_reason=analysis.get("update_reason") if analysis else None,
             user="pipeline",
         )
         logger.info("CVMFetcher: novo filing %s [%s] %s", ticker, categoria, title[:60])
@@ -389,6 +391,8 @@ class SECFetcher:
             summary=analysis["summary"] if analysis else None,
             key_points=analysis["key_points"] if analysis else None,
             sentiment=analysis["sentiment"] if analysis else None,
+            update_thesis=analysis.get("update_thesis", False) if analysis else False,
+            update_reason=analysis.get("update_reason") if analysis else None,
             user="pipeline",
         )
         logger.info("SECFetcher: novo filing %s [%s] %s", br_ticker, form, date)
@@ -587,6 +591,8 @@ class RSSFetcher:
             summary=analysis["summary"] if analysis else None,
             sentiment=analysis["sentiment"] if analysis else None,
             relevance=analysis["relevance"] if analysis else 5,
+            update_thesis=analysis.get("update_thesis", False) if analysis else False,
+            update_reason=analysis.get("update_reason") if analysis else None,
             user="pipeline",
         )
         return 1
@@ -622,6 +628,8 @@ class ManualIngestor:
             summary=analysis.get("summary"),
             sentiment=analysis.get("sentiment"),
             relevance=analysis.get("relevance", 5),
+            update_thesis=analysis.get("update_thesis", False),
+            update_reason=analysis.get("update_reason"),
             user=user,
         )
         return news_id, analysis
