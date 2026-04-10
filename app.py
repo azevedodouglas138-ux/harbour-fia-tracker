@@ -4611,6 +4611,21 @@ def api_research_thesis_approve(thesis_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/research/theses/<int:thesis_id>/dismiss", methods=["POST"])
+@require_admin
+def api_research_thesis_dismiss(thesis_id):
+    """Archive an auto-generated draft thesis (user ignored the suggestion)."""
+    with _rdb.get_conn() as conn:
+        row = conn.execute("SELECT * FROM theses WHERE id=?", (thesis_id,)).fetchone()
+        if not row:
+            return jsonify({"error": "not found"}), 404
+        old = dict(row)
+        conn.execute("UPDATE theses SET status='ARQUIVADA' WHERE id=?", (thesis_id,))
+        _rdb.audit(conn, "thesis", thesis_id, old["ticker"], "UPDATE",
+                   _research_user(), old, {**old, "status": "ARQUIVADA"})
+    return jsonify({"ok": True})
+
+
 @app.route("/api/research/theses/<int:thesis_id>", methods=["PUT"])
 @_require_team
 def api_research_thesis_update(thesis_id):
@@ -4706,6 +4721,22 @@ def api_research_filings_get(ticker):
     return jsonify({"filings": _rdb.get_filings(ticker=ticker.upper(), review_status=review_status)})
 
 
+def _trigger_thesis_suggestion(ticker, trigger_summary, trigger_type, trigger_id):
+    """Background helper: gera rascunho de tese via Claude e salva como RASCUNHO auto_generated."""
+    try:
+        active = _rdb.get_active_thesis(ticker)
+        current_content = active["content"] if active else ""
+        draft = _claude.suggest_thesis_update(current_content, trigger_summary, trigger_type)
+        if draft:
+            _rdb.create_thesis(
+                ticker, draft, user="claude",
+                auto_generated=1, trigger_type=trigger_type, trigger_id=trigger_id
+            )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("_trigger_thesis_suggestion [%s]: %s", ticker, e)
+
+
 @app.route("/api/research/filings/<int:filing_id>/review", methods=["POST"])
 @require_admin
 def api_research_filing_review(filing_id):
@@ -4716,6 +4747,12 @@ def api_research_filing_review(filing_id):
     ok = _rdb.review_filing(filing_id, action, user=_research_user())
     if not ok:
         return jsonify({"error": "not found"}), 404
+    if action == "APPROVE":
+        filing = _rdb.get_filing(filing_id)
+        if filing and filing.get("update_thesis") and filing.get("ticker"):
+            _trigger_thesis_suggestion(
+                filing["ticker"], filing.get("summary", ""), "filing", filing_id
+            )
     return jsonify({"ok": True})
 
 
@@ -4737,6 +4774,12 @@ def api_research_news_review(news_id):
     ok = _rdb.review_news(news_id, action, user=_research_user())
     if not ok:
         return jsonify({"error": "not found"}), 404
+    if action == "APPROVE":
+        news = _rdb.get_news_item(news_id)
+        if news and news.get("update_thesis") and news.get("ticker"):
+            _trigger_thesis_suggestion(
+                news["ticker"], news.get("summary", ""), "news", news_id
+            )
     return jsonify({"ok": True})
 
 

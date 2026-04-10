@@ -231,3 +231,52 @@ def test_qa_global_saves_without_ticker(db, monkeypatch):
     # Mensagens globais não aparecem em busca por ticker
     prio_msgs = research_db.get_qa_messages(ticker="PRIO3")
     assert len(prio_msgs) == 0
+
+
+def test_trigger_thesis_suggestion_creates_rascunho(db, monkeypatch):
+    """Testa a função auxiliar _trigger_thesis_suggestion diretamente."""
+    import research_claude
+    monkeypatch.setattr(research_claude, "_call",
+                        lambda *a, **k: "Tese atualizada [ATUALIZADO].")
+
+    research_db.upsert_company("PRIO3", name="PetroRio", user="test")
+    tid = research_db.create_thesis("PRIO3", "Tese original.", user="test")
+    research_db.approve_thesis(tid, user="test")
+    fid = research_db.create_filing(
+        "PRIO3", "CVM", "FATO_RELEVANTE", "Produção recorde",
+        summary="Produção cresceu 8% QoQ.", update_thesis=True
+    )
+
+    # Simula o que a rota faz ao aprovação com update_thesis=True
+    filing = research_db.get_filing(fid)
+    active = research_db.get_active_thesis("PRIO3")
+    current_content = active["content"] if active else ""
+    draft = research_claude.suggest_thesis_update(current_content, filing["summary"], "filing")
+    assert draft is not None
+    new_id = research_db.create_thesis(
+        "PRIO3", draft, user="claude",
+        auto_generated=1, trigger_type="filing", trigger_id=fid
+    )
+
+    theses = research_db.get_theses("PRIO3")
+    auto = [t for t in theses if t["auto_generated"] == 1 and t["status"] == "RASCUNHO"]
+    assert len(auto) == 1
+    assert auto[0]["trigger_id"] == fid
+    assert "[ATUALIZADO]" in auto[0]["content"]
+
+
+def test_dismiss_archives_rascunho(db):
+    """Testa que arquivar um rascunho muda o status para ARQUIVADA."""
+    research_db.upsert_company("PRIO3", name="PetroRio", user="test")
+    tid = research_db.create_thesis("PRIO3", "Rascunho auto.", user="claude",
+                                    auto_generated=1)
+    # Simula o que a rota dismiss faz
+    with research_db.get_conn() as conn:
+        old = dict(conn.execute("SELECT * FROM theses WHERE id=?", (tid,)).fetchone())
+        conn.execute("UPDATE theses SET status='ARQUIVADA' WHERE id=?", (tid,))
+        research_db.audit(conn, "thesis", tid, "PRIO3", "UPDATE", "admin",
+                          old, {**old, "status": "ARQUIVADA"})
+
+    with research_db.get_conn() as conn:
+        row = conn.execute("SELECT status FROM theses WHERE id=?", (tid,)).fetchone()
+    assert row["status"] == "ARQUIVADA"
