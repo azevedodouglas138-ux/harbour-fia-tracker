@@ -829,6 +829,19 @@ def get_pending_by_ticker():
     return {r["ticker"]: r["n"] for r in rows}
 
 
+def get_thesis_status_by_ticker():
+    """Returns {ticker: {'has_active': bool, 'has_draft': bool}} for all companies."""
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT ticker,
+                   MAX(CASE WHEN status='ATIVA' THEN 1 ELSE 0 END) AS has_active,
+                   MAX(CASE WHEN status='RASCUNHO' THEN 1 ELSE 0 END) AS has_draft
+            FROM theses
+            GROUP BY ticker
+        """).fetchall()
+    return {r["ticker"]: {"has_active": bool(r["has_active"]), "has_draft": bool(r["has_draft"])} for r in rows}
+
+
 # ---------------------------------------------------------------------------
 # Markdown export
 # ---------------------------------------------------------------------------

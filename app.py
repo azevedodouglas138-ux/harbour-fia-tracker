@@ -4546,8 +4546,12 @@ def _require_team(f):
 def api_research_companies():
     companies = _rdb.get_companies()
     pending   = _rdb.get_pending_by_ticker()
+    thesis_st = _rdb.get_thesis_status_by_ticker()
     for c in companies:
         c["pending"] = pending.get(c["ticker"], 0)
+        ts = thesis_st.get(c["ticker"], {})
+        c["has_active_thesis"] = ts.get("has_active", False)
+        c["has_pending_draft"] = ts.get("has_draft", False)
     return jsonify({"companies": companies})
 
 
