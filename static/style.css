@@ -1800,7 +1800,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 10px;
+  padding: 7px 12px;
   cursor: pointer;
   font-size: 11px;
   color: var(--text);
@@ -1849,7 +1849,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 12px 0 8px;
+  padding: 16px 0 12px;
   border-bottom: 1px solid var(--border);
   gap: 12px;
   flex-wrap: wrap;
@@ -1917,7 +1917,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 
 .research-subtab-content {
-  padding: 14px 0;
+  padding: 18px 0;
 }
 
 /* Thesis view */
@@ -1928,7 +1928,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 .research-thesis-content {
   font-size: 12px;
-  line-height: 1.7;
+  line-height: 1.8;
   white-space: pre-wrap;
   word-break: break-word;
   min-height: 60px;
@@ -1993,13 +1993,17 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 
 /* List items (filings, news, notes, valuations) */
-.research-list-items { display: flex; flex-direction: column; gap: 8px; }
+.research-list-items { display: flex; flex-direction: column; gap: 10px; }
 
 .research-item {
   background: var(--surface2);
   border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 10px 12px;
+  border-radius: 3px;
+  padding: 14px 14px;
+  transition: background 0.1s;
+}
+.research-item:hover {
+  background: var(--surface3);
 }
 .research-item.pending-item {
   border-left: 3px solid var(--orange);
@@ -2050,8 +2054,8 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   font-size: 9px;
   font-weight: bold;
   letter-spacing: 0.4px;
-  padding: 1px 6px;
-  border-radius: 2px;
+  padding: 2px 7px;
+  border-radius: 4px;
   text-transform: uppercase;
 }
 .research-tag.tag-positivo { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,204,68,0.3); }
@@ -2151,6 +2155,40 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .btn-icon-delete:hover {
   color: var(--red);
   border-color: var(--red);
+}
+
+/* Colored action buttons */
+.btn-approve {
+  background: rgba(76,175,80,0.2);
+  border: 1px solid #4CAF50;
+  color: #4CAF50;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 4px 14px;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+  transition: background 0.1s;
+}
+.btn-approve:hover {
+  background: rgba(76,175,80,0.35);
+}
+.btn-reject {
+  background: rgba(244,67,54,0.15);
+  border: 1px solid rgba(244,67,54,0.5);
+  color: #f44336;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 4px 14px;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+  transition: background 0.1s;
+}
+.btn-reject:hover {
+  background: rgba(244,67,54,0.3);
 }
 
 /* ── RESEARCH PIPELINE & MODALS (Fase 2) ──────────────────────────────── */
@@ -2666,4 +2704,264 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .btn-qa-company:hover {
   background: #4fc3f7;
   color: #000;
+}
+
+/* ── Dashboard (empty state) ────────────────────────────────────────── */
+.research-dashboard {
+  padding: 24px 16px;
+}
+.research-dashboard-title {
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.research-dashboard-cards {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.research-dashboard-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 20px;
+  min-width: 120px;
+  text-align: center;
+}
+.research-dashboard-card-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--orange-text);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.research-dashboard-card-label {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.research-dashboard-section {
+  margin-top: 16px;
+}
+.research-dashboard-section-title {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.research-dashboard-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.research-dashboard-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.research-dashboard-chip:hover {
+  background: var(--surface3);
+  color: var(--orange-text);
+}
+
+/* ── Sidebar thesis status indicators ───────────────────────────────── */
+.si-status {
+  font-size: 8px;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+.si-status-active { color: #4CAF50; }
+.si-status-draft  { color: var(--orange); }
+.si-pending-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 16px;
+  text-align: right;
+}
+
+/* ── Thesis version tabs ────────────────────────────────────────────── */
+.thesis-versions-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.thesis-version-tab {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.thesis-version-tab:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+.thesis-version-tab.active {
+  background: rgba(255,140,0,0.15);
+  border-color: var(--orange);
+  color: var(--orange-text);
+}
+.thesis-version-tab.is-draft {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.thesis-versions-spacer {
+  flex: 1;
+}
+
+/* ── Intel (filings+news) filter tabs ───────────────────────────────── */
+.intel-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.intel-filter-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.intel-filter-btn:hover {
+  color: var(--text);
+}
+.intel-filter-btn.active {
+  background: rgba(255,140,0,0.12);
+  border-color: var(--orange);
+  color: var(--orange-text);
+}
+.intel-pending-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--orange);
+  font-weight: bold;
+}
+
+/* ── Q&A Modal ──────────────────────────────────────────────────────── */
+.qa-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qa-modal-overlay.hidden { display: none; }
+
+.qa-modal {
+  background: var(--surface);
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  width: 620px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+
+.qa-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #2a2a4a;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4fc3f7;
+}
+
+.qa-modal-close {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+}
+.qa-modal-close:hover { color: var(--text); }
+
+.qa-modal-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+  max-height: 50vh;
+}
+
+.qa-modal-input {
+  padding: 12px;
+  border-top: 1px solid #2a2a4a;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qa-modal-input textarea {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 11px;
+  padding: 8px 10px;
+  resize: none;
+  font-family: var(--mono);
+}
+.qa-modal-input textarea:focus {
+  border-color: #4fc3f7;
+  outline: none;
+}
+
+.qa-modal-input button {
+  background: #1a3a5a;
+  border: 1px solid #4fc3f7;
+  color: #4fc3f7;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  align-self: flex-end;
+  min-width: 120px;
+}
+.qa-modal-input button:hover {
+  background: #4fc3f7;
+  color: #000;
+}
+.qa-modal-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
