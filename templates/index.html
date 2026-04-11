@@ -1319,20 +1319,28 @@
 
   <!-- MAIN PANEL -->
   <div class="research-main" id="research-main">
-    <!-- Estado vazio -->
-    <div id="research-empty-state" class="research-empty">
-      <div class="research-empty-icon">📊</div>
-      <div class="research-empty-text">Selecione uma empresa na lista</div>
-    </div>
-    <div id="qaGlobalPanel" class="qa-global-panel" style="display:none">
-      <div class="qa-global-header">✦ Q&A — BASE COMPLETA</div>
-      <div id="qaGlobalMessages" class="qa-messages"></div>
-      <div class="qa-panel-input">
-        <textarea id="qaGlobalInput" placeholder="Pergunte sobre qualquer empresa da base..." rows="2"></textarea>
-        <button onclick="submitGlobalQA()" id="qaGlobalSubmitBtn">PERGUNTAR</button>
+    <!-- Dashboard (shown when no company selected) -->
+    <div id="research-empty-state" class="research-dashboard">
+      <div class="research-dashboard-title">OVERVIEW DA BASE</div>
+      <div class="research-dashboard-cards">
+        <div class="research-dashboard-card">
+          <div class="research-dashboard-card-value" id="dash-pending">0</div>
+          <div class="research-dashboard-card-label">PENDENTES</div>
+        </div>
+        <div class="research-dashboard-card">
+          <div class="research-dashboard-card-value" id="dash-companies">0</div>
+          <div class="research-dashboard-card-label">EMPRESAS</div>
+        </div>
+        <div class="research-dashboard-card">
+          <div class="research-dashboard-card-value" id="dash-no-thesis">0</div>
+          <div class="research-dashboard-card-label">SEM TESE</div>
+        </div>
+      </div>
+      <div class="research-dashboard-section" id="dash-no-thesis-section" style="display:none">
+        <div class="research-dashboard-section-title">EMPRESAS SEM TESE ATIVA</div>
+        <div class="research-dashboard-chips" id="dash-no-thesis-list"></div>
       </div>
     </div>
-
     <!-- Company panel (hidden until selected) -->
     <div id="research-company-panel" class="hidden">
 
@@ -1345,7 +1353,7 @@
         </div>
         <div class="research-company-actions">
           <span class="research-company-price" id="rc-price"></span>
-          <button class="btn-qa-company" id="btnQACompany" onclick="openQAPanel()" style="display:none">
+          <button class="btn-qa-company" id="btnQACompany" style="display:none">
             ✦ PERGUNTAR
           </button>
           <button class="bbg-btn research-export-btn" id="btn-research-export">↓ EXPORTAR MD</button>
@@ -1358,10 +1366,8 @@
       <!-- Sub-tabs -->
       <div class="research-subtabs">
         <button class="research-subtab active" data-subtab="subtab-tese">TESE</button>
-        <button class="research-subtab" data-subtab="subtab-filings">FILINGS <span class="research-badge" id="badge-filings" style="display:none"></span></button>
-        <button class="research-subtab" data-subtab="subtab-news">NOTÍCIAS <span class="research-badge" id="badge-news" style="display:none"></span></button>
+        <button class="research-subtab" data-subtab="subtab-intel">INTELIGÊNCIA <span class="research-badge" id="badge-intel" style="display:none"></span></button>
         <button class="research-subtab" data-subtab="subtab-valuation">VALUATION</button>
-        <button class="research-subtab" data-subtab="subtab-notes">NOTAS</button>
         <button class="research-subtab" data-subtab="subtab-historico">HISTÓRICO</button>
       </div>
 
@@ -1372,19 +1378,13 @@
           <span class="research-claude-dot">●</span>
           <span id="research-thesis-banner-text"></span>
         </div>
+        <!-- Version tabs (rendered dynamically) -->
+        <div id="thesis-versions-bar" class="thesis-versions-bar" style="display:none"></div>
         <div id="research-thesis-view" class="research-thesis-view">
           <div class="research-thesis-meta" id="research-thesis-meta"></div>
           <div class="research-thesis-content" id="research-thesis-content">
-            <span class="research-empty-inline">Nenhuma tese ativa. Clique em NOVA TESE para começar.</span>
+            <span class="research-empty-inline">Nenhuma tese ativa. Clique em + NOVA TESE para começar.</span>
           </div>
-        </div>
-        <div class="research-thesis-actions">
-          <button class="bbg-btn" id="btn-research-new-thesis">+ NOVA TESE</button>
-          {% if role == 'admin' %}
-          <span id="research-thesis-approve-wrap" class="hidden">
-            <button class="bbg-btn bbg-btn-primary" id="btn-research-approve-thesis">✓ APROVAR TESE</button>
-          </span>
-          {% endif %}
         </div>
         <!-- Editor (hidden by default) -->
         <div id="research-thesis-editor" class="hidden">
@@ -1396,25 +1396,19 @@
         </div>
       </div>
 
-      <!-- ── FILINGS ─────────────────────────────────────────── -->
-      <div id="subtab-filings" class="research-subtab-content hidden">
-        <div class="research-section-header">
-          <span>FILINGS CVM / SEC</span>
+      <!-- ── INTELIGÊNCIA (Filings + Notícias) ─────────────────── -->
+      <div id="subtab-intel" class="research-subtab-content hidden">
+        <div class="intel-filters">
+          <button class="intel-filter-btn active" data-intel-filter="all">TODOS</button>
+          <button class="intel-filter-btn" data-intel-filter="filing">FILINGS</button>
+          <button class="intel-filter-btn" data-intel-filter="news">NOTÍCIAS</button>
+          <span class="intel-pending-count" id="intel-pending-count"></span>
         </div>
-        <div id="research-filings-list" class="research-list-items"></div>
-        <div id="research-filings-empty" class="research-empty-inline hidden">Nenhum filing registrado.</div>
+        <div id="research-intel-list" class="research-list-items"></div>
+        <div id="research-intel-empty" class="research-empty-inline hidden">Nenhum filing ou notícia registrado.</div>
       </div>
 
-      <!-- ── NOTÍCIAS ────────────────────────────────────────── -->
-      <div id="subtab-news" class="research-subtab-content hidden">
-        <div class="research-section-header">
-          <span>NOTÍCIAS E ARTIGOS</span>
-        </div>
-        <div id="research-news-list" class="research-list-items"></div>
-        <div id="research-news-empty" class="research-empty-inline hidden">Nenhuma notícia registrada.</div>
-      </div>
-
-      <!-- ── VALUATION ───────────────────────────────────────── -->
+      <!-- ── VALUATION + NOTAS ────────────────────────────────── -->
       <div id="subtab-valuation" class="research-subtab-content hidden">
         <div class="research-section-header">
           <span>VALUATION</span>
@@ -1445,11 +1439,9 @@
             <button class="bbg-btn bbg-btn-primary" id="btn-val-save">SALVAR</button>
           </div>
         </div>
-      </div>
 
-      <!-- ── NOTAS ───────────────────────────────────────────── -->
-      <div id="subtab-notes" class="research-subtab-content hidden">
-        <div class="research-section-header">
+        <!-- Notas da equipe -->
+        <div class="research-section-header" style="margin-top:24px">
           <span>NOTAS DA EQUIPE</span>
           <button class="bbg-btn" id="btn-research-new-note" style="font-size:10px">+ NOVA NOTA</button>
         </div>
@@ -1579,6 +1571,21 @@
 </div>
 {% endif %}
 
+<!-- ── Modal: Q&A (Global + Per-Company) ─────────────────────────────── -->
+<div id="qa-modal" class="qa-modal-overlay hidden">
+  <div class="qa-modal">
+    <div class="qa-modal-header">
+      <span id="qa-modal-title">✦ Q&A — BASE COMPLETA</span>
+      <button class="qa-modal-close" id="btn-qa-modal-close">✕</button>
+    </div>
+    <div id="qa-modal-messages" class="qa-modal-messages"></div>
+    <div class="qa-modal-input">
+      <textarea id="qa-modal-input" placeholder="Faça uma pergunta..." rows="2"></textarea>
+      <button id="btn-qa-modal-submit">PERGUNTAR</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /#tab-research -->
 {% endif %}
 
@@ -1657,18 +1664,5 @@
 <script>window.USER_ROLE = "{{ role }}";</script>
 <script src="/static/app.js"></script>
 
-<!-- Q&A per-company sliding panel -->
-<div id="qaPanel" class="qa-panel" style="display:none">
-  <div class="qa-panel-header">
-    <span id="qaPanelTitle">✦ Q&A — <span id="qaPanelTicker"></span></span>
-    <button onclick="closeQAPanel()" class="qa-panel-close">✕</button>
-  </div>
-  <div id="qaMessages" class="qa-messages"></div>
-  <div class="qa-panel-input">
-    <textarea id="qaInput" placeholder="Faça uma pergunta sobre a empresa..." rows="2"></textarea>
-    <button onclick="submitQAQuestion()" id="qaSubmitBtn">PERGUNTAR</button>
-  </div>
-</div>
-<div id="qaOverlay" class="qa-overlay" onclick="closeQAPanel()" style="display:none"></div>
 </body>
 </html>
