@@ -4,26 +4,25 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:          #06070a;
-  --surface:     #0b0c0e;
-  --surface2:    #14161a;
-  --surface3:    #1d2026;
-  --border:      #2a2e36;
-  --border2:     #3a3f4a;
-  --orange:      #ff9933;
-  --orange-dim:  rgba(255,153,51,0.10);
-  --orange-text: #ffb566;
-  --amber:       #d4a255;
-  --text:        #e8e8ea;
-  --text-muted:  #9aa0aa;
-  --text-dim:    #5a5f6a;
-  --green:       #7dbf7d;
-  --green-dim:   rgba(125,191,125,0.12);
-  --red:         #e57373;
-  --red-dim:     rgba(229,115,115,0.12);
-  --cyan:        #6fb8c7;
-  --yellow:      #e6c35a;
-  --mono: 'Cascadia Code', 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --bg:          #000000;
+  --surface:     #0d0d0d;
+  --surface2:    #141414;
+  --surface3:    #1c1c1c;
+  --border:      #2a2a2a;
+  --border2:     #3a3a3a;
+  --orange:      #ff8c00;
+  --orange-dim:  rgba(255,140,0,0.12);
+  --orange-text: #ffaa33;
+  --text:        #ffffff;
+  --text-muted:  #888888;
+  --text-dim:    #444444;
+  --green:       #00cc44;
+  --green-dim:   rgba(0,204,68,0.1);
+  --red:         #ff3333;
+  --red-dim:     rgba(255,51,51,0.1);
+  --cyan:        #00aacc;
+  --yellow:      #ffcc00;
+  --mono: 'Cascadia Code', 'Courier New', 'Consolas', monospace;
   --topbar-h:  54px;
   --stats-h:   32px;
   --fn-h:      30px;
@@ -33,8 +32,7 @@ html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
   height: 100%;
 }
 
@@ -1902,26 +1900,24 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   border-bottom: 2px solid transparent;
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
-  letter-spacing: 0.8px;
-  padding: 8px 16px 9px;
+  letter-spacing: 0.5px;
+  padding: 5px 12px 6px;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  transition: color 0.1s, border-color 0.1s;
   white-space: nowrap;
 }
 .research-subtab:hover {
   color: var(--text);
-  background: var(--orange-dim);
 }
 .research-subtab.active {
   color: var(--orange-text);
   border-bottom-color: var(--orange);
-  background: linear-gradient(180deg, transparent 30%, var(--orange-dim));
 }
 
 .research-subtab-content {
-  padding: 22px 0;
+  padding: 18px 0;
 }
 
 /* Thesis view */
@@ -2379,61 +2375,57 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 
 .qa-message {
-  padding: 11px 14px;
+  padding: 10px 12px;
   border-radius: 6px;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .qa-message-user {
-  background: var(--surface3);
-  border: 1px solid var(--border2);
-  border-left: 2px solid var(--amber);
+  background: #1a2a3a;
+  border: 1px solid #2a3a5a;
   align-self: flex-end;
   max-width: 90%;
 }
 
 .qa-message-assistant {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--cyan);
+  background: #111;
+  border: 1px solid #2a2a4a;
   align-self: flex-start;
   max-width: 100%;
 }
 
 .qa-message-role {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  margin-bottom: 5px;
-  color: var(--amber);
+  margin-bottom: 4px;
+  color: #4fc3f7;
 }
 
 .qa-message-assistant .qa-message-role {
-  color: var(--cyan);
+  color: #81c784;
 }
 
 .qa-message-content {
-  color: var(--text);
+  color: #ccc;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .qa-time {
   font-weight: 400;
-  color: var(--text-dim);
+  color: #555;
   margin-left: 6px;
-  font-size: 10px;
 }
 
 .qa-sources {
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
+  margin-top: 6px;
+  font-size: 10px;
+  color: #666;
 }
 
 .qa-citation {
-  color: var(--cyan);
+  color: #4fc3f7;
   cursor: pointer;
   margin-right: 4px;
 }
@@ -2649,19 +2641,16 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   text-align: center;
 }
 .research-dashboard-card-value {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: bold;
-  color: var(--text);
-  line-height: 1;
-  margin-bottom: 6px;
-}
-.research-dashboard-card:first-child .research-dashboard-card-value {
   color: var(--orange-text);
+  line-height: 1;
+  margin-bottom: 4px;
 }
 .research-dashboard-card-label {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: bold;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   color: var(--text-muted);
   text-transform: uppercase;
 }
@@ -2669,13 +2658,13 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   margin-top: 16px;
 }
 .research-dashboard-section-title {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 .research-dashboard-chips {
   display: flex;
@@ -2686,16 +2675,15 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   background: var(--surface2);
   border: 1px solid var(--border2);
   border-radius: 3px;
-  padding: 5px 11px;
-  font-size: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
   font-weight: bold;
-  color: var(--text);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  transition: background 0.1s, color 0.1s;
 }
 .research-dashboard-chip:hover {
-  background: var(--orange-dim);
-  border-color: var(--orange);
+  background: var(--surface3);
   color: var(--orange-text);
 }
 
@@ -2801,98 +2789,89 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 
 .qa-modal {
   background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  width: 680px;
-  max-width: 92vw;
-  max-height: 84vh;
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  width: 620px;
+  max-width: 90vw;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
 }
 
 .qa-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  border-bottom: 1px solid #2a2a4a;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  color: var(--cyan);
+  color: #4fc3f7;
 }
 
 .qa-modal-close {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: #888;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   padding: 0 4px;
-  line-height: 1;
 }
 .qa-modal-close:hover { color: var(--text); }
 
 .qa-modal-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 220px;
-  max-height: 52vh;
+  min-height: 200px;
+  max-height: 50vh;
 }
 
 .qa-modal-input {
-  padding: 14px;
-  border-top: 1px solid var(--border);
+  padding: 12px;
+  border-top: 1px solid #2a2a4a;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .qa-modal-input textarea {
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: 5px;
-  color: var(--text);
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 11px 14px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 11px;
+  padding: 8px 10px;
   resize: none;
   font-family: var(--mono);
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.qa-modal-input textarea::placeholder {
-  color: var(--text-dim);
 }
 .qa-modal-input textarea:focus {
-  border-color: var(--orange);
+  border-color: #4fc3f7;
   outline: none;
-  box-shadow: 0 0 0 2px var(--orange-dim);
 }
 
 .qa-modal-input button {
-  background: transparent;
-  border: 1px solid var(--cyan);
-  color: var(--cyan);
+  background: #1a3a5a;
+  border: 1px solid #4fc3f7;
+  color: #4fc3f7;
   border-radius: 4px;
-  padding: 8px 16px;
+  padding: 8px;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.05em;
   align-self: flex-end;
-  min-width: 130px;
-  transition: background 0.12s, color 0.12s;
+  min-width: 120px;
 }
 .qa-modal-input button:hover {
-  background: var(--cyan);
-  color: var(--bg);
+  background: #4fc3f7;
+  color: #000;
 }
 .qa-modal-input button:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
