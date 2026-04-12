@@ -5034,11 +5034,18 @@ const Research = (() => {
     document.querySelectorAll('.research-subtab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.research-subtab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.research-subtab-content').forEach(c => c.classList.add('hidden'));
         btn.classList.add('active');
         const target = btn.dataset.subtab;
-        const panel  = $(target);
-        if (panel) panel.classList.remove('hidden');
+        const panels = document.querySelectorAll('.research-subtab-content');
+        if (target === '__all__') {
+          panels.forEach(c => c.classList.remove('hidden'));
+        } else {
+          panels.forEach(c => c.classList.add('hidden'));
+          const panel = $(target);
+          if (panel) panel.classList.remove('hidden');
+        }
+        document.querySelector('.research-subtabs')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
   }
@@ -5528,6 +5535,12 @@ const Research = (() => {
     $('qa-modal')?.addEventListener('click', (e) => {
       if (e.target.id === 'qa-modal') closeQAModal();
     });
+    $('qa-modal-input')?.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) {
+        ev.preventDefault();
+        _submitQAModal();
+      }
+    });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !$('qa-modal').classList.contains('hidden')) {
         closeQAModal();
@@ -5790,8 +5803,8 @@ const Research = (() => {
       ? `✦ Q&A — ${_qaTicker}`
       : '✦ Q&A — BASE COMPLETA';
     input.placeholder = _qaTicker
-      ? `Pergunte sobre ${_qaTicker}...`
-      : 'Pergunte sobre qualquer empresa da base...';
+      ? `Pergunte sobre ${_qaTicker}...  (Enter envia · Shift+Enter quebra linha)`
+      : 'Pergunte sobre qualquer empresa da base...  (Enter envia · Shift+Enter quebra linha)';
 
     modal.classList.remove('hidden');
     input.focus();
