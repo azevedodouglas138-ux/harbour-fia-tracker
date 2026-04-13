@@ -4927,14 +4927,16 @@ const Research = (() => {
         if (c.ticker === _currentTicker) row.classList.add('active');
         row.dataset.ticker = c.ticker;
 
-        // Thesis status indicator
+        // Thesis status indicator (always rendered to keep tickers aligned)
+        let dot;
         if (c.has_pending_draft) {
-          const dot = el('span', 'si-status si-status-draft', '◐');
-          row.appendChild(dot);
+          dot = el('span', 'si-status si-status-draft', '◐');
         } else if (c.has_active_thesis) {
-          const dot = el('span', 'si-status si-status-active', '●');
-          row.appendChild(dot);
+          dot = el('span', 'si-status si-status-active', '●');
+        } else {
+          dot = el('span', 'si-status', '');
         }
+        row.appendChild(dot);
 
         const span = el('span', 'si-ticker', c.ticker);
         row.appendChild(span);

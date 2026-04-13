@@ -2690,8 +2690,12 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 /* ── Sidebar thesis status indicators ───────────────────────────────── */
 .si-status {
   font-size: 8px;
-  margin-right: 5px;
+  margin-right: 6px;
   flex-shrink: 0;
+  display: inline-block;
+  width: 10px;
+  text-align: center;
+  line-height: 1;
 }
 .si-status-active { color: #4CAF50; }
 .si-status-draft  { color: var(--orange); }
