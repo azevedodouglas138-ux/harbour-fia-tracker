@@ -643,6 +643,24 @@ document.getElementById('btn-refresh').addEventListener('click', async () => {
   btn.disabled = false;
 });
 
+// ── Theme toggle (Light / Dark) ──────────────────────────────────
+(function initThemeToggle() {
+  const root = document.documentElement;
+  const buttons = document.querySelectorAll('.bbg-theme-btn');
+  if (!buttons.length) return;
+  const sync = () => {
+    const cur = root.getAttribute('data-theme') || 'dark';
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.themeSet === cur));
+  };
+  buttons.forEach(b => b.addEventListener('click', () => {
+    const t = b.dataset.themeSet;
+    root.setAttribute('data-theme', t);
+    try { localStorage.setItem('harbour-theme', t); } catch (e) {}
+    sync();
+  }));
+  sync();
+})();
+
 // ── Tabs ─────────────────────────────────────────────────────────
 document.querySelectorAll('.bbg-fn').forEach(btn => {
   btn.addEventListener('click', () => {

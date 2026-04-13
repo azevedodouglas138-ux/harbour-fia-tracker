@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HARBOUR IAT FIA</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <script>
+    (function(){
+      try {
+        var t = localStorage.getItem('harbour-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch(e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
@@ -32,6 +40,10 @@
   </div>
 
   <div class="bbg-topbar-actions">
+    <div class="bbg-theme-toggle" role="group" aria-label="Tema">
+      <button type="button" class="bbg-theme-btn" data-theme-set="light" title="Tema claro">&#9728; LIGHT</button>
+      <button type="button" class="bbg-theme-btn" data-theme-set="dark" title="Tema escuro">&#9790; DARK</button>
+    </div>
     <button class="bbg-btn" id="btn-refresh">&#8635; REFRESH</button>
     {% if role == 'admin' %}
     <button class="bbg-btn" id="btn-export-csv">&#8595; CSV</button>

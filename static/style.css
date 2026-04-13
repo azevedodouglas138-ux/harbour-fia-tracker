@@ -26,6 +26,29 @@
   --topbar-h:  54px;
   --stats-h:   32px;
   --fn-h:      30px;
+  --scroll-track: #1a1a1a;
+}
+
+html[data-theme="light"] {
+  --bg:          #f5f1e8;
+  --surface:     #ffffff;
+  --surface2:    #ebe6d9;
+  --surface3:    #ddd7c5;
+  --border:      #d4cfc0;
+  --border2:     #bdb8a8;
+  --orange:      #cc6600;
+  --orange-dim:  rgba(204,102,0,0.10);
+  --orange-text: #b35900;
+  --text:        #1a1a1a;
+  --text-muted:  #6b6b6b;
+  --text-dim:    #a8a39a;
+  --green:       #008833;
+  --green-dim:   rgba(0,136,51,0.08);
+  --red:         #cc1f1f;
+  --red-dim:     rgba(204,31,31,0.08);
+  --cyan:        #0077aa;
+  --yellow:      #b8860b;
+  --scroll-track: #e4dfd0;
 }
 
 html, body {
@@ -38,14 +61,14 @@ html, body {
 
 /* ═══════════════ SCROLLBARS ════════════════════════════════════ */
 /* Firefox */
-* { scrollbar-width: thin; scrollbar-color: var(--orange) #1a1a1a; }
+* { scrollbar-width: thin; scrollbar-color: var(--orange) var(--scroll-track); }
 
 /* Chrome / Edge / Safari */
 ::-webkit-scrollbar              { width: 6px; height: 6px; }
-::-webkit-scrollbar-track        { background: #1a1a1a; }
+::-webkit-scrollbar-track        { background: var(--scroll-track); }
 ::-webkit-scrollbar-thumb        { background: var(--orange); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover  { background: var(--orange-text); }
-::-webkit-scrollbar-corner       { background: #1a1a1a; }
+::-webkit-scrollbar-corner       { background: var(--scroll-track); }
 
 /* ═══════════════ TOP BAR ═══════════════════════════════════════ */
 .bbg-topbar {
@@ -113,6 +136,35 @@ html, body {
   border-color: var(--border2); color: var(--text-muted);
 }
 .bbg-btn-logout:hover { border-color: var(--red); color: var(--red); background: rgba(255,51,51,0.08); }
+
+/* ═══════════════ THEME TOGGLE ══════════════════════════════════ */
+.bbg-theme-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+.bbg-theme-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: all .12s;
+  border-right: 1px solid var(--border2);
+}
+.bbg-theme-btn:last-child { border-right: none; }
+.bbg-theme-btn:hover { color: var(--orange); background: var(--orange-dim); }
+.bbg-theme-btn.active {
+  background: var(--orange);
+  color: #000;
+}
+.bbg-theme-btn.active:hover { background: var(--orange-text); color: #000; }
 
 /* ═══════════════ STATS BAR ═════════════════════════════════════ */
 .bbg-statsbar {
@@ -257,8 +309,8 @@ td.upside-neg  { color: var(--red); }
   display: none;
   position: fixed;
   width: 260px; padding: 8px 10px;
-  background: #1a1a1a; border: 1px solid #444;
-  color: #ccc; font-size: 10px; font-weight: 400;
+  background: var(--surface3); border: 1px solid var(--border2);
+  color: var(--text); font-size: 10px; font-weight: 400;
   line-height: 1.5; border-radius: 4px;
   white-space: normal; text-align: left;
   pointer-events: none;
@@ -974,7 +1026,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 /* ── Weighted Row (tfoot) ─────────────────────────────────── */
 .weighted-row td {
   border-top: 1px solid var(--orange);
-  background: #0e0e0e;
+  background: var(--surface);
   font-weight: 700;
   color: var(--orange);
   font-size: 0.78rem;
