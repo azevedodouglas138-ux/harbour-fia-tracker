@@ -1919,6 +1919,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .research-subtab-content {
   padding: 18px 0;
 }
+.research-subtab-content.hidden { display: none; }
 
 /* Thesis view */
 .research-thesis-meta {
