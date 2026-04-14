@@ -781,7 +781,7 @@
     <!-- VaR / CVaR -->
     <div class="chart-card risk-card" id="risk-var-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">VALUE AT RISK (VaR / CVaR)</span>
+        <span class="chart-card-title">VALUE AT RISK (VaR / CVaR)</span><span class="col-info" data-tip-key="card_var">ⓘ</span>
         <div class="risk-controls">
           <span class="risk-ctrl-label">JANELA:</span>
           <button class="bbg-btn risk-btn active" data-var-window="252">252D</button>
@@ -800,7 +800,7 @@
     <!-- Stress Test -->
     <div class="chart-card risk-card" id="risk-stress-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">STRESS TEST — CENÁRIOS HISTÓRICOS</span>
+        <span class="chart-card-title">STRESS TEST — CENÁRIOS HISTÓRICOS</span><span class="col-info" data-tip-key="card_stress">ⓘ</span>
         <div class="risk-controls">
           <button class="bbg-btn risk-btn active" data-stress="covid">COVID</button>
           <button class="bbg-btn risk-btn" data-stress="joesley">JOESLEY</button>
@@ -826,7 +826,7 @@
     <!-- Correlação -->
     <div class="chart-card risk-card" id="risk-corr-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">MATRIZ DE CORRELAÇÃO</span>
+        <span class="chart-card-title">MATRIZ DE CORRELAÇÃO</span><span class="col-info" data-tip-key="card_correlation">ⓘ</span>
         <div class="risk-controls">
           <button class="bbg-btn risk-btn active" data-corr-window="60">60D</button>
           <button class="bbg-btn risk-btn" data-corr-window="252">252D</button>
@@ -840,7 +840,7 @@
     <!-- Risk Attribution -->
     <div class="chart-card risk-card" id="risk-attr-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">RISK ATTRIBUTION — CONTRIBUIÇÃO AO RISCO</span>
+        <span class="chart-card-title">RISK ATTRIBUTION — CONTRIBUIÇÃO AO RISCO</span><span class="col-info" data-tip-key="card_attribution">ⓘ</span>
         <div class="risk-controls">
           <button class="bbg-btn risk-btn active" data-attr-window="60">60D</button>
           <button class="bbg-btn risk-btn" data-attr-window="252">252D</button>
@@ -858,7 +858,7 @@
     <!-- Rolling Beta -->
     <div class="chart-card risk-card" id="risk-beta-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">BETA ROLANTE 60D vs. IBOV</span>
+        <span class="chart-card-title">BETA ROLANTE 60D vs. IBOV</span><span class="col-info" data-tip-key="card_rolling_beta">ⓘ</span>
         <div class="risk-badge-row" id="risk-beta-badges"></div>
       </div>
       <canvas id="risk-beta-chart" height="180"></canvas>
@@ -867,7 +867,7 @@
     <!-- Liquidez -->
     <div class="chart-card risk-card" id="risk-liq-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">RISCO DE LIQUIDEZ</span>
+        <span class="chart-card-title">RISCO DE LIQUIDEZ</span><span class="col-info" data-tip-key="card_liquidity">ⓘ</span>
       </div>
       <div id="risk-liq-content">
         <div class="risk-loading">CARREGANDO LIQUIDEZ...</div>
@@ -881,7 +881,7 @@
     <!-- Tracking Error & Information Ratio -->
     <div class="chart-card risk-card" id="risk-te-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">TRACKING ERROR & INFORMATION RATIO</span>
+        <span class="chart-card-title">TRACKING ERROR & INFORMATION RATIO</span><span class="col-info" data-tip-key="card_tracking_error">ⓘ</span>
         <div class="risk-controls">
           <span class="risk-ctrl-label">JANELA:</span>
           <button class="bbg-btn risk-btn active" data-te-window="252">252D</button>
@@ -897,7 +897,7 @@
     <!-- Sortino & Calmar -->
     <div class="chart-card risk-card" id="risk-sortino-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">SORTINO & CALMAR RATIO</span>
+        <span class="chart-card-title">SORTINO & CALMAR RATIO</span><span class="col-info" data-tip-key="card_sortino_calmar">ⓘ</span>
       </div>
       <div id="risk-sortino-content">
         <div class="risk-loading">CARREGANDO...</div>
@@ -911,7 +911,7 @@
     <!-- Upside / Downside Capture -->
     <div class="chart-card risk-card" id="risk-capture-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">UPSIDE / DOWNSIDE CAPTURE vs. IBOV</span>
+        <span class="chart-card-title">UPSIDE / DOWNSIDE CAPTURE vs. IBOV</span><span class="col-info" data-tip-key="card_capture">ⓘ</span>
         <div class="risk-controls">
           <span class="risk-ctrl-label">JANELA:</span>
           <button class="bbg-btn risk-btn active" data-cap-window="252">252D</button>
@@ -927,7 +927,7 @@
     <!-- Concentração Setorial (HHI) -->
     <div class="chart-card risk-card" id="risk-concentration-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">CONCENTRAÇÃO SETORIAL (HHI)</span>
+        <span class="chart-card-title">CONCENTRAÇÃO SETORIAL (HHI)</span><span class="col-info" data-tip-key="card_concentration">ⓘ</span>
       </div>
       <div id="risk-concentration-content">
         <div class="risk-loading">CARREGANDO...</div>
@@ -941,7 +941,7 @@
     <!-- Exposição Cambial (BDRs) -->
     <div class="chart-card risk-card" id="risk-fx-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">EXPOSIÇÃO CAMBIAL (BDRs)</span>
+        <span class="chart-card-title">EXPOSIÇÃO CAMBIAL (BDRs)</span><span class="col-info" data-tip-key="card_fx">ⓘ</span>
       </div>
       <div id="risk-fx-content">
         <div class="risk-loading">CARREGANDO...</div>
@@ -951,7 +951,7 @@
     <!-- Rolling Sharpe / Sortino -->
     <div class="chart-card risk-card" id="risk-rolling-ratios-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">ROLLING SHARPE / SORTINO</span>
+        <span class="chart-card-title">ROLLING SHARPE / SORTINO</span><span class="col-info" data-tip-key="card_rolling_ratios">ⓘ</span>
         <div class="risk-badge-row" id="risk-rolling-badges"></div>
         <div class="risk-controls" style="margin-top:4px">
           <button class="bbg-btn risk-btn active" data-roll-window="63">63D</button>
@@ -966,7 +966,7 @@
   <div class="risk-row">
     <div class="chart-card risk-card" id="risk-dist-card" style="grid-column: 1 / -1">
       <div class="chart-card-header">
-        <span class="chart-card-title">DISTRIBUIÇÃO DE RETORNOS DIÁRIOS</span>
+        <span class="chart-card-title">DISTRIBUIÇÃO DE RETORNOS DIÁRIOS</span><span class="col-info" data-tip-key="card_return_dist">ⓘ</span>
         <div class="risk-controls">
           <span class="risk-ctrl-label">JANELA:</span>
           <button class="bbg-btn risk-btn active" data-dist-window="252">252D</button>
@@ -1674,7 +1674,10 @@
 </div>
 
 <div id="col-tooltip"></div>
-<script>window.USER_ROLE = "{{ role }}";</script>
+<script>
+  window.USER_ROLE = "{{ role }}";
+  window.RISK_METHODOLOGY = {{ risk_methodology | tojson | safe }};
+</script>
 <script src="/static/app.js"></script>
 
 </body>

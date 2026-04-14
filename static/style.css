@@ -317,6 +317,37 @@ td.upside-neg  { color: var(--red); }
   z-index: 9999;
 }
 
+/* Variante expandida para metodologia auditável (aba Risco) */
+#col-tooltip.expanded {
+  width: 440px; padding: 12px 14px;
+  font-size: 11px; line-height: 1.55;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+}
+#col-tooltip.expanded .tip-title {
+  font-size: 12px; font-weight: 600;
+  color: var(--text); margin-bottom: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border2);
+}
+#col-tooltip.expanded .tip-section { margin-bottom: 8px; }
+#col-tooltip.expanded .tip-section:last-child { margin-bottom: 0; }
+#col-tooltip.expanded .tip-label {
+  display: block;
+  font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-muted, #888); opacity: 0.8;
+  margin-bottom: 2px;
+}
+#col-tooltip.expanded .tip-body {
+  color: var(--text); white-space: pre-wrap;
+}
+#col-tooltip.expanded .tip-body.tip-formula {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10px;
+  background: rgba(255,255,255,0.04);
+  border-left: 2px solid var(--cyan, #00bcd4);
+  padding: 4px 6px; border-radius: 2px;
+}
+
 .range-bar  { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
 .range-track { width: 44px; height: 2px; background: var(--border2); border-radius: 1px; }
 .range-fill  { height: 100%; background: var(--cyan); border-radius: 1px; }

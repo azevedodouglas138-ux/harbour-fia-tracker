@@ -2440,22 +2440,22 @@ function _renderVaR(d, el) {
   el.innerHTML = `
     <div class="risk-var-grid">
       <div class="risk-metric-block">
-        <div class="risk-metric-label">VaR 95% ${h}D</div>
+        <div class="risk-metric-label">VaR 95% ${h}D <span class="col-info" data-tip-key="var_95">ⓘ</span></div>
         <div class="risk-metric-val negative">-${fmt(d[`var_95_${sfx}_pct`],2)}%</div>
         <div class="risk-metric-sub">${fmtBRL(d[`var_95_${sfx}_rs`])}</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">VaR 99% ${h}D</div>
+        <div class="risk-metric-label">VaR 99% ${h}D <span class="col-info" data-tip-key="var_99">ⓘ</span></div>
         <div class="risk-metric-val negative">-${fmt(d[`var_99_${sfx}_pct`],2)}%</div>
         <div class="risk-metric-sub">${fmtBRL(d[`var_99_${sfx}_rs`])}</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">CVaR 95% ${h}D</div>
+        <div class="risk-metric-label">CVaR 95% ${h}D <span class="col-info" data-tip-key="cvar">ⓘ</span></div>
         <div class="risk-metric-val negative">-${fmt(d[`cvar_95_${sfx}_pct`],2)}%</div>
         <div class="risk-metric-sub">${fmtBRL(d[`cvar_95_${sfx}_rs`])}</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">CVaR 99% ${h}D</div>
+        <div class="risk-metric-label">CVaR 99% ${h}D <span class="col-info" data-tip-key="cvar">ⓘ</span></div>
         <div class="risk-metric-val negative">-${fmt(d[`cvar_99_${sfx}_pct`],2)}%</div>
         <div class="risk-metric-sub">${fmtBRL(d[`cvar_99_${sfx}_rs`])}</div>
       </div>
@@ -2707,7 +2707,7 @@ async function _loadRollingBeta() {
     const min_v = Math.min(...series.map(p => p.beta));
     const max_v = Math.max(...series.map(p => p.beta));
     if (badges) badges.innerHTML = `
-      <span class="risk-badge">ATUAL: <b class="${colorCls(last - 1)}">${fmt(last,2)}</b></span>
+      <span class="risk-badge">ATUAL <span class="col-info" data-tip-key="rolling_beta">ⓘ</span>: <b class="${colorCls(last - 1)}">${fmt(last,2)}</b></span>
       <span class="risk-badge dim">MÉD: ${fmt(avg,2)}</span>
       <span class="risk-badge dim">MÍN: ${fmt(min_v,2)}</span>
       <span class="risk-badge dim">MÁX: ${fmt(max_v,2)}</span>
@@ -2850,17 +2850,17 @@ async function _loadTrackingError() {
   el.innerHTML = `
     <div class="risk-var-grid">
       <div class="risk-metric-block">
-        <div class="risk-metric-label">TRACKING ERROR (a.a.)<span class="risk-metric-info">i<span class="risk-metric-tooltip">Desvio padrão anualizado dos retornos diários ativos (fundo − IBOV). Mede o quanto o portfólio desvia do benchmark. TE alto indica gestão mais ativa e menos correlacionada com o índice.</span></span></div>
+        <div class="risk-metric-label">TRACKING ERROR (a.a.) <span class="col-info" data-tip-key="tracking_error">ⓘ</span></div>
         <div class="risk-metric-val">${fmt(d.tracking_error,2)}%</div>
         <div class="risk-metric-sub">Janela: ${d.n_dias}d</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">INFORMATION RATIO<span class="risk-metric-info">i<span class="risk-metric-tooltip">Retorno ativo anualizado dividido pelo Tracking Error. Mede a eficiência do gestor: quanto alpha foi gerado por unidade de risco ativo. IR &gt; 0,5 = bom · IR &gt; 1,0 = excelente.</span></span></div>
+        <div class="risk-metric-label">INFORMATION RATIO <span class="col-info" data-tip-key="information_ratio">ⓘ</span></div>
         <div class="risk-metric-val ${irCls}">${d.information_ratio != null ? fmt(d.information_ratio,2) : '—'}</div>
         <div class="risk-metric-sub">Retorno ativo / TE</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">RETORNO ATIVO (a.a.)<span class="risk-metric-info">i<span class="risk-metric-tooltip">Diferença entre o retorno anualizado do fundo e o retorno anualizado do IBOV no período selecionado. Também chamado de Alpha — quanto o fundo ganhou (ou perdeu) além do benchmark.</span></span></div>
+        <div class="risk-metric-label">RETORNO ATIVO (a.a.) <span class="col-info" data-tip-key="retorno_ativo">ⓘ</span></div>
         <div class="risk-metric-val ${retCls}">${sign(d.retorno_ativo_anual)}${fmt(Math.abs(d.retorno_ativo_anual),2)}%</div>
         <div class="risk-metric-sub">vs. IBOV</div>
       </div>
@@ -2903,8 +2903,8 @@ async function _loadSortinoCal() {
     <table class="risk-table">
       <thead><tr>
         <th>JANELA</th>
-        <th class="num">SORTINO</th>
-        <th class="num">CALMAR</th>
+        <th class="num">SORTINO <span class="col-info" data-tip-key="sortino">ⓘ</span></th>
+        <th class="num">CALMAR <span class="col-info" data-tip-key="calmar">ⓘ</span></th>
         <th class="num">VOL. BAIXA</th>
         <th class="num">MAX DD</th>
       </tr></thead>
@@ -2940,12 +2940,12 @@ async function _loadCapture() {
   el.innerHTML = `
     <div class="risk-var-grid">
       <div class="risk-metric-block">
-        <div class="risk-metric-label">UPSIDE CAPTURE</div>
+        <div class="risk-metric-label">UPSIDE CAPTURE <span class="col-info" data-tip-key="capture_up">ⓘ</span></div>
         <div class="risk-metric-val ${upCls}">${d.upside_capture != null ? upIcon+' '+fmt(d.upside_capture,1)+'%' : '—'}</div>
         <div class="risk-metric-sub">${d.n_dias_up} dias de alta IBOV</div>
       </div>
       <div class="risk-metric-block">
-        <div class="risk-metric-label">DOWNSIDE CAPTURE</div>
+        <div class="risk-metric-label">DOWNSIDE CAPTURE <span class="col-info" data-tip-key="capture_down">ⓘ</span></div>
         <div class="risk-metric-val ${dnCls}">${d.downside_capture != null ? dnIcon+' '+fmt(d.downside_capture,1)+'%' : '—'}</div>
         <div class="risk-metric-sub">${d.n_dias_down} dias de baixa IBOV</div>
       </div>
@@ -2994,7 +2994,7 @@ async function _loadConcentration() {
   el.innerHTML = `
     <div class="risk-var-grid" style="margin-bottom:10px">
       <div class="risk-metric-block">
-        <div class="risk-metric-label">ÍNDICE HHI</div>
+        <div class="risk-metric-label">ÍNDICE HHI <span class="col-info" data-tip-key="hhi_concentration">ⓘ</span></div>
         <div class="risk-metric-val ${hhiCls}">${d.hhi}</div>
         <div class="risk-metric-sub">${hhiLabel}</div>
       </div>
@@ -3094,8 +3094,8 @@ async function _loadRollingRatios() {
   if (badges) {
     const sc = d.current_sharpe, so = d.current_sortino, as_ = d.avg_sharpe;
     badges.innerHTML = `
-      <span class="risk-badge">SHARPE: <b class="${colorCls(sc)}">${sc != null ? fmt(sc,2) : '—'}</b></span>
-      <span class="risk-badge">SORTINO: <b class="${colorCls(so)}">${so != null ? fmt(so,2) : '—'}</b></span>
+      <span class="risk-badge">SHARPE <span class="col-info" data-tip-key="rolling_sharpe">ⓘ</span>: <b class="${colorCls(sc)}">${sc != null ? fmt(sc,2) : '—'}</b></span>
+      <span class="risk-badge">SORTINO <span class="col-info" data-tip-key="rolling_sortino">ⓘ</span>: <b class="${colorCls(so)}">${so != null ? fmt(so,2) : '—'}</b></span>
       <span class="risk-badge dim">MÉD SHARPE: ${as_ != null ? fmt(as_,2) : '—'}</span>
     `;
   }
@@ -3515,18 +3515,76 @@ function loadFinancialsTab() {
 }
 
 // ── Column info tooltip ───────────────────────────────────────────
+// Suporta dois modos:
+//  (a) data-tip="..."          → tooltip simples 260px (legado)
+//  (b) data-tip-key="chave"    → lookup em window.RISK_METHODOLOGY
+//                                renderiza tooltip 440px com seções
+//                                estruturadas (o que é / fórmula /
+//                                janela / fonte / interpretação)
 (function () {
   const tip = document.getElementById('col-tooltip');
   if (!tip) return;
+
+  const SECTION_LABELS = {
+    what:           'O QUE É',
+    formula:        'FÓRMULA / CÁLCULO',
+    window:         'JANELA E ANUALIZAÇÃO',
+    source:         'FONTE DE DADOS',
+    interpretation: 'INTERPRETAÇÃO',
+  };
+
+  function renderStructured(entry) {
+    tip.textContent = '';
+    tip.classList.add('expanded');
+
+    if (entry.title) {
+      const t = document.createElement('div');
+      t.className = 'tip-title';
+      t.textContent = entry.title;
+      tip.appendChild(t);
+    }
+    for (const key of ['what', 'formula', 'window', 'source', 'interpretation']) {
+      const body = entry[key];
+      if (!body) continue;
+      const section = document.createElement('div');
+      section.className = 'tip-section';
+      const lbl = document.createElement('span');
+      lbl.className = 'tip-label';
+      lbl.textContent = SECTION_LABELS[key];
+      const bd = document.createElement('div');
+      bd.className = 'tip-body' + (key === 'formula' ? ' tip-formula' : '');
+      bd.textContent = body;
+      section.appendChild(lbl);
+      section.appendChild(bd);
+      tip.appendChild(section);
+    }
+  }
+
+  function renderSimple(text) {
+    tip.classList.remove('expanded');
+    tip.textContent = text;
+  }
+
   document.addEventListener('mouseover', e => {
     const el = e.target.closest('.col-info');
     if (!el) return;
-    tip.textContent = el.dataset.tip || '';
+
+    const key = el.dataset.tipKey;
+    const methodology = (window.RISK_METHODOLOGY && key) ? window.RISK_METHODOLOGY[key] : null;
+
+    if (methodology) {
+      renderStructured(methodology);
+    } else {
+      if (key) console.warn('[tooltip] chave não encontrada em RISK_METHODOLOGY:', key);
+      renderSimple(el.dataset.tip || '');
+    }
+
+    tip.style.display = 'block';
+    const tipW = tip.offsetWidth || (methodology ? 440 : 260);
     const rect = el.getBoundingClientRect();
-    const left = Math.min(rect.right - 260, window.innerWidth - 270);
+    const left = Math.min(rect.right - tipW, window.innerWidth - tipW - 10);
     tip.style.left = Math.max(6, left) + 'px';
     tip.style.top  = (rect.bottom + 6) + 'px';
-    tip.style.display = 'block';
   });
   document.addEventListener('mouseout', e => {
     if (e.target.closest('.col-info')) tip.style.display = 'none';
