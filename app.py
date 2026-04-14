@@ -5063,6 +5063,124 @@ def api_research_portfolio_history():
     return jsonify({"events": _rdb.get_portfolio_audit_log(limit=limit)})
 
 
+def _build_portfolio_qa_context(months=12, per_company_news=3, company_limit=30):
+    """Monta o contexto textual do Q&A de portfólio global.
+
+    Inclui: tese macro ativa, regras (tipo='REGRA'), decisões recentes,
+    e por empresa INVESTIDA: tese ATIVA + últimas N notícias/filings aprovados.
+    Retorna (context_text, sources_list).
+    """
+    parts   = []
+    sources = []
+
+    def _cite(ref, body):
+        parts.append(f"[{ref}]\n{body.strip()}")
+
+    # 1) Tese macro
+    thesis = _rdb.get_active_portfolio_thesis()
+    if thesis:
+        ref = f"Tese do Portfólio v{thesis.get('version')}"
+        _cite(ref, f"{thesis.get('title') or ''}\n{thesis.get('body_md') or ''}")
+        sources.append({"type": "portfolio_thesis", "id": thesis["id"],
+                        "ticker": None,
+                        "snippet": (thesis.get("title") or "Tese do Portfólio")[:200]})
+
+    # 2) Regras ativas
+    for r in _rdb.list_portfolio_rules(limit=30):
+        ref = f"Regra #{r['id']}"
+        body = f"{r.get('titulo','')}\n{r.get('rationale_md','') or ''}"
+        _cite(ref, body)
+        sources.append({"type": "portfolio_rule", "id": r["id"], "ticker": None,
+                        "snippet": (r.get("titulo") or "")[:200]})
+
+    # 3) Decisões recentes
+    for d in _rdb.list_recent_portfolio_decisions(months=months, limit=40):
+        tickers_str = ""
+        try:
+            tks = json.loads(d.get("tickers_json") or "[]")
+            if tks: tickers_str = " " + ",".join(tks)
+        except Exception:
+            pass
+        subtipo = f" {d.get('subtipo')}" if d.get("subtipo") else ""
+        ref = f"Decisão #{d['id']}: {d.get('tipo','')}{subtipo}{tickers_str}"
+        pa = d.get("peso_antes"); pd = d.get("peso_depois")
+        peso_line = ""
+        if pa is not None or pd is not None:
+            peso_line = f"\nPeso: {pa if pa is not None else '?'}% → {pd if pd is not None else '?'}%"
+        body = (f"Data: {d.get('date','')}\n"
+                f"{d.get('titulo','')}{peso_line}\n"
+                f"{d.get('rationale_md','') or ''}")
+        _cite(ref, body)
+        sources.append({"type": "portfolio_decision", "id": d["id"], "ticker": None,
+                        "snippet": (d.get("titulo") or "")[:200]})
+
+    # 4) Empresas investidas — tese ativa + últimas inteligências
+    investidas = [c for c in _rdb.get_companies() if (c.get("status") or "").upper() == "INVESTIDO"]
+    investidas = investidas[:company_limit]
+    for c in investidas:
+        tkr = c["ticker"]
+        t = _rdb.get_active_thesis(tkr)
+        if t and (t.get("content") or "").strip():
+            ref = f"Tese {tkr} v{t.get('version')}"
+            _cite(ref, t["content"])
+            sources.append({"type": "thesis", "id": t["id"], "ticker": tkr,
+                            "snippet": (t.get("content") or "")[:200]})
+        # últimas notícias aprovadas
+        for n in _rdb.get_news(ticker=tkr, review_status="APROVADO")[:per_company_news]:
+            ref = f"Notícia {tkr} #{n['id']}"
+            body = f"{n.get('title','')} — {n.get('summary') or ''}"
+            _cite(ref, body)
+            sources.append({"type": "news", "id": n["id"], "ticker": tkr,
+                            "snippet": (n.get("title") or "")[:200]})
+        # últimos filings aprovados
+        for f in _rdb.get_filings(ticker=tkr, review_status="APROVADO")[:2]:
+            ref = f"Filing {tkr} #{f['id']}"
+            body = f"{f.get('title','')} — {f.get('summary') or ''}"
+            _cite(ref, body)
+            sources.append({"type": "filing", "id": f["id"], "ticker": tkr,
+                            "snippet": (f.get("title") or "")[:200]})
+
+    context_text = "\n\n---\n\n".join(parts) if parts \
+        else "Nenhuma informação disponível na base do portfólio."
+    return context_text, sources
+
+
+@app.route("/api/research/portfolio/qa", methods=["GET"])
+def api_research_portfolio_qa_get():
+    messages = _rdb.get_portfolio_qa_messages(limit=100)
+    return jsonify({"messages": messages})
+
+
+@app.route("/api/research/portfolio/qa", methods=["POST"])
+def api_research_portfolio_qa_post():
+    data     = request.get_json(force=True) or {}
+    question = (data.get("question") or "").strip()
+    if not question:
+        return jsonify({"error": "question required"}), 400
+
+    months = int(data.get("months") or 12)
+    context_text, sources = _build_portfolio_qa_context(months=months)
+
+    user = _research_user()
+    _rdb.save_portfolio_qa_message("user", question, None, user)
+
+    result = _claude.answer_portfolio_question(question, context_text, sources=sources)
+    if result is None:
+        return jsonify({"error": "Claude API error"}), 500
+
+    _rdb.save_portfolio_qa_message("assistant", result["answer"],
+                                   result.get("sources"), "claude")
+    return jsonify(result)
+
+
+@app.route("/api/research/portfolio/export", methods=["GET"])
+def api_research_portfolio_export():
+    md = _rdb.export_portfolio_markdown()
+    filename = f"portfolio_global_{datetime.now().strftime('%Y%m%d')}.md"
+    return Response(md, mimetype="text/markdown; charset=utf-8",
+                    headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
 @app.route("/api/research/portfolio/overview", methods=["GET"])
 def api_research_portfolio_overview():
     """Coverage card: tese ativa + contadores + snapshot resumido."""

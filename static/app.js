@@ -4909,6 +4909,7 @@ const Research = (() => {
   let _intelItems = [];
   let _intelFilter = 'all';
   let _qaTicker = null;
+  let _qaScope  = null; // null=empresa/global; 'portfolio' usa endpoints /portfolio/qa
 
   // ── DOM helpers ──────────────────────────────────────────────────
   const $  = id => document.getElementById(id);
@@ -4938,7 +4939,22 @@ const Research = (() => {
   async function apiGet(url)         { const r = await fetch(url); return r.json(); }
   async function apiPost(url, body)  { const r = await fetch(url, {method:'POST',  headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); return r.json(); }
   async function apiPut(url, body)   { const r = await fetch(url, {method:'PUT',   headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); return r.json(); }
+  async function apiPatch(url, body) { const r = await fetch(url, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}); return r.json(); }
   async function apiDel(url)         { const r = await fetch(url, {method:'DELETE'}); return r.json(); }
+
+  // ── Portfolio thesis state ────────────────────────────────────────
+  let _ptfVersions = [];       // lista resumida de versões
+  let _ptfViewingId = null;    // id da versão atualmente exibida
+  let _ptfEditingId = null;    // id do rascunho em edição (null = nova)
+  let _ptfCache = {};          // cache de body_md por id
+
+  // ── Portfolio decisions state ─────────────────────────────────────
+  let _ptfDecisions = [];
+  let _ptfDecisionsLoaded = false;
+
+  // ── Portfolio history state ───────────────────────────────────────
+  let _ptfHistory = [];
+  let _ptfHistoryLoaded = false;
 
   // ── Init ──────────────────────────────────────────────────────────
   async function init() {
@@ -4951,6 +4967,9 @@ const Research = (() => {
     _bindSubTabs();
     _bindSearch();
     _bindButtons();
+    _bindPortfolioThesisControls();
+    _bindPortfolioDecisionControls();
+    _bindPortfolioHistoryControls();
     await loadCompanies();
     await refreshPending();
   }
@@ -5052,14 +5071,18 @@ const Research = (() => {
 
     const gi = $('qaGlobalItem');
     if (gi) gi.classList.remove('active');
+    const pg = $('portfolioGlobalItem');
+    if (pg) pg.classList.remove('active');
 
     // Update sidebar active state
     document.querySelectorAll('.research-sidebar-item').forEach(el => {
       el.classList.toggle('active', el.dataset.ticker === ticker);
     });
 
-    // Show panel, hide empty state
+    // Show panel, hide empty state + portfolio panel
     $('research-empty-state').classList.add('hidden');
+    const pp = $('research-portfolio-panel');
+    if (pp) pp.classList.add('hidden');
     $('research-company-panel').classList.remove('hidden');
 
     // Show Q&A per-company button
@@ -5158,21 +5181,23 @@ const Research = (() => {
 
   // ── Sub-tabs ──────────────────────────────────────────────────────
   function _bindSubTabs() {
-    document.querySelectorAll('.research-subtab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.research-subtab').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const target = btn.dataset.subtab;
-        const panels = document.querySelectorAll('.research-subtab-content');
-        if (target === '__all__') {
-          panels.forEach(c => c.classList.remove('hidden'));
-        } else {
-          panels.forEach(c => c.classList.add('hidden'));
-          const panel = $(target);
-          if (panel) panel.classList.remove('hidden');
-        }
-        document.querySelector('.research-subtabs')
-                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.research-subtabs').forEach(bar => {
+      const scope = bar.parentElement || document;
+      bar.querySelectorAll('.research-subtab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          bar.querySelectorAll('.research-subtab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const target = btn.dataset.subtab;
+          const panels = scope.querySelectorAll(':scope > .research-subtab-content');
+          if (target === '__all__') {
+            panels.forEach(c => c.classList.remove('hidden'));
+          } else {
+            panels.forEach(c => c.classList.add('hidden'));
+            const panel = document.getElementById(target);
+            if (panel) panel.classList.remove('hidden');
+          }
+          bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
       });
     });
   }
@@ -5965,18 +5990,23 @@ const Research = (() => {
     }
   }
 
-  function openQAPanel(ticker) {
+  function openQAPanel(ticker, scope) {
     _qaTicker = ticker || null;
+    _qaScope  = scope || null;
     const panel = $('qa-panel');
     const title = $('qa-panel-title');
     const input = $('qa-panel-input');
 
-    title.textContent = _qaTicker
-      ? `✦ Q&A — ${_qaTicker}`
-      : '✦ Q&A — BASE COMPLETA';
-    input.placeholder = _qaTicker
-      ? `Pergunte sobre ${_qaTicker}...  (Enter envia · Shift+Enter quebra linha)`
-      : 'Pergunte sobre qualquer empresa da base...  (Enter envia · Shift+Enter quebra linha)';
+    if (_qaScope === 'portfolio') {
+      title.textContent = '✦ Q&A — PORTFÓLIO GLOBAL';
+      input.placeholder = 'Pergunte sobre o portfólio (exposição, coerência entre teses, decisões…)  (Enter envia · Shift+Enter quebra linha)';
+    } else if (_qaTicker) {
+      title.textContent = `✦ Q&A — ${_qaTicker}`;
+      input.placeholder = `Pergunte sobre ${_qaTicker}...  (Enter envia · Shift+Enter quebra linha)`;
+    } else {
+      title.textContent = '✦ Q&A — BASE COMPLETA';
+      input.placeholder = 'Pergunte sobre qualquer empresa da base...  (Enter envia · Shift+Enter quebra linha)';
+    }
 
     _restoreQAPanelWidth();
     panel.classList.remove('hidden');
@@ -5991,13 +6021,19 @@ const Research = (() => {
     document.body.classList.remove('qa-panel-open');
     document.documentElement.style.setProperty('--qa-panel-width', '0px');
     _qaTicker = null;
+    _qaScope  = null;
   }
 
 
   async function _loadQAHistory() {
-    const url = _qaTicker
-      ? `/api/research/qa?ticker=${encodeURIComponent(_qaTicker)}`
-      : '/api/research/qa';
+    let url;
+    if (_qaScope === 'portfolio') {
+      url = '/api/research/portfolio/qa';
+    } else if (_qaTicker) {
+      url = `/api/research/qa?ticker=${encodeURIComponent(_qaTicker)}`;
+    } else {
+      url = '/api/research/qa';
+    }
     const res = await apiGet(url);
     const container = $('qa-panel-messages');
     container.innerHTML = ((res && res.messages) || []).map(renderQAMessage).join('');
@@ -6019,8 +6055,15 @@ const Research = (() => {
     container.scrollTop = container.scrollHeight;
 
     try {
-      const body = _qaTicker ? {question, ticker: _qaTicker} : {question};
-      const data = await apiPost('/api/research/qa', body);
+      let endpoint, body;
+      if (_qaScope === 'portfolio') {
+        endpoint = '/api/research/portfolio/qa';
+        body     = {question};
+      } else {
+        endpoint = '/api/research/qa';
+        body     = _qaTicker ? {question, ticker: _qaTicker} : {question};
+      }
+      const data = await apiPost(endpoint, body);
       if (data && data.answer) {
         container.innerHTML += renderQAMessage({
           role: 'assistant', content: data.answer,
@@ -6039,11 +6082,538 @@ const Research = (() => {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════
+  // PORTFOLIO GLOBAL — TESE
+  // ══════════════════════════════════════════════════════════════════
+
+  async function loadPortfolioThesis() {
+    const data = await apiGet('/api/research/portfolio/thesis');
+    _ptfVersions = (data && data.versions) || [];
+    _ptfVersions.sort((a, b) => a.version - b.version);
+
+    const active = data && data.active;
+    _ptfCache = {};
+    if (active) _ptfCache[active.id] = active;
+
+    // default: ver a versão ativa; se não houver, última criada
+    if (active) {
+      _ptfViewingId = active.id;
+    } else if (_ptfVersions.length) {
+      _ptfViewingId = _ptfVersions[_ptfVersions.length - 1].id;
+    } else {
+      _ptfViewingId = null;
+    }
+
+    renderPortfolioVersionsBar();
+    await _renderPortfolioViewingVersion();
+  }
+
+  function renderPortfolioVersionsBar() {
+    const bar = $('ptf-thesis-versions-bar');
+    if (!bar) return;
+    bar.innerHTML = '';
+
+    if (_ptfVersions.length === 0) {
+      bar.style.display = 'none';
+      return;
+    }
+    bar.style.display = 'flex';
+
+    for (const v of _ptfVersions) {
+      const tab = el('button', 'thesis-version-tab');
+      tab.textContent = `v${v.version}${v.status === 'ATIVA' ? '*' : ''}`;
+      if (v.status === 'RASCUNHO') tab.classList.add('is-draft');
+      if (v.id === _ptfViewingId) tab.classList.add('active');
+      tab.addEventListener('click', async () => {
+        _ptfViewingId = v.id;
+        renderPortfolioVersionsBar();
+        await _renderPortfolioViewingVersion();
+      });
+      bar.appendChild(tab);
+    }
+
+    const spacer = el('div', 'thesis-versions-spacer');
+    bar.appendChild(spacer);
+
+    if (ROLE === 'admin' || ROLE === 'equipe') {
+      const btnNew = el('button', 'bbg-btn', '+ NOVA VERSÃO');
+      btnNew.style.fontSize = '10px';
+      btnNew.addEventListener('click', () => showPortfolioThesisEditor(null, null));
+      bar.appendChild(btnNew);
+    }
+  }
+
+  async function _renderPortfolioViewingVersion() {
+    const metaEl    = $('ptf-thesis-meta');
+    const contentEl = $('ptf-thesis-content');
+    if (!metaEl || !contentEl) return;
+
+    if (!_ptfViewingId) {
+      metaEl.textContent = '';
+      contentEl.innerHTML = '<span class="research-empty-inline">Nenhuma versão de tese. Clique em + NOVA VERSÃO para criar.</span>';
+      return;
+    }
+
+    let t = _ptfCache[_ptfViewingId];
+    if (!t || !('body_md' in t)) {
+      t = await apiGet(`/api/research/portfolio/thesis/${_ptfViewingId}`);
+      if (t && t.id) _ptfCache[t.id] = t;
+    }
+    if (!t || !t.id) {
+      contentEl.innerHTML = '<span class="research-empty-inline">Versão não encontrada.</span>';
+      return;
+    }
+
+    const statusLabel = t.status === 'ATIVA' ? 'ATIVA' : t.status === 'RASCUNHO' ? 'RASCUNHO' : 'ARQUIVADA';
+    metaEl.innerHTML = `v${t.version} · <strong>${statusLabel}</strong> · ${_escHtml(t.title || 'Tese de Portfólio')} · por ${_escHtml(t.created_by || '—')} · ${fmt(t.created_at)}`;
+
+    const body = t.body_md || '';
+    const bodyHtml = `<div style="white-space:pre-wrap;word-break:break-word${t.status === 'ARQUIVADA' ? ';opacity:0.7' : ''}">${_escHtml(body) || '(sem conteúdo)'}</div>`;
+
+    let actionsHtml = '';
+    if (t.status === 'RASCUNHO' && ROLE === 'admin') {
+      actionsHtml = `
+        <div class="research-thesis-actions" style="margin-top:12px">
+          <button class="btn-approve" data-ptf-approve="${t.id}">✓ PUBLICAR VERSÃO</button>
+          <button class="bbg-btn" data-ptf-edit="${t.id}">✏ EDITAR</button>
+        </div>`;
+    } else if (t.status === 'RASCUNHO' && ROLE === 'equipe') {
+      actionsHtml = `
+        <div class="research-thesis-actions" style="margin-top:12px">
+          <button class="bbg-btn" data-ptf-edit="${t.id}">✏ EDITAR</button>
+        </div>`;
+    } else if (t.status === 'ATIVA' && (ROLE === 'admin' || ROLE === 'equipe')) {
+      actionsHtml = `
+        <div class="research-thesis-actions" style="margin-top:12px">
+          <button class="bbg-btn" data-ptf-new-from="${t.id}" style="font-size:10px">✏ EDITAR (NOVA VERSÃO)</button>
+        </div>`;
+    }
+    contentEl.innerHTML = bodyHtml + actionsHtml;
+
+    const approveBtn = contentEl.querySelector('[data-ptf-approve]');
+    if (approveBtn) approveBtn.onclick = () => approvePortfolioThesis(t.id);
+    const editBtn = contentEl.querySelector('[data-ptf-edit]');
+    if (editBtn) editBtn.onclick = () => showPortfolioThesisEditor(t.id, t);
+    const newFromBtn = contentEl.querySelector('[data-ptf-new-from]');
+    if (newFromBtn) newFromBtn.onclick = () => showPortfolioThesisEditor(null, t);
+  }
+
+  function showPortfolioThesisEditor(draftId, baseThesis) {
+    _ptfEditingId = draftId;
+    const title = (baseThesis && baseThesis.title) || 'Tese de Portfólio';
+    const body  = (baseThesis && baseThesis.body_md) || '';
+    $('ptf-thesis-title').value = title;
+    $('ptf-thesis-textarea').value = body;
+    $('ptf-thesis-editor').classList.remove('hidden');
+    $('ptf-thesis-view').style.display = 'none';
+    const saveBtn = $('btn-ptf-thesis-save');
+    if (saveBtn) saveBtn.textContent = draftId ? 'SALVAR' : 'CRIAR RASCUNHO';
+    $('ptf-thesis-textarea').focus();
+  }
+
+  function hidePortfolioThesisEditor() {
+    $('ptf-thesis-editor').classList.add('hidden');
+    $('ptf-thesis-view').style.display = '';
+    _ptfEditingId = null;
+  }
+
+  async function savePortfolioThesis() {
+    const title = $('ptf-thesis-title').value.trim() || 'Tese de Portfólio';
+    const body  = $('ptf-thesis-textarea').value;
+    if (!body.trim()) return;
+    if (_ptfEditingId) {
+      await apiPatch(`/api/research/portfolio/thesis/${_ptfEditingId}`, { title, body_md: body });
+      _ptfViewingId = _ptfEditingId;
+    } else {
+      const r = await apiPost('/api/research/portfolio/thesis', { title, body_md: body });
+      if (r && r.id) _ptfViewingId = r.id;
+    }
+    hidePortfolioThesisEditor();
+    _ptfHistoryLoaded = false;
+    await loadPortfolioThesis();
+    loadPortfolioOverview().catch(() => {});
+  }
+
+  async function approvePortfolioThesis(versionId) {
+    await apiPost(`/api/research/portfolio/thesis/${versionId}/approve`, {});
+    _ptfViewingId = versionId;
+    _ptfHistoryLoaded = false;
+    await loadPortfolioThesis();
+    loadPortfolioOverview().catch(() => {});
+  }
+
+  function _bindPortfolioThesisControls() {
+    $('btn-ptf-thesis-cancel')?.addEventListener('click', hidePortfolioThesisEditor);
+    $('btn-ptf-thesis-save')?.addEventListener('click', savePortfolioThesis);
+    $('btn-research-portfolio-edit')?.addEventListener('click', () => {
+      const active = _ptfVersions.find(v => v.status === 'ATIVA');
+      const base   = active ? _ptfCache[active.id] : null;
+      showPortfolioThesisEditor(null, base);
+    });
+    $('btnQAPortfolio')?.addEventListener('click', () => openQAPanel(null, 'portfolio'));
+    $('btn-research-portfolio-export')?.addEventListener('click', () => {
+      window.location.href = '/api/research/portfolio/export';
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // PORTFOLIO GLOBAL — DECISÕES
+  // ══════════════════════════════════════════════════════════════════
+
+  function _getDecisionFilters() {
+    return {
+      ticker:    $('ptf-dec-filter-ticker')?.value.trim().toUpperCase() || '',
+      tipo:      $('ptf-dec-filter-tipo')?.value || '',
+      date_from: $('ptf-dec-filter-from')?.value || '',
+      date_to:   $('ptf-dec-filter-to')?.value || '',
+      include_archived: $('ptf-dec-filter-archived')?.checked ? '1' : '',
+    };
+  }
+
+  async function loadPortfolioDecisions() {
+    const f = _getDecisionFilters();
+    const qs = new URLSearchParams();
+    if (f.ticker)    qs.set('ticker', f.ticker);
+    if (f.tipo)      qs.set('tipo', f.tipo);
+    if (f.date_from) qs.set('date_from', f.date_from);
+    if (f.date_to)   qs.set('date_to', f.date_to);
+    if (f.include_archived) qs.set('include_archived', '1');
+    const url = '/api/research/portfolio/decisions' + (qs.toString() ? '?' + qs.toString() : '');
+    const data = await apiGet(url);
+    _ptfDecisions = (data && data.decisions) || [];
+    _ptfDecisionsLoaded = true;
+    renderPortfolioDecisionsList();
+  }
+
+  function _fmtPeso(v) {
+    if (v == null || v === '' || isNaN(v)) return null;
+    return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+  }
+
+  function _decisionSnapshotSummary(snap) {
+    if (!snap) return '';
+    const parts = [];
+    if (snap.timestamp) parts.push(`📷 ${snap.timestamp.slice(0,10)}`);
+    const tk = snap.tickers || {};
+    const names = Object.keys(tk);
+    if (names.length) {
+      const chunks = names.slice(0, 3).map(n => {
+        const p = tk[n] || {};
+        const px = p.price != null ? Number(p.price).toFixed(2) : '—';
+        const pc = p.peso_pct != null ? Number(p.peso_pct).toFixed(2) + '%' : '—';
+        return `${n} R$${px} (${pc})`;
+      });
+      if (names.length > 3) chunks.push(`+${names.length - 3}`);
+      parts.push(chunks.join(' · '));
+    }
+    if (snap.total_value != null) {
+      parts.push(`PL: R$${Number(snap.total_value).toLocaleString('pt-BR', {maximumFractionDigits:0})}`);
+    }
+    return parts.join(' — ');
+  }
+
+  function renderPortfolioDecisionsList() {
+    const list  = $('ptf-decisions-list');
+    const empty = $('ptf-decisions-empty');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (!_ptfDecisions.length) {
+      empty?.classList.remove('hidden');
+      return;
+    }
+    empty?.classList.add('hidden');
+
+    for (const d of _ptfDecisions) {
+      const card = el('div', `ptf-dec-card tipo-${d.tipo}`);
+      if (d.status === 'arquivada') card.classList.add('is-archived');
+
+      const head = el('div', 'ptf-dec-card-head');
+      const titleWrap = el('div');
+      titleWrap.innerHTML = `
+        <span class="ptf-dec-tag-tipo">${_escHtml(d.tipo)}</span>
+        ${d.subtipo ? `<span class="ptf-dec-tag-subtipo">${_escHtml(d.subtipo)}</span>` : ''}
+        <span class="ptf-dec-card-title" style="margin-left:6px">${_escHtml(d.titulo || '')}</span>
+      `;
+      const meta = el('div', 'ptf-dec-card-meta');
+      meta.textContent = `${d.date || ''} · por ${d.author || '—'}${d.status === 'arquivada' ? ' · ARQUIVADA' : ''}`;
+      head.appendChild(titleWrap);
+      head.appendChild(meta);
+      card.appendChild(head);
+
+      const tickers = d.tickers || [];
+      if (tickers.length || d.peso_antes != null || d.peso_depois != null) {
+        const row = el('div');
+        row.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px';
+        for (const t of tickers) {
+          const tag = el('span', 'ptf-dec-tag-ticker');
+          tag.textContent = t;
+          row.appendChild(tag);
+        }
+        const pa = _fmtPeso(d.peso_antes);
+        const pd = _fmtPeso(d.peso_depois);
+        if (pa != null || pd != null) {
+          const ch = el('span', 'ptf-dec-peso-change');
+          ch.textContent = `${pa || '—'} → ${pd || '—'}`;
+          row.appendChild(ch);
+        }
+        card.appendChild(row);
+      }
+
+      if (d.rationale_md) {
+        const body = el('div', 'ptf-dec-card-body');
+        body.textContent = d.rationale_md;
+        card.appendChild(body);
+      }
+
+      const snapSummary = _decisionSnapshotSummary(d.snapshot);
+      if (snapSummary) {
+        const snap = el('div', 'ptf-dec-card-snap');
+        snap.textContent = snapSummary;
+        card.appendChild(snap);
+      }
+
+      if (ROLE === 'admin' && d.status === 'ativa') {
+        const actions = el('div', 'ptf-dec-card-actions');
+        const btn = el('button', 'bbg-btn', 'ARQUIVAR');
+        btn.style.fontSize = '10px';
+        btn.addEventListener('click', () => archivePortfolioDecision(d.id));
+        actions.appendChild(btn);
+        card.appendChild(actions);
+      }
+
+      list.appendChild(card);
+    }
+  }
+
+  function showDecisionForm() {
+    const form = $('ptf-decision-form');
+    if (!form) return;
+    // defaults
+    const today = new Date().toISOString().slice(0, 10);
+    $('ptf-dec-date').value       = today;
+    $('ptf-dec-tipo').value       = 'DECISAO';
+    $('ptf-dec-subtipo').value    = '';
+    $('ptf-dec-titulo').value     = '';
+    $('ptf-dec-tickers').value    = '';
+    $('ptf-dec-peso-antes').value = '';
+    $('ptf-dec-peso-depois').value= '';
+    $('ptf-dec-rationale').value  = '';
+    form.classList.remove('hidden');
+    $('ptf-dec-titulo').focus();
+  }
+
+  function hideDecisionForm() {
+    $('ptf-decision-form')?.classList.add('hidden');
+  }
+
+  async function savePortfolioDecision() {
+    const titulo = $('ptf-dec-titulo').value.trim();
+    if (!titulo) {
+      alert('Título é obrigatório.');
+      return;
+    }
+    const tickersRaw = $('ptf-dec-tickers').value || '';
+    const tickers = tickersRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    const pesoAntes  = $('ptf-dec-peso-antes').value;
+    const pesoDepois = $('ptf-dec-peso-depois').value;
+    const payload = {
+      date:    $('ptf-dec-date').value || undefined,
+      tipo:    $('ptf-dec-tipo').value,
+      subtipo: $('ptf-dec-subtipo').value || null,
+      titulo,
+      tickers,
+      rationale_md: $('ptf-dec-rationale').value || '',
+      peso_antes:  pesoAntes  !== '' ? Number(pesoAntes)  : null,
+      peso_depois: pesoDepois !== '' ? Number(pesoDepois) : null,
+    };
+    const r = await apiPost('/api/research/portfolio/decisions', payload);
+    if (r && r.error) {
+      alert('Erro: ' + r.error);
+      return;
+    }
+    hideDecisionForm();
+    _ptfHistoryLoaded = false;
+    await loadPortfolioDecisions();
+    loadPortfolioOverview().catch(() => {});
+  }
+
+  async function archivePortfolioDecision(id) {
+    if (!confirm('Arquivar esta decisão?')) return;
+    await apiPost(`/api/research/portfolio/decisions/${id}/archive`, {});
+    _ptfHistoryLoaded = false;
+    await loadPortfolioDecisions();
+    loadPortfolioOverview().catch(() => {});
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // PORTFOLIO GLOBAL — HISTÓRICO (audit log)
+  // ══════════════════════════════════════════════════════════════════
+
+  function _parseJson(v) {
+    if (!v) return null;
+    if (typeof v === 'object') return v;
+    try { return JSON.parse(v); } catch { return null; }
+  }
+
+  function _historyDetail(e) {
+    const old = _parseJson(e.old_value);
+    const nv  = _parseJson(e.new_value);
+    const type = e.entity_type;
+    const id   = e.entity_id || '';
+
+    if (type === 'portfolio_thesis') {
+      if (e.action === 'CREATE' && nv) {
+        return `Tese v${nv.version || '?'} criada — "${nv.title || 'Tese de Portfólio'}"`;
+      }
+      if (e.action === 'APPROVE' && nv) {
+        return `Tese v${nv.version || '?'} publicada (ATIVA)`;
+      }
+      if (e.action === 'UPDATE' && old && nv) {
+        const parts = [];
+        if (old.title !== nv.title) parts.push(`título: "${old.title || ''}" → "${nv.title || ''}"`);
+        const ob = (old.body_md || '').length;
+        const nb = (nv.body_md  || '').length;
+        if (ob !== nb) parts.push(`corpo: ${ob} → ${nb} chars`);
+        if (old.status !== nv.status) parts.push(`status: ${old.status} → ${nv.status}`);
+        return `Tese v${nv.version || old.version || '?'} editada${parts.length ? ' — ' + parts.join(' · ') : ''}`;
+      }
+      return `Tese #${id} — ${e.action}`;
+    }
+
+    if (type === 'portfolio_decision') {
+      if (e.action === 'CREATE' && nv) {
+        const tk = (nv.tickers || []).join(', ');
+        const sub = nv.subtipo ? `/${nv.subtipo}` : '';
+        return `Decisão criada: [${nv.tipo || 'DECISAO'}${sub}] "${nv.titulo || ''}"${tk ? ' · ' + tk : ''}`;
+      }
+      if (e.action === 'UPDATE' && old && nv) {
+        if (old.status !== nv.status && nv.status === 'arquivada') {
+          return `Decisão #${id} arquivada — "${nv.titulo || old.titulo || ''}"`;
+        }
+        return `Decisão #${id} atualizada`;
+      }
+      return `Decisão #${id} — ${e.action}`;
+    }
+
+    return `${type} #${id} — ${e.action}`;
+  }
+
+  async function loadPortfolioHistory() {
+    const data = await apiGet('/api/research/portfolio/history?limit=200');
+    _ptfHistory = (data && data.events) || [];
+    _ptfHistoryLoaded = true;
+    renderPortfolioHistory();
+  }
+
+  function renderPortfolioHistory() {
+    const list  = $('ptf-history-list');
+    const empty = $('ptf-history-empty');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (!_ptfHistory.length) {
+      empty?.classList.remove('hidden');
+      return;
+    }
+    empty?.classList.add('hidden');
+
+    for (const e of _ptfHistory) {
+      const actionCls = `a-${(e.action || '').toLowerCase()}`;
+      const row = el('div', 'research-audit-entry');
+      row.innerHTML = `
+        <span class="research-audit-ts">${fmt(e.timestamp)}</span>
+        <span class="research-audit-action ${actionCls}">${_escHtml(e.action || '')}</span>
+        <span class="research-audit-detail">${_escHtml(_historyDetail(e))} — por ${_escHtml(e.user || '—')}</span>
+      `;
+      list.appendChild(row);
+    }
+  }
+
+  function _bindPortfolioHistoryControls() {
+    $('btn-ptf-hist-refresh')?.addEventListener('click', () => loadPortfolioHistory());
+    const btnTab = document.querySelector('#research-portfolio-panel .research-subtab[data-subtab="ptf-historico"]');
+    btnTab?.addEventListener('click', () => {
+      if (!_ptfHistoryLoaded) loadPortfolioHistory();
+    });
+  }
+
+  function _bindPortfolioDecisionControls() {
+    $('btn-ptf-dec-new')?.addEventListener('click', showDecisionForm);
+    $('btn-ptf-dec-cancel')?.addEventListener('click', hideDecisionForm);
+    $('btn-ptf-dec-save')?.addEventListener('click', savePortfolioDecision);
+    $('btn-ptf-dec-apply')?.addEventListener('click', () => loadPortfolioDecisions());
+    $('btn-ptf-dec-clear')?.addEventListener('click', () => {
+      $('ptf-dec-filter-ticker').value = '';
+      $('ptf-dec-filter-tipo').value   = '';
+      $('ptf-dec-filter-from').value   = '';
+      $('ptf-dec-filter-to').value     = '';
+      $('ptf-dec-filter-archived').checked = false;
+      loadPortfolioDecisions();
+    });
+    // Lazy-load when user switches to DECISÕES sub-tab
+    const btnTab = document.querySelector('#research-portfolio-panel .research-subtab[data-subtab="ptf-decisoes"]');
+    btnTab?.addEventListener('click', () => {
+      if (!_ptfDecisionsLoaded) loadPortfolioDecisions();
+    });
+    // Enter key on ticker/date filters triggers apply
+    ['ptf-dec-filter-ticker','ptf-dec-filter-from','ptf-dec-filter-to'].forEach(id => {
+      $(id)?.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadPortfolioDecisions(); });
+    });
+  }
+
   function openGlobalQA() {
     document.querySelectorAll('.research-sidebar-item').forEach(el => el.classList.remove('active'));
     const gi = $('qaGlobalItem');
     if (gi) gi.classList.add('active');
+    const pg = $('portfolioGlobalItem');
+    if (pg) pg.classList.remove('active');
     openQAPanel(null);
+  }
+
+  function openPortfolioGlobal() {
+    _currentTicker = null;
+    document.querySelectorAll('.research-sidebar-item').forEach(el => el.classList.remove('active'));
+    const gi = $('qaGlobalItem');
+    if (gi) gi.classList.remove('active');
+    const pg = $('portfolioGlobalItem');
+    if (pg) pg.classList.add('active');
+
+    $('research-empty-state').classList.add('hidden');
+    const cp = $('research-company-panel');
+    if (cp) cp.classList.add('hidden');
+    const pp = $('research-portfolio-panel');
+    if (pp) pp.classList.remove('hidden');
+
+    // Hide editor if it was open from a previous visit
+    hidePortfolioThesisEditor();
+    hideDecisionForm();
+    // Forçar reload de decisões e histórico na próxima visita à sub-aba
+    _ptfDecisionsLoaded = false;
+    _ptfHistoryLoaded   = false;
+    loadPortfolioThesis().catch(err => console.error('loadPortfolioThesis', err));
+    loadPortfolioOverview().catch(err => console.error('loadPortfolioOverview', err));
+  }
+
+  async function loadPortfolioOverview() {
+    const meta = $('rp-meta');
+    if (!meta) return;
+    try {
+      const ov = await apiGet('/api/research/portfolio/overview');
+      const parts = [];
+      const t = ov && ov.active_thesis;
+      if (t) {
+        parts.push(`tese v${t.version}`);
+        if (t.published_at) parts.push(`publicada ${fmt(t.published_at).slice(0,10)}`);
+      } else {
+        parts.push('sem tese ativa');
+      }
+      parts.push(`${ov.decisions_year || 0} decisões em ${ov.year}`);
+      parts.push(`${ov.rules_active || 0} regras ativas`);
+      meta.textContent = parts.join(' · ');
+    } catch (e) {
+      meta.textContent = '';
+    }
   }
 
   function renderQAMessage(msg) {
@@ -6114,6 +6684,7 @@ const Research = (() => {
 
   // Expose functions for onclick handlers in HTML
   window.openGlobalQA = openGlobalQA;
+  window.openPortfolioGlobal = openPortfolioGlobal;
   window.viewThesisDraft = viewThesisDraft;
   window.dismissThesisDraft = dismissThesisDraft;
   window.approveDraft = approveDraft;

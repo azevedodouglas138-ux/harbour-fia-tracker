@@ -10,7 +10,7 @@ import os
 import re
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +188,16 @@ CREATE TABLE IF NOT EXISTS portfolio_decisions (
 
 CREATE INDEX IF NOT EXISTS idx_pdecisions_date   ON portfolio_decisions(date DESC);
 CREATE INDEX IF NOT EXISTS idx_pdecisions_status ON portfolio_decisions(status);
+
+-- Portfólio Global: histórico Q&A (isolado do qa_messages por-empresa por FK)
+CREATE TABLE IF NOT EXISTS portfolio_qa_messages (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    role        TEXT CHECK(role IN ('user','assistant')) NOT NULL,
+    content     TEXT NOT NULL,
+    sources     TEXT,
+    created_by  TEXT NOT NULL DEFAULT 'admin',
+    created_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+);
 """
 
 _MIGRATIONS = [
@@ -1291,3 +1301,104 @@ def count_portfolio_rules_active():
             "WHERE status='ativa' AND tipo='REGRA'"
         ).fetchone()
     return row["c"] if row else 0
+
+
+def list_portfolio_rules(limit=50):
+    """Regras ativas (tipo='REGRA'), mais recentes primeiro."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM portfolio_decisions "
+            "WHERE status='ativa' AND tipo='REGRA' "
+            "ORDER BY date DESC, id DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_recent_portfolio_decisions(months=12, limit=50):
+    """Decisões ativas desde (hoje - months)."""
+    cutoff = (datetime.utcnow() - timedelta(days=int(months * 30.5))).strftime("%Y-%m-%d")
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM portfolio_decisions "
+            "WHERE status='ativa' AND date>=? "
+            "ORDER BY date DESC, id DESC LIMIT ?",
+            (cutoff, limit)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_portfolio_qa_messages(limit=50):
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM portfolio_qa_messages ORDER BY created_at ASC LIMIT ?",
+            (limit,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def export_portfolio_markdown():
+    """Markdown completo do Portfólio Global: tese + regras + decisões ativas."""
+    lines = []
+    lines.append("# PORTFÓLIO GLOBAL — Research Knowledge Base")
+    lines.append(f"*Exportado em: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}*")
+    lines.append("")
+
+    t = get_active_portfolio_thesis()
+    lines.append("---")
+    lines.append("## TESE DO PORTFÓLIO")
+    if t:
+        lines.append(f"*Versão {t['version']} · {t.get('title','')} · por {t['created_by']} · "
+                     f"publicada {(t.get('published_at') or '')[:10]}*")
+        lines.append("")
+        lines.append(t.get("body_md") or "")
+    else:
+        lines.append("*Nenhuma tese ativa.*")
+    lines.append("")
+
+    rules = list_portfolio_rules(limit=200)
+    if rules:
+        lines.append("---")
+        lines.append("## REGRAS ATIVAS")
+        for r in rules:
+            lines.append(f"### {r.get('titulo','—')}")
+            lines.append(f"*{r['date']} · por {r['author']}*")
+            if r.get("rationale_md"):
+                lines.append("")
+                lines.append(r["rationale_md"])
+            lines.append("")
+
+    decisions = list_portfolio_decisions(include_archived=False, limit=500)
+    decisions = [d for d in decisions if (d.get("tipo") or "").upper() != "REGRA"]
+    if decisions:
+        lines.append("---")
+        lines.append("## DECISÕES")
+        for d in decisions:
+            try:
+                tks = json.loads(d.get("tickers_json") or "[]")
+            except Exception:
+                tks = []
+            ticker_str = f" [{', '.join(tks)}]" if tks else ""
+            subtipo = f" {d['subtipo']}" if d.get("subtipo") else ""
+            lines.append(f"### {d['date']} — {d.get('tipo','')}{subtipo}{ticker_str}: {d.get('titulo','')}")
+            pa, pd = d.get("peso_antes"), d.get("peso_depois")
+            if pa is not None or pd is not None:
+                lines.append(f"*Peso: {pa if pa is not None else '?'}% → {pd if pd is not None else '?'}%*")
+            lines.append(f"*por {d['author']} · {d['created_at'][:10]}*")
+            if d.get("rationale_md"):
+                lines.append("")
+                lines.append(d["rationale_md"])
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def save_portfolio_qa_message(role, content, sources, user):
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO portfolio_qa_messages (role, content, sources, created_by) "
+            "VALUES (?, ?, ?, ?)",
+            (role, content,
+             json.dumps(sources, ensure_ascii=False) if sources else None,
+             user)
+        )

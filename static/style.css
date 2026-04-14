@@ -3015,3 +3015,61 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 
 body.qa-resizing { cursor: ew-resize; user-select: none; }
+
+/* ── Portfolio Global: decisões ───────────────────────────────────── */
+.ptf-decisions-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.ptf-decisions-filters {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ptf-decisions-filters input,
+.ptf-decisions-filters select {
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 2px;
+  outline: none;
+}
+.ptf-decisions-filters input:focus,
+.ptf-decisions-filters select:focus { border-color: var(--orange); }
+
+.ptf-dec-card {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--orange);
+  padding: 10px 12px;
+  border-radius: 2px;
+}
+.ptf-dec-card.is-archived { opacity: 0.55; border-left-color: #555; }
+.ptf-dec-card.tipo-REGRA  { border-left-color: var(--cyan); }
+.ptf-dec-card.tipo-NOTA   { border-left-color: #888; }
+
+.ptf-dec-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.ptf-dec-card-title { font-weight: bold; color: var(--text); font-size: 12px; }
+.ptf-dec-card-meta  { font-size: 10px; color: var(--text-muted); }
+.ptf-dec-card-body  { font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-word; margin-top: 4px; }
+.ptf-dec-card-snap  { font-size: 10px; color: var(--text-muted); margin-top: 6px; font-family: var(--mono); }
+.ptf-dec-card-actions { margin-top: 6px; display: flex; gap: 6px; }
+.ptf-dec-tag-tipo    { background: rgba(255,140,0,0.12); color: var(--orange); border: 1px solid rgba(255,140,0,0.3); padding: 1px 6px; border-radius: 2px; font-size: 9px; letter-spacing: 0.5px; }
+.ptf-dec-tag-subtipo { background: rgba(0,170,204,0.1); color: var(--cyan); border: 1px solid rgba(0,170,204,0.3); padding: 1px 6px; border-radius: 2px; font-size: 9px; letter-spacing: 0.5px; }
+.ptf-dec-tag-ticker  { background: rgba(100,100,100,0.15); color: #ccc; border: 1px solid #333; padding: 1px 6px; border-radius: 2px; font-size: 9px; font-family: var(--mono); }
+.ptf-dec-peso-change { color: var(--cyan); font-family: var(--mono); font-size: 10px; }

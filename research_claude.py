@@ -119,6 +119,31 @@ Instruções:
 
 Responda APENAS com o texto da resposta, sem prefácio."""
 
+_QA_PORTFOLIO_SYSTEM = """\
+Você é o analista-chefe do fundo de ações. Responde perguntas sobre o \
+portfólio como um todo — exposição por setor/fator, coerência entre tese macro \
+e teses individuais, performance de decisões anteriores, implicações de regras \
+de alocação. Responda com rigor analítico, citando as fontes (tese do \
+portfólio, decisões, teses por ticker) que embasam cada afirmação."""
+
+_QA_PORTFOLIO_USER = """\
+Contexto do portfólio (tese macro + decisões + regras + teses das empresas investidas):
+
+{context}
+
+---
+Pergunta: {question}
+
+Instruções:
+- Responda em português, de forma analítica e direta
+- Use apenas as informações do contexto acima; nunca invente números ou fatos
+- Cite as fontes entre colchetes quando usar uma informação — exemplos:
+  [Tese do Portfólio v3], [Decisão #12: REDUÇÃO PRIO3], [Regra #5], [Tese PETR4 v2]
+- Se houver conflito entre tese macro e teses por empresa, aponte explicitamente
+- Se o contexto não for suficiente, diga o que falta para responder com confiança
+
+Responda APENAS com o texto da resposta, sem prefácio."""
+
 _THESIS_SUGGEST_SYSTEM = """\
 Você é um analista de research financeiro sênior. \
 Com base em um evento novo (filing ou notícia) e na tese de investimento atual, \
@@ -294,6 +319,25 @@ def answer_question(question, ticker, context_chunks):
         return {"answer": answer, "sources": sources}
     except Exception as e:
         logger.error("answer_question error [%s]: %s", ticker, e)
+        return None
+
+
+def answer_portfolio_question(question, context_text, sources=None):
+    """
+    Answer a portfolio-level question. `context_text` is a pre-built
+    string with: thesis macro + rules + recent decisions + per-company
+    theses/intelligence. `sources` is an optional list[{type,id,ticker,snippet}]
+    to echo back so the UI can render citation chips.
+    """
+    try:
+        prompt = _QA_PORTFOLIO_USER.format(
+            question=question,
+            context=_truncate(context_text, max_chars=60000),
+        )
+        answer = _call(_QA_PORTFOLIO_SYSTEM, prompt, max_tokens=2048)
+        return {"answer": answer, "sources": sources or []}
+    except Exception as e:
+        logger.error("answer_portfolio_question error: %s", e)
         return None
 
 

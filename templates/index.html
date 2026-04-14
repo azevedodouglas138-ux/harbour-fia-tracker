@@ -1315,6 +1315,9 @@
     <div class="qa-global-item" id="qaGlobalItem" onclick="openGlobalQA()">
       <span class="qa-global-icon">✦</span> Q&amp;A GLOBAL
     </div>
+    <div class="qa-global-item" id="portfolioGlobalItem" onclick="openPortfolioGlobal()">
+      <span class="qa-global-icon">◉</span> PORTFÓLIO GLOBAL
+    </div>
     <div class="research-sidebar-section">
       <div class="research-sidebar-label">PORTFÓLIO</div>
       <div id="research-list-investido"></div>
@@ -1494,6 +1497,131 @@
       </div>
 
     </div><!-- /#research-company-panel -->
+
+    <!-- Portfolio Global panel (hidden until selected) -->
+    <div id="research-portfolio-panel" class="hidden">
+
+      <!-- Portfolio header -->
+      <div class="research-company-header">
+        <div class="research-company-title-row">
+          <span class="research-company-ticker">◉</span>
+          <span class="research-company-name">PORTFÓLIO GLOBAL</span>
+          <span class="research-company-meta" id="rp-meta"></span>
+        </div>
+        <div class="research-company-actions">
+          <button class="btn-qa-company" id="btnQAPortfolio">
+            ✦ PERGUNTAR
+          </button>
+          <button class="bbg-btn research-export-btn" id="btn-research-portfolio-export">↓ EXPORTAR MD</button>
+          {% if role == 'admin' %}
+          <button class="bbg-btn" id="btn-research-portfolio-edit" style="font-size:10px">✏ EDITAR</button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Sub-tabs -->
+      <div class="research-subtabs">
+        <button class="research-subtab active" data-subtab="ptf-tese">TESE</button>
+        <button class="research-subtab" data-subtab="ptf-decisoes">DECISÕES</button>
+        <button class="research-subtab" data-subtab="ptf-historico">HISTÓRICO</button>
+      </div>
+
+      <!-- ── TESE (portfólio) ───────────────────────────────── -->
+      <div id="ptf-tese" class="research-subtab-content active">
+        <div id="ptf-thesis-versions-bar" class="thesis-versions-bar" style="display:none"></div>
+        <div id="ptf-thesis-view" class="research-thesis-view">
+          <div class="research-thesis-meta" id="ptf-thesis-meta"></div>
+          <div class="research-thesis-content" id="ptf-thesis-content">
+            <span class="research-empty-inline">Carregando tese do portfólio...</span>
+          </div>
+        </div>
+        <div id="ptf-thesis-editor" class="hidden">
+          <input type="text" id="ptf-thesis-title" placeholder="Título" style="width:100%;margin-bottom:8px;padding:6px;background:#111;color:#fff;border:1px solid #333;font-family:inherit">
+          <textarea id="ptf-thesis-textarea" rows="14" placeholder="Escreva a tese do portfólio (markdown)..."></textarea>
+          <div class="research-editor-actions">
+            <button class="bbg-btn" id="btn-ptf-thesis-cancel">CANCELAR</button>
+            <button class="bbg-btn bbg-btn-primary" id="btn-ptf-thesis-save">SALVAR RASCUNHO</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DECISÕES ───────────────────────────────────────── -->
+      <div id="ptf-decisoes" class="research-subtab-content hidden">
+        <div class="ptf-decisions-toolbar">
+          <div class="ptf-decisions-filters">
+            <input type="text" id="ptf-dec-filter-ticker" placeholder="TICKER" style="width:80px;text-transform:uppercase">
+            <select id="ptf-dec-filter-tipo">
+              <option value="">TODOS</option>
+              <option value="DECISAO">DECISÃO</option>
+              <option value="REGRA">REGRA</option>
+              <option value="NOTA">NOTA</option>
+            </select>
+            <input type="date" id="ptf-dec-filter-from" title="De">
+            <input type="date" id="ptf-dec-filter-to" title="Até">
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#999">
+              <input type="checkbox" id="ptf-dec-filter-archived"> ARQUIVADAS
+            </label>
+            <button class="bbg-btn" id="btn-ptf-dec-apply" style="font-size:10px">FILTRAR</button>
+            <button class="bbg-btn" id="btn-ptf-dec-clear" style="font-size:10px">LIMPAR</button>
+          </div>
+          {% if role in ('admin', 'equipe') %}
+          <button class="bbg-btn bbg-btn-primary" id="btn-ptf-dec-new" style="font-size:10px">+ NOVA DECISÃO</button>
+          {% endif %}
+        </div>
+
+        <div id="ptf-decision-form" class="research-form hidden">
+          <div class="research-form-row">
+            <label>DATA<input type="date" id="ptf-dec-date"></label>
+            <label>TIPO
+              <select id="ptf-dec-tipo">
+                <option value="DECISAO">DECISÃO</option>
+                <option value="REGRA">REGRA</option>
+                <option value="NOTA">NOTA</option>
+              </select>
+            </label>
+            <label>SUBTIPO
+              <select id="ptf-dec-subtipo">
+                <option value="">—</option>
+                <option value="COMPRA">COMPRA</option>
+                <option value="VENDA">VENDA</option>
+                <option value="AUMENTO">AUMENTO</option>
+                <option value="REDUCAO">REDUÇÃO</option>
+                <option value="MANUTENCAO">MANUTENÇÃO</option>
+              </select>
+            </label>
+          </div>
+          <div class="research-form-row">
+            <label style="flex:1">TÍTULO<input type="text" id="ptf-dec-titulo" style="width:100%"></label>
+          </div>
+          <div class="research-form-row">
+            <label style="flex:2">TICKERS (vírgula)<input type="text" id="ptf-dec-tickers" placeholder="PRIO3, TEND3" style="width:100%;text-transform:uppercase"></label>
+            <label>PESO ANTES (%)<input type="number" id="ptf-dec-peso-antes" step="0.01" placeholder="auto"></label>
+            <label>PESO DEPOIS (%)<input type="number" id="ptf-dec-peso-depois" step="0.01"></label>
+          </div>
+          <div class="research-form-row">
+            <label style="flex:1">RATIONALE<textarea id="ptf-dec-rationale" rows="6" style="width:100%" placeholder="Racional da decisão (markdown)..."></textarea></label>
+          </div>
+          <div class="research-editor-actions">
+            <button class="bbg-btn" id="btn-ptf-dec-cancel">CANCELAR</button>
+            <button class="bbg-btn bbg-btn-primary" id="btn-ptf-dec-save">SALVAR</button>
+          </div>
+        </div>
+
+        <div id="ptf-decisions-list" class="research-list-items"></div>
+        <div id="ptf-decisions-empty" class="research-empty-inline hidden">Nenhuma decisão registrada.</div>
+      </div>
+
+      <!-- ── HISTÓRICO (portfólio) ──────────────────────────── -->
+      <div id="ptf-historico" class="research-subtab-content hidden">
+        <div class="research-section-header">
+          <span>AUDIT LOG — PORTFÓLIO GLOBAL</span>
+          <button class="bbg-btn" id="btn-ptf-hist-refresh" style="font-size:10px">↻ RECARREGAR</button>
+        </div>
+        <div id="ptf-history-list" class="research-list-items"></div>
+        <div id="ptf-history-empty" class="research-empty-inline hidden">Nenhum evento registrado.</div>
+      </div>
+
+    </div><!-- /#research-portfolio-panel -->
   </div><!-- /.research-main -->
 </div><!-- /.research-layout -->
 
