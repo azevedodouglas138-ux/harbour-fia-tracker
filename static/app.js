@@ -5681,6 +5681,7 @@ const Research = (() => {
         const max  = Math.floor(window.innerWidth * 0.8);
         const clamped = Math.max(280, Math.min(newW, max));
         panel.style.width = clamped + 'px';
+        document.documentElement.style.setProperty('--qa-panel-width', clamped + 'px');
       };
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);
@@ -5947,6 +5948,13 @@ const Research = (() => {
 
   const QA_PANEL_WIDTH_KEY = 'qa-panel-width';
 
+  function _syncQAPanelWidthVar() {
+    const panel = $('qa-panel');
+    if (!panel) return;
+    const w = panel.getBoundingClientRect().width;
+    document.documentElement.style.setProperty('--qa-panel-width', w + 'px');
+  }
+
   function _restoreQAPanelWidth() {
     const panel = $('qa-panel');
     if (!panel) return;
@@ -5972,12 +5980,16 @@ const Research = (() => {
 
     _restoreQAPanelWidth();
     panel.classList.remove('hidden');
+    document.body.classList.add('qa-panel-open');
+    _syncQAPanelWidthVar();
     input.focus();
     _loadQAHistory();
   }
 
   function closeQAPanel() {
     $('qa-panel').classList.add('hidden');
+    document.body.classList.remove('qa-panel-open');
+    document.documentElement.style.setProperty('--qa-panel-width', '0px');
     _qaTicker = null;
   }
 

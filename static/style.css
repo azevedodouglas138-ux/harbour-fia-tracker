@@ -59,6 +59,12 @@ html, body {
   height: 100%;
 }
 
+/* Quando o painel Q&A está aberto, empurra o conteúdo para não ser
+   sobreposto. A variável é atualizada dinamicamente pelo JS conforme
+   o resize do painel. */
+:root { --qa-panel-width: 0px; }
+body.qa-panel-open { padding-right: var(--qa-panel-width); }
+
 /* ═══════════════ SCROLLBARS ════════════════════════════════════ */
 /* Firefox */
 * { scrollbar-width: thin; scrollbar-color: var(--orange) var(--scroll-track); }
