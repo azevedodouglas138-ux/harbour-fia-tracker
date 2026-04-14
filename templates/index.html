@@ -1375,6 +1375,9 @@
         </div>
       </div>
 
+      <!-- Coverage card (thesis / valuation / intel status) -->
+      <div id="rc-coverage" class="rc-coverage"></div>
+
       <!-- Sub-tabs -->
       <div class="research-subtabs">
         <button class="research-subtab active" data-subtab="subtab-tese">TESE</button>
@@ -1584,18 +1587,17 @@
 </div>
 {% endif %}
 
-<!-- ── Modal: Q&A (Global + Per-Company) ─────────────────────────────── -->
-<div id="qa-modal" class="qa-modal-overlay hidden">
-  <div class="qa-modal">
-    <div class="qa-modal-header">
-      <span id="qa-modal-title">✦ Q&A — BASE COMPLETA</span>
-      <button class="qa-modal-close" id="btn-qa-modal-close">✕</button>
-    </div>
-    <div id="qa-modal-messages" class="qa-modal-messages"></div>
-    <div class="qa-modal-input">
-      <textarea id="qa-modal-input" placeholder="Faça uma pergunta...  (Enter envia · Shift+Enter quebra linha)" rows="3"></textarea>
-      <button id="btn-qa-modal-submit">PERGUNTAR</button>
-    </div>
+<!-- ── Painel lateral: Q&A (Global + Per-Company) ────────────────────── -->
+<div id="qa-panel" class="qa-panel hidden">
+  <div class="qa-panel-resize" id="qa-panel-resize" title="Arrastar para redimensionar"></div>
+  <div class="qa-panel-header">
+    <span id="qa-panel-title">✦ Q&A — BASE COMPLETA</span>
+    <button class="qa-panel-close" id="btn-qa-panel-close">✕</button>
+  </div>
+  <div id="qa-panel-messages" class="qa-panel-messages"></div>
+  <div class="qa-panel-input">
+    <textarea id="qa-panel-input" placeholder="Faça uma pergunta...  (Enter envia · Shift+Enter quebra linha)" rows="3"></textarea>
+    <button id="btn-qa-panel-submit">PERGUNTAR</button>
   </div>
 </div>
 

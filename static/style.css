@@ -2784,24 +2784,46 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   color: var(--orange-text);
 }
 
-/* ── Sidebar thesis status indicators ───────────────────────────────── */
-.si-status {
-  font-size: 8px;
-  margin-right: 6px;
-  flex-shrink: 0;
-  display: inline-block;
-  width: 10px;
-  text-align: center;
-  line-height: 1;
+/* ── Coverage card (status pills no topo do painel da empresa) ──────── */
+.rc-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
 }
-.si-status-active { color: #4CAF50; }
-.si-status-draft  { color: var(--orange); }
-.si-pending-count {
+.rc-coverage:empty { display: none; }
+.rc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-family: var(--mono);
   font-size: 10px;
+  font-weight: bold;
   color: var(--text-muted);
-  flex-shrink: 0;
-  min-width: 16px;
-  text-align: right;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  letter-spacing: 0.4px;
+}
+.rc-pill:hover { background: var(--surface3); }
+.rc-pill-label { color: var(--text-muted); }
+.rc-pill-icon { font-size: 11px; line-height: 1; }
+.rc-pill.ok { border-color: rgba(76,175,80,0.35); }
+.rc-pill.ok .rc-pill-icon  { color: #4CAF50; }
+.rc-pill.ok .rc-pill-label { color: var(--text); }
+.rc-pill.warn { border-color: var(--orange); background: rgba(255,140,0,0.08); }
+.rc-pill.warn .rc-pill-icon  { color: var(--orange); }
+.rc-pill.warn .rc-pill-label { color: var(--orange-text); }
+.rc-pill.empty .rc-pill-icon { color: #555; }
+.rc-pill-count {
+  background: var(--orange);
+  color: #000;
+  border-radius: 2px;
+  padding: 0 5px;
+  font-size: 9px;
 }
 
 /* ── Thesis version tabs ────────────────────────────────────────────── */
@@ -2876,31 +2898,39 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   font-weight: bold;
 }
 
-/* ── Q&A Modal ──────────────────────────────────────────────────────── */
-.qa-modal-overlay {
+/* ── Q&A Panel lateral (redimensionável) ────────────────────────────── */
+.qa-panel {
   position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 950;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.qa-modal-overlay.hidden { display: none; }
-
-.qa-modal {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  min-width: 280px;
+  max-width: 80vw;
   background: var(--surface);
-  border: 1px solid #2a2a4a;
-  border-radius: 6px;
-  width: 620px;
-  max-width: 90vw;
-  max-height: 80vh;
+  border-left: 1px solid #2a2a4a;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  z-index: 950;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.4);
 }
+.qa-panel.hidden { display: none; }
 
-.qa-modal-header {
+.qa-panel-resize {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 1;
+  background: transparent;
+  transition: background 0.1s;
+}
+.qa-panel-resize:hover,
+.qa-panel-resize.dragging { background: rgba(255,140,0,0.25); }
+
+.qa-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2909,9 +2939,10 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   font-size: 13px;
   font-weight: 700;
   color: #4fc3f7;
+  flex-shrink: 0;
 }
 
-.qa-modal-close {
+.qa-panel-close {
   background: none;
   border: none;
   color: #888;
@@ -2919,28 +2950,28 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   font-size: 16px;
   padding: 0 4px;
 }
-.qa-modal-close:hover { color: var(--text); }
+.qa-panel-close:hover { color: var(--text); }
 
-.qa-modal-messages {
+.qa-panel-messages {
   flex: 1;
   overflow-y: auto;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 200px;
-  max-height: 50vh;
+  min-height: 100px;
 }
 
-.qa-modal-input {
+.qa-panel-input {
   padding: 12px;
   border-top: 1px solid #2a2a4a;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
 }
 
-.qa-modal-input textarea {
+.qa-panel-input textarea {
   background: #111;
   border: 1px solid #333;
   border-radius: 4px;
@@ -2950,12 +2981,12 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   resize: none;
   font-family: var(--mono);
 }
-.qa-modal-input textarea:focus {
+.qa-panel-input textarea:focus {
   border-color: #4fc3f7;
   outline: none;
 }
 
-.qa-modal-input button {
+.qa-panel-input button {
   background: #1a3a5a;
   border: 1px solid #4fc3f7;
   color: #4fc3f7;
@@ -2968,11 +2999,13 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   align-self: flex-end;
   min-width: 120px;
 }
-.qa-modal-input button:hover {
+.qa-panel-input button:hover {
   background: #4fc3f7;
   color: #000;
 }
-.qa-modal-input button:disabled {
+.qa-panel-input button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+body.qa-resizing { cursor: ew-resize; user-select: none; }

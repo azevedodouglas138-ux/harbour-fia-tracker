@@ -5007,24 +5007,9 @@ const Research = (() => {
         if (c.ticker === _currentTicker) row.classList.add('active');
         row.dataset.ticker = c.ticker;
 
-        // Thesis status indicator (always rendered to keep tickers aligned)
-        let dot;
-        if (c.has_pending_draft) {
-          dot = el('span', 'si-status si-status-draft', '◐');
-        } else if (c.has_active_thesis) {
-          dot = el('span', 'si-status si-status-active', '●');
-        } else {
-          dot = el('span', 'si-status', '');
-        }
-        row.appendChild(dot);
-
         const span = el('span', 'si-ticker', c.ticker);
         row.appendChild(span);
 
-        if (c.pending > 0) {
-          const b = el('span', 'si-pending-count', c.pending);
-          row.appendChild(b);
-        }
         row.addEventListener('click', () => selectCompany(c.ticker));
         container.appendChild(row);
       }
@@ -5086,6 +5071,7 @@ const Research = (() => {
     _companyData = data;
 
     renderCompanyHeader(data.company);
+    renderCoverageCard(data);
     renderThesisTab(data.theses);
     renderIntelTab(data.filings, data.news);
     renderValuationTab(data.valuations);
@@ -5100,6 +5086,65 @@ const Research = (() => {
     const totalPending = filingsPending + newsPending;
     const bi = $('badge-intel');
     if (bi) { bi.textContent = totalPending; bi.style.display = totalPending > 0 ? '' : 'none'; }
+  }
+
+  // ── Coverage card (status pills) ──────────────────────────────────
+  function _activateSubTab(target) {
+    const btn = document.querySelector(`.research-subtab[data-subtab="${target}"]`);
+    if (btn) btn.click();
+  }
+  function renderCoverageCard(data) {
+    const host = $('rc-coverage');
+    if (!host) return;
+    host.innerHTML = '';
+
+    const theses    = data.theses    || [];
+    const valuations= data.valuations|| [];
+    const filings   = data.filings   || [];
+    const news      = data.news      || [];
+
+    const hasActive = theses.some(t => t.status === 'ATIVA');
+    const hasDraft  = theses.some(t => t.status === 'RASCUNHO');
+    const hasValuation = valuations.length > 0;
+    const pendingIntel = filings.filter(f => f.review_status === 'PENDENTE').length
+                       + news.filter(n => n.review_status === 'PENDENTE').length;
+
+    const pills = [
+      {
+        label: 'TESE',
+        state: hasActive ? 'ok' : (hasDraft ? 'warn' : 'empty'),
+        icon:  hasActive ? '✓' : (hasDraft ? '!'  : '—'),
+        hint:  hasActive ? 'Tese ativa' : (hasDraft ? 'Draft aguardando aprovação' : 'Sem tese'),
+        goto:  'subtab-tese',
+      },
+      {
+        label: 'VALUATION',
+        state: hasValuation ? 'ok' : 'empty',
+        icon:  hasValuation ? '✓' : '—',
+        hint:  hasValuation ? 'Valuation presente' : 'Sem valuation',
+        goto:  'subtab-valuation',
+      },
+      {
+        label: 'INTEL',
+        state: pendingIntel > 0 ? 'warn' : 'ok',
+        icon:  pendingIntel > 0 ? '!' : '✓',
+        hint:  pendingIntel > 0 ? `${pendingIntel} pendente(s)` : 'Revisado',
+        goto:  'subtab-intel',
+        count: pendingIntel,
+      },
+    ];
+
+    for (const p of pills) {
+      const pill = el('div', `rc-pill ${p.state}`);
+      pill.title = p.hint;
+      pill.appendChild(el('span', 'rc-pill-icon', p.icon));
+      pill.appendChild(el('span', 'rc-pill-label', p.label));
+      if (p.count && p.count > 0) {
+        pill.appendChild(el('span', 'rc-pill-count', p.count));
+      }
+      pill.addEventListener('click', () => _activateSubTab(p.goto));
+      host.appendChild(pill);
+    }
   }
 
   // ── Company header ────────────────────────────────────────────────
@@ -5611,27 +5656,52 @@ const Research = (() => {
     });
     $('btn-note-save')?.addEventListener('click', saveNote);
 
-    // Q&A Modal
-    $('btn-qa-modal-close')?.addEventListener('click', closeQAModal);
-    $('btn-qa-modal-submit')?.addEventListener('click', _submitQAModal);
-    $('qa-modal')?.addEventListener('click', (e) => {
-      if (e.target.id === 'qa-modal') closeQAModal();
-    });
-    $('qa-modal-input')?.addEventListener('keydown', (ev) => {
+    // Q&A Panel (lateral)
+    $('btn-qa-panel-close')?.addEventListener('click', closeQAPanel);
+    $('btn-qa-panel-submit')?.addEventListener('click', _submitQA);
+    $('qa-panel-input')?.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) {
         ev.preventDefault();
-        _submitQAModal();
+        _submitQA();
       }
     });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !$('qa-modal').classList.contains('hidden')) {
-        closeQAModal();
+      const panel = $('qa-panel');
+      if (e.key === 'Escape' && panel && !panel.classList.contains('hidden')) {
+        closeQAPanel();
       }
     });
 
+    // Q&A panel resize (drag left edge)
+    const resizeHandle = $('qa-panel-resize');
+    const panel = $('qa-panel');
+    if (resizeHandle && panel) {
+      const onMove = (ev) => {
+        const newW = window.innerWidth - ev.clientX;
+        const max  = Math.floor(window.innerWidth * 0.8);
+        const clamped = Math.max(280, Math.min(newW, max));
+        panel.style.width = clamped + 'px';
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.classList.remove('qa-resizing');
+        resizeHandle.classList.remove('dragging');
+        const w = parseInt(panel.style.width, 10);
+        if (w) localStorage.setItem(QA_PANEL_WIDTH_KEY, String(w));
+      };
+      resizeHandle.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        document.body.classList.add('qa-resizing');
+        resizeHandle.classList.add('dragging');
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+
     // Q&A per-company
     $('btnQACompany')?.addEventListener('click', () => {
-      if (_currentTicker) openQAModal(_currentTicker);
+      if (_currentTicker) openQAPanel(_currentTicker);
     });
   }
 
@@ -5873,13 +5943,25 @@ const Research = (() => {
     }
   }
 
-  // ── Q&A Modal (unified) ─────────────────────────────────────────────
+  // ── Q&A Panel lateral (unified) ─────────────────────────────────────
 
-  function openQAModal(ticker) {
+  const QA_PANEL_WIDTH_KEY = 'qa-panel-width';
+
+  function _restoreQAPanelWidth() {
+    const panel = $('qa-panel');
+    if (!panel) return;
+    const saved = parseInt(localStorage.getItem(QA_PANEL_WIDTH_KEY), 10);
+    if (saved && !Number.isNaN(saved)) {
+      const max = Math.floor(window.innerWidth * 0.8);
+      panel.style.width = Math.max(280, Math.min(saved, max)) + 'px';
+    }
+  }
+
+  function openQAPanel(ticker) {
     _qaTicker = ticker || null;
-    const modal = $('qa-modal');
-    const title = $('qa-modal-title');
-    const input = $('qa-modal-input');
+    const panel = $('qa-panel');
+    const title = $('qa-panel-title');
+    const input = $('qa-panel-input');
 
     title.textContent = _qaTicker
       ? `✦ Q&A — ${_qaTicker}`
@@ -5888,37 +5970,39 @@ const Research = (() => {
       ? `Pergunte sobre ${_qaTicker}...  (Enter envia · Shift+Enter quebra linha)`
       : 'Pergunte sobre qualquer empresa da base...  (Enter envia · Shift+Enter quebra linha)';
 
-    modal.classList.remove('hidden');
+    _restoreQAPanelWidth();
+    panel.classList.remove('hidden');
     input.focus();
     _loadQAHistory();
   }
 
-  function closeQAModal() {
-    $('qa-modal').classList.add('hidden');
+  function closeQAPanel() {
+    $('qa-panel').classList.add('hidden');
     _qaTicker = null;
   }
+
 
   async function _loadQAHistory() {
     const url = _qaTicker
       ? `/api/research/qa?ticker=${encodeURIComponent(_qaTicker)}`
       : '/api/research/qa';
     const res = await apiGet(url);
-    const container = $('qa-modal-messages');
+    const container = $('qa-panel-messages');
     container.innerHTML = ((res && res.messages) || []).map(renderQAMessage).join('');
     container.scrollTop = container.scrollHeight;
   }
 
-  async function _submitQAModal() {
-    const input = $('qa-modal-input');
+  async function _submitQA() {
+    const input = $('qa-panel-input');
     const question = input.value.trim();
     if (!question) return;
 
     input.value = '';
-    const btn = $('btn-qa-modal-submit');
+    const btn = $('btn-qa-panel-submit');
     btn.disabled = true;
     btn.textContent = '...';
 
-    const container = $('qa-modal-messages');
+    const container = $('qa-panel-messages');
     container.innerHTML += renderQAMessage({role: 'user', content: question, created_at: new Date().toISOString()});
     container.scrollTop = container.scrollHeight;
 
@@ -5947,7 +6031,7 @@ const Research = (() => {
     document.querySelectorAll('.research-sidebar-item').forEach(el => el.classList.remove('active'));
     const gi = $('qaGlobalItem');
     if (gi) gi.classList.add('active');
-    openQAModal(null);
+    openQAPanel(null);
   }
 
   function renderQAMessage(msg) {
