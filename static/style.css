@@ -317,6 +317,19 @@ td.upside-neg  { color: var(--red); }
   z-index: 9999;
 }
 
+/* Banner de aviso quando dados fundamentais estão incompletos */
+.risk-warning {
+  margin: 6px 12px 10px;
+  padding: 6px 10px;
+  background: rgba(255, 140, 0, 0.12);
+  border: 1px solid rgba(255, 140, 0, 0.4);
+  border-left: 3px solid #ff8c00;
+  color: #ffb347;
+  font-size: 10px; font-weight: 500;
+  line-height: 1.4;
+  border-radius: 3px;
+}
+
 /* Variante expandida para metodologia auditável (aba Risco) */
 #col-tooltip.expanded {
   width: 440px; padding: 12px 14px;

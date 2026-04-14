@@ -2787,7 +2787,9 @@ function _renderLiquidity(d, el) {
     const cls = pct >= 80 ? 'positive' : pct >= 40 ? 'bbg-orange' : 'negative';
     return `<div class="risk-liq-bar-wrap"><div class="risk-liq-bar ${cls}" style="width:${pct}%"></div><span>${fmt(pct,0)}%</span></div>`;
   };
+  const warnHtml = d.warning ? `<div class="risk-warning">⚠ ${d.warning}</div>` : '';
   el.innerHTML = `
+    ${warnHtml}
     <div class="risk-var-grid" style="margin-bottom:10px">
       <div class="risk-metric-block">
         <div class="risk-metric-label">LIQUIDÁVEL EM 1D</div>
@@ -2991,7 +2993,9 @@ async function _loadConcentration() {
         </div>
       </div>`;
   }).join('');
+  const warnHtml = d.warning ? `<div class="risk-warning">⚠ ${d.warning}</div>` : '';
   el.innerHTML = `
+    ${warnHtml}
     <div class="risk-var-grid" style="margin-bottom:10px">
       <div class="risk-metric-block">
         <div class="risk-metric-label">ÍNDICE HHI <span class="col-info" data-tip-key="hhi_concentration">ⓘ</span></div>

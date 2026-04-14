@@ -592,7 +592,9 @@ def build_portfolio_response(portfolio, prices, fundamentals):
             "short_name": fund.get("short_name"), "beta": fund.get("beta"),
             "enterprise_to_ebitda": fund.get("enterprise_to_ebitda"),
             "return_on_equity": fund.get("return_on_equity"),
-            "sector": fund.get("sector") or pos.get("categoria", "Outros"),
+            # IMPORTANTE: não cair em `categoria` (Ação/BDR) — isso corrompe
+            # o HHI setorial mostrando Ação/BDR como se fossem setores.
+            "sector": fund.get("sector") or "Outros",
         })
     for r in rows:
         r["pct_total"] = round(r["valor_liquido"] / total_value * 100, 2) if r["valor_liquido"] and total_value > 0 else None
@@ -2629,9 +2631,12 @@ def api_risk_liquidity():
 
     liq_1d = liq_5d = liq_10d = 0.0
     rows_out = []
+    missing_score_value = 0.0
     for r in pdata["rows"]:
         vl        = r.get("valor_liquido") or 0
         score     = r.get("liq_diaria_mm")
+        if score is None:
+            missing_score_value += vl
         days      = _liq_days_from_score(score)
         daily_pct = (1.0 / days) if days else None
         liq1d_v   = min(vl, vl * daily_pct)      if daily_pct else 0
@@ -2651,6 +2656,15 @@ def api_risk_liquidity():
             "liq_10d_pct":  round(min(100, (daily_pct or 0) * 10 * 100), 1),
         })
     rows_out.sort(key=lambda x: x.get("days_to_liq") or 9999)
+
+    # Detecta cold cache de fundamentals: sem average_volume, o score de
+    # liquidez fica None para a posição e tudo é computado como 0%.
+    missing_pct = (missing_score_value / total_value * 100) if total_value else 0
+    warning = None
+    if missing_pct >= 30:
+        warning = (f"Scores de liquidez indisponíveis para {missing_pct:.0f}% do portfólio — "
+                   "dados fundamentais ainda carregando. Recarregue a página em alguns segundos.")
+
     return jsonify({
         "nav_ref":              round(nav, 2),
         "total_equity_rs":      round(total_value, 2),
@@ -2661,6 +2675,7 @@ def api_risk_liquidity():
         "portfolio_liq_5d_rs":   round(liq_5d,  2),
         "portfolio_liq_10d_rs":  round(liq_10d, 2),
         "rows": rows_out,
+        "warning": warning,
     })
 
 
@@ -2934,6 +2949,15 @@ def api_risk_concentration():
     top3 = sum(r.get("pct_total") or 0 for r in sorted_rows[:3])
     top5 = sum(r.get("pct_total") or 0 for r in sorted_rows[:5])
 
+    # Sinaliza quando o cache de fundamentals está frio e a maior parte do
+    # portfólio caiu em "Outros" — HHI nesse caso não representa concentração
+    # setorial real e usuário deve recarregar.
+    peso_outros = next((s["peso_pct"] for s in setores if s["setor"] == "Outros"), 0)
+    warning = None
+    if peso_outros >= 30:
+        warning = (f"Setores indisponíveis para {peso_outros:.0f}% do portfólio — "
+                   "dados fundamentais ainda carregando. Recarregue a página em alguns segundos.")
+
     return jsonify({
         "hhi":        hhi_score,
         "hhi_label":  hhi_label,
@@ -2943,6 +2967,7 @@ def api_risk_concentration():
         "top5_pct":   round(top5, 2),
         "n_posicoes": len(pdata["rows"]),
         "n_setores":  len(setores),
+        "warning":    warning,
     })
 
 
