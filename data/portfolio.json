@@ -101,15 +101,6 @@
       "preco_alvo": 280.0
     },
     {
-      "ticker": "M1TA34",
-      "yahoo_ticker": "M1TA34.SA",
-      "categoria": "BDR",
-      "quantidade": 500.0,
-      "liq_diaria_mm": null,
-      "lucro_mi_26": null,
-      "preco_alvo": 200.0
-    },
-    {
       "ticker": "CSNA3",
       "yahoo_ticker": "CSNA3.SA",
       "categoria": "Acao",
