@@ -30,25 +30,25 @@
 }
 
 html[data-theme="light"] {
-  --bg:          #f5f1e8;
-  --surface:     #ffffff;
-  --surface2:    #ebe6d9;
-  --surface3:    #ddd7c5;
-  --border:      #d4cfc0;
-  --border2:     #bdb8a8;
-  --orange:      #cc6600;
-  --orange-dim:  rgba(204,102,0,0.10);
-  --orange-text: #b35900;
-  --text:        #1a1a1a;
-  --text-muted:  #6b6b6b;
-  --text-dim:    #a8a39a;
-  --green:       #008833;
-  --green-dim:   rgba(0,136,51,0.08);
-  --red:         #cc1f1f;
-  --red-dim:     rgba(204,31,31,0.08);
-  --cyan:        #0077aa;
-  --yellow:      #b8860b;
-  --scroll-track: #e4dfd0;
+  --bg:          #ebe1c5;
+  --surface:     #f2e9ce;
+  --surface2:    #ddd2b0;
+  --surface3:    #ccc09a;
+  --border:      #b5a880;
+  --border2:     #9a8d65;
+  --orange:      #b35900;
+  --orange-dim:  rgba(179,89,0,0.12);
+  --orange-text: #994c00;
+  --text:        #1f1812;
+  --text-muted:  #6b5f48;
+  --text-dim:    #9b8f76;
+  --green:       #006622;
+  --green-dim:   rgba(0,102,34,0.10);
+  --red:         #a81616;
+  --red-dim:     rgba(168,22,22,0.10);
+  --cyan:        #005a80;
+  --yellow:      #8b6508;
+  --scroll-track: #d6c9a8;
 }
 
 html, body {
