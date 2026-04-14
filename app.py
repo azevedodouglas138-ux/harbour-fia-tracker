@@ -4555,6 +4555,7 @@ import research_claude as _claude
 # Initialise DB and sync from portfolio/watchlist on startup
 _rdb.init_db()
 _rdb.sync_from_portfolio(PORTFOLIO_FILE, WATCHLIST_FILE, user="system")
+_rdb.ensure_portfolio_thesis_seed(user="system")
 
 def _research_user():
     return session.get("role", "viewer")
@@ -4900,6 +4901,178 @@ def api_research_company_full(ticker):
         "filings":    _rdb.get_filings(ticker=ticker),
         "news":       _rdb.get_news(ticker=ticker),
         "audit":      _rdb.get_audit_log(ticker=ticker, limit=50),
+    })
+
+
+# =============================================================================
+# RESEARCH — Portfólio Global (tese, decisões, histórico, snapshot)
+# =============================================================================
+
+def _portfolio_snapshot(tickers=None):
+    """Snapshot dos pesos/preços reais agora — usado ao salvar uma decisão.
+    Se `tickers` for fornecido, inclui só esses; senão, todas as posições."""
+    try:
+        data = get_export_data()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("portfolio snapshot failed: %s", e)
+        return None
+    rows = data.get("rows", []) or []
+    wanted = set(t.upper() for t in (tickers or []))
+    per_ticker = {}
+    for r in rows:
+        t = (r.get("ticker") or "").upper()
+        if not t: continue
+        if wanted and t not in wanted: continue
+        per_ticker[t] = {
+            "peso_pct":      r.get("pct_total"),
+            "preco":         r.get("preco"),
+            "valor_liquido": r.get("valor_liquido"),
+            "var_dia_pct":   r.get("var_dia_pct"),
+        }
+    return {
+        "date":        datetime.now().strftime("%Y-%m-%d"),
+        "timestamp":   datetime.now().isoformat(timespec="seconds"),
+        "total_value": data.get("total_value"),
+        "tickers":     per_ticker,
+    }
+
+
+@app.route("/api/research/portfolio/thesis", methods=["GET"])
+def api_research_portfolio_thesis_get():
+    """Retorna versão ATIVA + lista de versões (resumida)."""
+    active   = _rdb.get_active_portfolio_thesis()
+    versions = [
+        {k: t[k] for k in ("id","version","status","title","created_by",
+                           "created_at","published_at")}
+        for t in _rdb.get_portfolio_theses()
+    ]
+    return jsonify({"active": active, "versions": versions})
+
+
+@app.route("/api/research/portfolio/thesis/<int:version_id>", methods=["GET"])
+def api_research_portfolio_thesis_get_one(version_id):
+    t = _rdb.get_portfolio_thesis(version_id)
+    if not t:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(t)
+
+
+@app.route("/api/research/portfolio/thesis", methods=["POST"])
+@_require_team
+def api_research_portfolio_thesis_create():
+    """Cria nova versão (RASCUNHO). Admin pode pedir publish=true."""
+    payload = request.get_json(force=True) or {}
+    title   = (payload.get("title") or "").strip() or "Tese de Portfólio"
+    body    = payload.get("body_md") or ""
+    user    = _research_user()
+    new_id  = _rdb.create_portfolio_thesis(title, body, user=user)
+    if payload.get("publish") and user == "admin":
+        _rdb.approve_portfolio_thesis(new_id, user=user)
+    return jsonify({"ok": True, "id": new_id})
+
+
+@app.route("/api/research/portfolio/thesis/<int:version_id>", methods=["PATCH"])
+@_require_team
+def api_research_portfolio_thesis_update(version_id):
+    payload = request.get_json(force=True) or {}
+    ok = _rdb.update_portfolio_thesis(
+        version_id,
+        title=payload.get("title"),
+        body_md=payload.get("body_md"),
+        user=_research_user(),
+    )
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/portfolio/thesis/<int:version_id>/approve",
+           methods=["POST"])
+@require_admin
+def api_research_portfolio_thesis_approve(version_id):
+    ok = _rdb.approve_portfolio_thesis(version_id, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/portfolio/decisions", methods=["GET"])
+def api_research_portfolio_decisions_list():
+    args = request.args
+    decisions = _rdb.list_portfolio_decisions(
+        ticker=(args.get("ticker") or "").strip().upper() or None,
+        tipo=(args.get("tipo") or "").strip().upper() or None,
+        date_from=args.get("date_from") or None,
+        date_to=args.get("date_to") or None,
+        author=args.get("author") or None,
+        include_archived=args.get("include_archived") in ("1","true","yes"),
+        limit=int(args.get("limit") or 200),
+    )
+    return jsonify({"decisions": decisions})
+
+
+@app.route("/api/research/portfolio/decisions", methods=["POST"])
+@_require_team
+def api_research_portfolio_decisions_create():
+    p = request.get_json(force=True) or {}
+    titulo = (p.get("titulo") or "").strip()
+    if not titulo:
+        return jsonify({"error": "titulo required"}), 400
+    date = p.get("date") or datetime.now().strftime("%Y-%m-%d")
+    tipo = (p.get("tipo") or "DECISAO").upper()
+    tickers = p.get("tickers") or []
+    snapshot = _portfolio_snapshot(tickers if tickers else None)
+
+    # Auto-preenche peso_antes do primeiro ticker se não veio explicito
+    peso_antes = p.get("peso_antes")
+    if peso_antes is None and tickers and snapshot:
+        first = tickers[0].upper()
+        peso_antes = (snapshot.get("tickers", {}).get(first) or {}).get("peso_pct")
+
+    try:
+        new_id = _rdb.create_portfolio_decision(
+            date=date, tipo=tipo, titulo=titulo,
+            rationale_md=p.get("rationale_md") or "",
+            subtipo=p.get("subtipo"),
+            tickers=tickers,
+            peso_antes=peso_antes,
+            peso_depois=p.get("peso_depois"),
+            snapshot=snapshot,
+            author=_research_user(),
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, "id": new_id, "snapshot": snapshot,
+                    "peso_antes": peso_antes})
+
+
+@app.route("/api/research/portfolio/decisions/<int:decision_id>/archive",
+           methods=["POST"])
+@require_admin
+def api_research_portfolio_decisions_archive(decision_id):
+    ok = _rdb.archive_portfolio_decision(decision_id, user=_research_user())
+    if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/portfolio/history", methods=["GET"])
+def api_research_portfolio_history():
+    limit = int(request.args.get("limit") or 200)
+    return jsonify({"events": _rdb.get_portfolio_audit_log(limit=limit)})
+
+
+@app.route("/api/research/portfolio/overview", methods=["GET"])
+def api_research_portfolio_overview():
+    """Coverage card: tese ativa + contadores + snapshot resumido."""
+    active = _rdb.get_active_portfolio_thesis()
+    year   = datetime.now().year
+    return jsonify({
+        "active_thesis": active,
+        "year":          year,
+        "decisions_year":    _rdb.count_portfolio_decisions_year(year),
+        "rules_active":      _rdb.count_portfolio_rules_active(),
     })
 
 

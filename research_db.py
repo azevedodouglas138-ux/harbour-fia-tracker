@@ -156,6 +156,38 @@ CREATE TABLE IF NOT EXISTS qa_messages (
     created_by  TEXT NOT NULL DEFAULT 'admin',
     created_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
 );
+
+-- Portfólio Global: tese versionada do fundo (espelha 'theses' por empresa)
+CREATE TABLE IF NOT EXISTS portfolio_thesis (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    title        TEXT NOT NULL DEFAULT '',
+    body_md      TEXT NOT NULL DEFAULT '',
+    version      INTEGER NOT NULL DEFAULT 1,
+    status       TEXT CHECK(status IN ('ATIVA','RASCUNHO','ARQUIVADA')) DEFAULT 'RASCUNHO',
+    created_by   TEXT NOT NULL DEFAULT 'admin',
+    created_at   TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
+    published_at TEXT
+);
+
+-- Portfólio Global: log de decisões de alocação (append-only, arquivável)
+CREATE TABLE IF NOT EXISTS portfolio_decisions (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    date          TEXT NOT NULL,
+    tipo          TEXT CHECK(tipo IN ('DECISAO','REGRA','NOTA')) NOT NULL DEFAULT 'DECISAO',
+    subtipo       TEXT,                  -- COMPRA|VENDA|AUMENTO|REDUCAO|MANUTENCAO (livre quando tipo!=DECISAO)
+    titulo        TEXT NOT NULL,
+    rationale_md  TEXT NOT NULL DEFAULT '',
+    tickers_json  TEXT,                  -- JSON array
+    peso_antes    REAL,
+    peso_depois   REAL,
+    snapshot_json TEXT,                  -- JSON: preços/pesos/Ibov no momento
+    author        TEXT NOT NULL DEFAULT 'admin',
+    created_at    TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
+    status        TEXT CHECK(status IN ('ativa','arquivada')) DEFAULT 'ativa'
+);
+
+CREATE INDEX IF NOT EXISTS idx_pdecisions_date   ON portfolio_decisions(date DESC);
+CREATE INDEX IF NOT EXISTS idx_pdecisions_status ON portfolio_decisions(status);
 """
 
 _MIGRATIONS = [
@@ -1002,3 +1034,260 @@ def sync_from_portfolio(portfolio_path, watchlist_path, user="system"):
                 continue
             upsert_company(ticker, name=None, market=market, status="WATCHLIST",
                            sector=item.get("categoria"), user=user)
+
+
+# ---------------------------------------------------------------------------
+# Portfólio Global — Tese versionada
+# ---------------------------------------------------------------------------
+
+PORTFOLIO_THESIS_SEED = """## Posicionamento macro
+_Visão atual do gestor sobre o cenário macro e como o portfólio está posicionado._
+
+## Vieses atuais
+_Inclinações setoriais, beta-alvo, % em caixa, tilts de fator (value/quality/size)._
+
+## Regras de alocação
+- Concentração máxima por posição: __%
+- Concentração máxima por setor: __%
+- Caixa-alvo: entre __% e __%
+
+## Riscos monitorados
+_Eventos macro/setoriais/idiossincráticos que estão sendo acompanhados._
+"""
+
+
+def get_portfolio_theses():
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM portfolio_thesis ORDER BY version DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_active_portfolio_thesis():
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM portfolio_thesis WHERE status='ATIVA' "
+            "ORDER BY version DESC LIMIT 1"
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_portfolio_thesis(version_id):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM portfolio_thesis WHERE id=?", (version_id,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def create_portfolio_thesis(title, body_md, user="admin"):
+    """Cria nova versão (RASCUNHO). Retorna id."""
+    with get_conn() as conn:
+        last = conn.execute(
+            "SELECT COALESCE(MAX(version),0) AS v FROM portfolio_thesis"
+        ).fetchone()["v"]
+        version = last + 1
+        conn.execute(
+            "INSERT INTO portfolio_thesis (title, body_md, version, status, created_by) "
+            "VALUES (?, ?, ?, 'RASCUNHO', ?)",
+            (title, body_md, version, user)
+        )
+        new_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+        new = {"id": new_id, "title": title, "body_md": body_md,
+               "version": version, "status": "RASCUNHO", "created_by": user}
+        audit(conn, "portfolio_thesis", new_id, None, "CREATE", user, None, new)
+    return new_id
+
+
+def update_portfolio_thesis(version_id, title=None, body_md=None, user="admin"):
+    """Atualiza conteúdo de uma versão (não cria nova). Para RASCUNHO."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM portfolio_thesis WHERE id=?", (version_id,)
+        ).fetchone()
+        if not row:
+            return False
+        old = dict(row)
+        new_title = title if title is not None else old["title"]
+        new_body  = body_md if body_md is not None else old["body_md"]
+        conn.execute(
+            "UPDATE portfolio_thesis SET title=?, body_md=? WHERE id=?",
+            (new_title, new_body, version_id)
+        )
+        new = {**old, "title": new_title, "body_md": new_body}
+        audit(conn, "portfolio_thesis", version_id, None, "UPDATE", user, old, new)
+    return True
+
+
+def approve_portfolio_thesis(version_id, user="admin"):
+    """Publica esta versão; arquiva a ATIVA atual."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM portfolio_thesis WHERE id=?", (version_id,)
+        ).fetchone()
+        if not row:
+            return False
+        old = dict(row)
+        conn.execute(
+            "UPDATE portfolio_thesis SET status='ARQUIVADA' WHERE status='ATIVA'"
+        )
+        now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+        conn.execute(
+            "UPDATE portfolio_thesis SET status='ATIVA', published_at=? WHERE id=?",
+            (now, version_id)
+        )
+        new = {**old, "status": "ATIVA", "published_at": now}
+        audit(conn, "portfolio_thesis", version_id, None, "APPROVE", user, old, new)
+    return True
+
+
+def ensure_portfolio_thesis_seed(user="system"):
+    """Cria a versão 1 (publicada) com o template inicial se não existir nenhuma."""
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT COUNT(*) AS c FROM portfolio_thesis"
+        ).fetchone()["c"]
+    if existing > 0:
+        return None
+    new_id = create_portfolio_thesis(
+        "Tese de Portfólio — v1", PORTFOLIO_THESIS_SEED, user=user
+    )
+    approve_portfolio_thesis(new_id, user=user)
+    return new_id
+
+
+# ---------------------------------------------------------------------------
+# Portfólio Global — Decisões (append-only)
+# ---------------------------------------------------------------------------
+
+_DECISION_TIPOS    = {"DECISAO", "REGRA", "NOTA"}
+_DECISION_SUBTIPOS = {"COMPRA", "VENDA", "AUMENTO", "REDUCAO", "MANUTENCAO"}
+
+
+def list_portfolio_decisions(ticker=None, tipo=None, date_from=None,
+                             date_to=None, author=None, include_archived=False,
+                             limit=200):
+    wheres, params = [], []
+    if not include_archived:
+        wheres.append("status='ativa'")
+    if ticker:
+        # tickers_json é JSON array; busca substring com aspas para evitar match parcial
+        wheres.append("tickers_json LIKE ?")
+        params.append(f'%"{ticker.upper()}"%')
+    if tipo:
+        wheres.append("tipo=?")
+        params.append(tipo.upper())
+    if date_from:
+        wheres.append("date>=?")
+        params.append(date_from)
+    if date_to:
+        wheres.append("date<=?")
+        params.append(date_to)
+    if author:
+        wheres.append("author=?")
+        params.append(author)
+    sql = "SELECT * FROM portfolio_decisions"
+    if wheres:
+        sql += " WHERE " + " AND ".join(wheres)
+    sql += " ORDER BY date DESC, id DESC LIMIT ?"
+    params.append(limit)
+    with get_conn() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        if d.get("tickers_json"):
+            try:    d["tickers"] = json.loads(d["tickers_json"])
+            except Exception: d["tickers"] = []
+        else:
+            d["tickers"] = []
+        if d.get("snapshot_json"):
+            try:    d["snapshot"] = json.loads(d["snapshot_json"])
+            except Exception: d["snapshot"] = None
+        else:
+            d["snapshot"] = None
+        out.append(d)
+    return out
+
+
+def create_portfolio_decision(date, tipo, titulo, rationale_md,
+                              subtipo=None, tickers=None, peso_antes=None,
+                              peso_depois=None, snapshot=None, author="admin"):
+    tipo = (tipo or "DECISAO").upper()
+    if tipo not in _DECISION_TIPOS:
+        raise ValueError(f"tipo inválido: {tipo}")
+    if subtipo:
+        subtipo = subtipo.upper()
+        if subtipo not in _DECISION_SUBTIPOS:
+            raise ValueError(f"subtipo inválido: {subtipo}")
+    tickers_norm = [t.upper().strip() for t in (tickers or []) if t and t.strip()]
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO portfolio_decisions "
+            "(date, tipo, subtipo, titulo, rationale_md, tickers_json, "
+            " peso_antes, peso_depois, snapshot_json, author) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (date, tipo, subtipo, titulo, rationale_md or "",
+             json.dumps(tickers_norm, ensure_ascii=False) if tickers_norm else None,
+             peso_antes, peso_depois,
+             json.dumps(snapshot, ensure_ascii=False) if snapshot else None,
+             author)
+        )
+        new_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+        new = {"id": new_id, "date": date, "tipo": tipo, "subtipo": subtipo,
+               "titulo": titulo, "tickers": tickers_norm,
+               "peso_antes": peso_antes, "peso_depois": peso_depois,
+               "author": author}
+        audit(conn, "portfolio_decision", new_id, None, "CREATE", author, None, new)
+    return new_id
+
+
+def archive_portfolio_decision(decision_id, user="admin"):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM portfolio_decisions WHERE id=?", (decision_id,)
+        ).fetchone()
+        if not row:
+            return False
+        old = dict(row)
+        if old["status"] == "arquivada":
+            return True
+        conn.execute(
+            "UPDATE portfolio_decisions SET status='arquivada' WHERE id=?",
+            (decision_id,)
+        )
+        new = {**old, "status": "arquivada"}
+        audit(conn, "portfolio_decision", decision_id, None, "UPDATE", user, old, new)
+    return True
+
+
+def get_portfolio_audit_log(limit=200):
+    """Audit entries do portfólio global (tese + decisões)."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM audit_log "
+            "WHERE entity_type IN ('portfolio_thesis','portfolio_decision') "
+            "ORDER BY id DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count_portfolio_decisions_year(year):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM portfolio_decisions "
+            "WHERE status='ativa' AND substr(date,1,4)=?",
+            (str(year),)
+        ).fetchone()
+    return row["c"] if row else 0
+
+
+def count_portfolio_rules_active():
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM portfolio_decisions "
+            "WHERE status='ativa' AND tipo='REGRA'"
+        ).fetchone()
+    return row["c"] if row else 0
