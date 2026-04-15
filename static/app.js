@@ -5897,6 +5897,39 @@ const Research = (() => {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  function _renderThesisMarkdown(md) {
+    if (!md) return '';
+    let s = _escHtml(md);
+    s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/(^|[\s(])_([^_\n]+)_(?=[\s).,;:!?]|$)/g, '$1<em>$2</em>');
+    const lines = s.split(/\r?\n/);
+    const out = [];
+    let inList = false;
+    let paraBuf = [];
+    const flushPara = () => {
+      if (paraBuf.length) {
+        out.push('<p>' + paraBuf.join('<br>') + '</p>');
+        paraBuf = [];
+      }
+    };
+    const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+    for (const raw of lines) {
+      const line = raw.trimEnd();
+      const mH3 = line.match(/^###\s+(.+)$/);
+      const mH2 = line.match(/^##\s+(.+)$/);
+      const mLi = line.match(/^\s*[-*]\s+(.+)$/);
+      if (!line.trim()) { flushPara(); closeList(); continue; }
+      if (mH2) { flushPara(); closeList(); out.push('<h3>' + mH2[1] + '</h3>'); continue; }
+      if (mH3) { flushPara(); closeList(); out.push('<h4>' + mH3[1] + '</h4>'); continue; }
+      if (mLi) { flushPara(); if (!inList) { out.push('<ul>'); inList = true; } out.push('<li>' + mLi[1] + '</li>'); continue; }
+      closeList();
+      paraBuf.push(line);
+    }
+    flushPara(); closeList();
+    return out.join('');
+  }
+
   // ── Pipeline modal ────────────────────────────────────────────────────
   function openPipelineModal() {
     $('modal-research-pipeline').classList.remove('hidden');
@@ -6238,7 +6271,8 @@ const Research = (() => {
     metaEl.innerHTML = `v${t.version} · <strong>${statusLabel}</strong> · ${_escHtml(t.title || 'Tese de Portfólio')} · por ${_escHtml(t.created_by || '—')} · ${fmt(t.created_at)}`;
 
     const body = t.body_md || '';
-    const bodyHtml = `<div style="white-space:pre-wrap;word-break:break-word${t.status === 'ARQUIVADA' ? ';opacity:0.7' : ''}">${_escHtml(body) || '(sem conteúdo)'}</div>`;
+    const rendered = body ? _renderThesisMarkdown(body) : '<p style="color:var(--text-muted)">(sem conteúdo)</p>';
+    const bodyHtml = `<div class="thesis-body${t.status === 'ARQUIVADA' ? ' is-archived' : ''}">${rendered}</div>`;
 
     let actionsHtml = '';
     if (t.status === 'RASCUNHO' && ROLE === 'admin') {
