@@ -5697,6 +5697,53 @@ const Research = (() => {
       }
     });
 
+    // Q&A textarea height resize (drag top edge of input)
+    const inputResize = $('qa-input-resize');
+    if (inputResize) {
+      const QA_INPUT_H_KEY = 'qa-input-height';
+      const savedH = parseInt(localStorage.getItem(QA_INPUT_H_KEY), 10);
+      if (savedH && savedH >= 40) {
+        document.documentElement.style.setProperty('--qa-input-h', savedH + 'px');
+      }
+      const onMoveH = (ev) => {
+        const panelH = window.innerHeight;
+        const newH = panelH - ev.clientY - 60;
+        const clamped = Math.max(40, Math.min(newH, Math.floor(panelH * 0.7)));
+        document.documentElement.style.setProperty('--qa-input-h', clamped + 'px');
+      };
+      const onUpH = () => {
+        document.removeEventListener('mousemove', onMoveH);
+        document.removeEventListener('mouseup', onUpH);
+        document.body.classList.remove('qa-input-resizing');
+        inputResize.classList.remove('dragging');
+        const cur = getComputedStyle(document.documentElement).getPropertyValue('--qa-input-h').trim();
+        const px = parseInt(cur, 10);
+        if (px) localStorage.setItem(QA_INPUT_H_KEY, String(px));
+      };
+      inputResize.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        document.body.classList.add('qa-input-resizing');
+        inputResize.classList.add('dragging');
+        document.addEventListener('mousemove', onMoveH);
+        document.addEventListener('mouseup', onUpH);
+      });
+    }
+
+    // Q&A font size controls
+    const QA_FONT_KEY = 'qa-msg-font';
+    const savedFont = parseInt(localStorage.getItem(QA_FONT_KEY), 10);
+    if (savedFont && savedFont >= 9 && savedFont <= 24) {
+      document.documentElement.style.setProperty('--qa-msg-font', savedFont + 'px');
+    }
+    const _adjustQAFont = (delta) => {
+      const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--qa-msg-font'), 10) || 12;
+      const next = Math.max(9, Math.min(24, cur + delta));
+      document.documentElement.style.setProperty('--qa-msg-font', next + 'px');
+      localStorage.setItem(QA_FONT_KEY, String(next));
+    };
+    $('btn-qa-font-inc')?.addEventListener('click', () => _adjustQAFont(1));
+    $('btn-qa-font-dec')?.addEventListener('click', () => _adjustQAFont(-1));
+
     // Q&A panel resize (drag left edge)
     const resizeHandle = $('qa-panel-resize');
     const panel = $('qa-panel');
