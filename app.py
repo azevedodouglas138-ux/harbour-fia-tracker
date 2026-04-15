@@ -736,12 +736,25 @@ def logout():
 # Main app
 # ---------------------------------------------------------------------------
 
+def _asset_version():
+    try:
+        base = os.path.dirname(os.path.abspath(__file__))
+        mtimes = [
+            os.path.getmtime(os.path.join(base, "static", "app.js")),
+            os.path.getmtime(os.path.join(base, "static", "style.css")),
+        ]
+        return str(int(max(mtimes)))
+    except Exception:
+        return "0"
+
+
 @app.route("/")
 def index():
     return render_template("index.html",
                            role=session.get("role", "viewer"),
                            viewer_config=load_viewer_config(),
-                           risk_methodology=RISK_METHODOLOGY)
+                           risk_methodology=RISK_METHODOLOGY,
+                           asset_ver=_asset_version())
 
 @app.route("/api/portfolio")
 def api_portfolio():
@@ -4993,6 +5006,17 @@ def api_research_portfolio_thesis_update(version_id):
 def api_research_portfolio_thesis_approve(version_id):
     ok = _rdb.approve_portfolio_thesis(version_id, user=_research_user())
     if not ok:
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/portfolio/thesis/<int:version_id>", methods=["DELETE"])
+@require_admin
+def api_research_portfolio_thesis_delete(version_id):
+    ok, reason = _rdb.delete_portfolio_thesis(version_id, user=_research_user())
+    if not ok:
+        if reason == "active":
+            return jsonify({"error": "cannot delete active thesis"}), 409
         return jsonify({"error": "not found"}), 404
     return jsonify({"ok": True})
 

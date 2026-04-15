@@ -6275,11 +6275,15 @@ const Research = (() => {
     const bodyHtml = `<div class="thesis-body${t.status === 'ARQUIVADA' ? ' is-archived' : ''}">${rendered}</div>`;
 
     let actionsHtml = '';
+    const delBtn = (ROLE === 'admin' && t.status !== 'ATIVA')
+      ? `<button class="bbg-btn bbg-btn-danger" data-ptf-delete="${t.id}">🗑 EXCLUIR</button>`
+      : '';
     if (t.status === 'RASCUNHO' && ROLE === 'admin') {
       actionsHtml = `
         <div class="research-thesis-actions" style="margin-top:12px">
           <button class="btn-approve" data-ptf-approve="${t.id}">✓ PUBLICAR VERSÃO</button>
           <button class="bbg-btn" data-ptf-edit="${t.id}">✏ EDITAR</button>
+          ${delBtn}
         </div>`;
     } else if (t.status === 'RASCUNHO' && ROLE === 'equipe') {
       actionsHtml = `
@@ -6291,6 +6295,11 @@ const Research = (() => {
         <div class="research-thesis-actions" style="margin-top:12px">
           <button class="bbg-btn" data-ptf-new-from="${t.id}" style="font-size:10px">✏ EDITAR (NOVA VERSÃO)</button>
         </div>`;
+    } else if (t.status === 'ARQUIVADA' && ROLE === 'admin') {
+      actionsHtml = `
+        <div class="research-thesis-actions" style="margin-top:12px">
+          ${delBtn}
+        </div>`;
     }
     contentEl.innerHTML = bodyHtml + actionsHtml;
 
@@ -6300,6 +6309,27 @@ const Research = (() => {
     if (editBtn) editBtn.onclick = () => showPortfolioThesisEditor(t.id, t);
     const newFromBtn = contentEl.querySelector('[data-ptf-new-from]');
     if (newFromBtn) newFromBtn.onclick = () => showPortfolioThesisEditor(null, t);
+    const deleteBtn = contentEl.querySelector('[data-ptf-delete]');
+    if (deleteBtn) deleteBtn.onclick = () => deletePortfolioThesis(t.id, t.version);
+  }
+
+  async function deletePortfolioThesis(versionId, versionNum) {
+    if (!confirm(`Excluir a versão v${versionNum} da tese? Esta ação não pode ser desfeita.`)) return;
+    const res = await fetch(`/api/research/portfolio/thesis/${versionId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      let msg = 'Falha ao excluir versão.';
+      try {
+        const err = await res.json();
+        if (err && err.error === 'cannot delete active thesis') msg = 'Não é possível excluir a versão ATIVA.';
+      } catch (_) {}
+      alert(msg);
+      return;
+    }
+    delete _ptfCache[versionId];
+    if (_ptfViewingId === versionId) _ptfViewingId = null;
+    _ptfHistoryLoaded = false;
+    await loadPortfolioThesis();
+    loadPortfolioOverview().catch(() => {});
   }
 
   function showPortfolioThesisEditor(draftId, baseThesis) {

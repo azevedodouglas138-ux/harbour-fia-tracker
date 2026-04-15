@@ -1152,6 +1152,22 @@ def approve_portfolio_thesis(version_id, user="admin"):
     return True
 
 
+def delete_portfolio_thesis(version_id, user="admin"):
+    """Remove uma versão de tese. Não permite excluir a versão ATIVA."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM portfolio_thesis WHERE id=?", (version_id,)
+        ).fetchone()
+        if not row:
+            return False, "not_found"
+        old = dict(row)
+        if old.get("status") == "ATIVA":
+            return False, "active"
+        conn.execute("DELETE FROM portfolio_thesis WHERE id=?", (version_id,))
+        audit(conn, "portfolio_thesis", version_id, None, "DELETE", user, old, None)
+    return True, None
+
+
 def ensure_portfolio_thesis_seed(user="system"):
     """Cria a versão 1 (publicada) com o template inicial se não existir nenhuma."""
     with get_conn() as conn:

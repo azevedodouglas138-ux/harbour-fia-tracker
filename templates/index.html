@@ -13,7 +13,7 @@
       } catch(e) {}
     })();
   </script>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v={{ asset_ver }}" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -1818,7 +1818,7 @@
   window.USER_ROLE = "{{ role }}";
   window.RISK_METHODOLOGY = {{ risk_methodology | tojson | safe }};
 </script>
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v={{ asset_ver }}"></script>
 
 </body>
 </html>
