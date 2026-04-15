@@ -205,13 +205,18 @@ body.qa-panel-open { padding-right: var(--qa-panel-width); }
   height: var(--fn-h);
   background: var(--surface);
   border-bottom: 1px solid var(--orange);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
+.bbg-fnbar::-webkit-scrollbar { height: 4px; }
 .bbg-fn {
   background: none; border: none; border-right: 1px solid var(--border2);
   color: var(--text-muted); font-family: var(--mono);
   font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
   padding: 0 16px; cursor: pointer; transition: all .12s;
   display: flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .bbg-fn:hover { color: var(--orange); background: var(--orange-dim); }
 .bbg-fn.active { color: var(--orange); background: var(--orange-dim); border-bottom: 2px solid var(--orange); }
@@ -3019,8 +3024,11 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   color: #ccc;
   font-size: 11px;
   padding: 8px 10px;
-  resize: none;
+  resize: vertical;
   font-family: var(--mono);
+  min-height: 70px;
+  max-height: 60vh;
+  line-height: 1.5;
 }
 .qa-panel-input textarea:focus {
   border-color: #4fc3f7;
