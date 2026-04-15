@@ -143,6 +143,34 @@ body.qa-panel-open { padding-right: var(--qa-panel-width); }
 }
 .bbg-btn-logout:hover { border-color: var(--red); color: var(--red); background: rgba(255,51,51,0.08); }
 
+/* ═══════════════ FONT SIZE TOGGLE (global) ════════════════════ */
+.bbg-font-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+.bbg-font-btn {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border2);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all .12s;
+  min-width: 28px;
+}
+.bbg-font-btn:last-child { border-right: none; }
+.bbg-font-btn:hover { color: var(--orange); background: var(--orange-dim); }
+#btn-global-font-dec { font-size: 10px; }
+#btn-global-font-inc { font-size: 13px; }
+#btn-global-font-reset { font-size: 11px; }
+
 /* ═══════════════ THEME TOGGLE ══════════════════════════════════ */
 .bbg-theme-toggle {
   display: inline-flex;
