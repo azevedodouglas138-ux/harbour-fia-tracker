@@ -2023,6 +2023,22 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 .research-subtab-content.hidden { display: none; }
 
+/* Painéis principais — alternância via classe .hidden */
+#research-empty-state.hidden,
+#research-company-panel.hidden,
+#research-portfolio-panel.hidden,
+#research-thesis-editor.hidden,
+#ptf-thesis-editor.hidden,
+#research-valuation-form.hidden,
+#research-note-form.hidden,
+#ptf-decision-form.hidden,
+#research-intel-empty.hidden,
+#research-valuation-empty.hidden,
+#research-notes-empty.hidden,
+#research-audit-empty.hidden,
+#ptf-decisions-empty.hidden,
+#ptf-history-empty.hidden { display: none; }
+
 /* Thesis view */
 .research-thesis-meta {
   font-size: 10px;
@@ -2042,7 +2058,11 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   padding: 10px 0 6px;
 }
 .research-thesis-editor textarea,
-#research-thesis-textarea {
+#research-thesis-textarea,
+#ptf-thesis-editor textarea,
+#ptf-thesis-textarea,
+#ptf-thesis-editor input[type="text"],
+#ptf-thesis-title {
   width: 100%;
   background: var(--surface2);
   border: 1px solid var(--border2);
@@ -2054,9 +2074,24 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   outline: none;
   border-radius: 2px;
   line-height: 1.6;
+  box-sizing: border-box;
 }
-#research-thesis-textarea:focus {
+#research-thesis-textarea:focus,
+#ptf-thesis-textarea:focus,
+#ptf-thesis-title:focus {
   border-color: var(--orange);
+}
+#ptf-thesis-editor {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 12px;
+  margin-top: 8px;
+}
+#ptf-thesis-title {
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
 }
 .research-editor-actions {
   display: flex;
