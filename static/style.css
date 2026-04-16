@@ -1902,20 +1902,24 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   white-space: nowrap;
 }
 
-/* 3-column layout */
+/* 3-column layout — scroll natural da página, sidebar sticky */
 .research-layout {
   display: flex;
-  height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 56px);
-  overflow: hidden;
+  align-items: flex-start;
+  min-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 56px);
 }
 
-/* Sidebar */
+/* Sidebar: sticky, mostra tudo se couber, com scroll só se exceder a viewport */
 .research-sidebar {
   width: 180px;
   min-width: 140px;
   border-right: 1px solid var(--border);
-  overflow-y: auto;
   flex-shrink: 0;
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--stats-h) + var(--fn-h));
+  align-self: flex-start;
+  max-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h));
+  overflow-y: auto;
 }
 
 .research-sidebar-section {
@@ -3403,16 +3407,19 @@ body.qa-resizing { cursor: ew-resize; user-select: none; }
   /* Research: vira layout vertical (sidebar como header colapsado) */
   .research-layout {
     flex-direction: column;
+    align-items: stretch;
     height: auto;
-    min-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 56px);
+    min-height: 0;
     overflow: visible;
   }
   .research-sidebar {
     width: 100%;
     min-width: 0;
-    max-height: 180px;
+    max-height: 240px;
     border-right: none;
     border-bottom: 1px solid var(--orange);
+    position: static;
+    top: auto;
   }
   .research-main {
     padding: 0 10px 16px;
