@@ -3274,3 +3274,331 @@ body.qa-resizing { cursor: ew-resize; user-select: none; }
 .ptf-dec-tag-subtipo { background: rgba(0,170,204,0.1); color: var(--cyan); border: 1px solid rgba(0,170,204,0.3); padding: 1px 6px; border-radius: 2px; font-size: 9px; letter-spacing: 0.5px; }
 .ptf-dec-tag-ticker  { background: rgba(100,100,100,0.15); color: #ccc; border: 1px solid #333; padding: 1px 6px; border-radius: 2px; font-size: 9px; font-family: var(--mono); }
 .ptf-dec-peso-change { color: var(--cyan); font-family: var(--mono); font-size: 10px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE OVERHAUL — Pente fino multi-breakpoint (2026-04-16)
+   Hierarquia:
+     ≥1700    Ultrawide  — gridmais largo, charts respiram
+     1281-1699 Desktop   — comportamento padrão
+     1101-1280 Laptop    — esconde colunas raras, cfg vira 2 col
+     901-1100 Tablet land — esconde mais colunas, idx panels mantém 2 col
+     769-900  Tablet     — single col charts, mais colunas hidden
+     601-768  Mobile lnd — research vira drawer, modais quase full
+     481-600  Mobile     — macro 2/row, idx tabela compacta
+     ≤480     Portrait   — minimal cols, modais bottom-sheet
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Tipografia fluida nos headers principais ───────────────────── */
+.bbg-fund-ticker { font-size: clamp(10px, 0.95vw, 13px); }
+.bbg-cota-value  { font-size: clamp(18px, 2.1vw, 26px); }
+.bbg-cota-change { font-size: clamp(10px, 1.1vw, 14px); }
+
+/* Container fluido para charts em telas grandes */
+@media (min-width: 1700px) {
+  .charts-grid    { max-width: 1900px; gap: 16px; }
+  .charts-toolbar { max-width: 1900px; }
+  .cfg-grid       { max-width: 1500px; }
+  .macro-grid     { max-width: 1700px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .chart-card:not(.wide) canvas { max-height: 320px; }
+}
+
+/* ── LAPTOP / Desktop pequeno (901px-1280px) ────────────────────── */
+@media (max-width: 1280px) and (min-width: 901px) {
+  /* Configurações: 3 col → 2 col (apenas faixa intermediária; ≤900 vira 1 col por regra existente) */
+  .cfg-grid { grid-template-columns: repeat(2, 1fr); max-width: 1000px; }
+}
+
+@media (max-width: 1280px) {
+  /* Esconde colunas raras da carteira (PEG, EV/EBITDA) */
+  #portfolio-table th:nth-child(12),
+  #portfolio-table tbody td:nth-child(12),
+  #portfolio-table th:nth-child(13),
+  #portfolio-table tbody td:nth-child(13) { display: none; }
+
+  /* Macro: valor menor em laptop */
+  .macro-card-value { font-size: 22px; }
+}
+
+/* ── TABLET landscape (≤1100px) ─────────────────────────────────── */
+@media (max-width: 1100px) {
+  /* Charts toolbar com padding lateral menor */
+  .charts-toolbar, .charts-grid, .cfg-grid { padding-left: 10px; padding-right: 10px; }
+
+  /* Esconde mais colunas (BETA, P/VPA, DIV.YIELD) */
+  #portfolio-table th:nth-child(15),
+  #portfolio-table tbody td:nth-child(15),
+  #portfolio-table th:nth-child(16),
+  #portfolio-table tbody td:nth-child(16),
+  #portfolio-table th:nth-child(17),
+  #portfolio-table tbody td:nth-child(17) { display: none; }
+
+  /* Footer ponderada já não bate por colspan — esconde para evitar desalinhamento */
+  #portfolio-table .weighted-row { display: none; }
+
+  /* Idx panels: ainda 2 col mas tabelas mais compactas */
+  .idx-table { font-size: 10px; }
+  .idx-td-name { max-width: 160px; }
+  .idx-th-num  { min-width: 54px; }
+
+  /* Risk metrics: blocos menores */
+  .risk-metric-block { min-width: 95px; padding: 7px 10px; }
+  .risk-metric-val   { font-size: 16px; }
+}
+
+/* ── TABLET portrait (≤900px) — refinamento sobre regra existente ── */
+@media (max-width: 900px) {
+  /* Esconde mais colunas: CATEG, SETOR, P/L FWD, ROE, MKT CAP */
+  #portfolio-table th:nth-child(2),
+  #portfolio-table tbody td:nth-child(2),
+  #portfolio-table th:nth-child(3),
+  #portfolio-table tbody td:nth-child(3),
+  #portfolio-table th:nth-child(11),
+  #portfolio-table tbody td:nth-child(11),
+  #portfolio-table th:nth-child(14),
+  #portfolio-table tbody td:nth-child(14),
+  #portfolio-table th:nth-child(18),
+  #portfolio-table tbody td:nth-child(18) { display: none; }
+
+  /* Configurações vai pra 1 col (já existe), mas garantir gap */
+  .cfg-grid { gap: 10px; }
+
+  /* Stats bar mais compacta */
+  .bbg-stat { padding: 0 6px; gap: 4px; }
+
+  /* Research sidebar mais estreita */
+  .research-sidebar { width: 150px; min-width: 130px; }
+
+  /* Modais com largura controlada */
+  .modal { width: min(480px, 92vw); }
+
+  /* Topbar actions: gap menor pra caber mais */
+  .bbg-topbar-actions { gap: 4px; padding: 0 8px; }
+
+  /* Q&A panel não pode ser maior que 70vw em tablet */
+  .qa-panel { max-width: 70vw; }
+
+  /* Macro cards: card menor */
+  .macro-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); padding: 10px; gap: 10px; }
+  .macro-card-value { font-size: 20px; }
+
+  /* Stock expand: layout vertical em tablet */
+  .stock-expand-body { flex-direction: column; gap: 10px; }
+  .stock-stats-sidebar { flex-direction: row; flex-wrap: wrap; padding: 8px 0 0; border-left: none; border-top: 1px solid var(--border); min-width: 0; gap: 14px; }
+}
+
+/* ── TABLET portrait / Mobile landscape (≤768px) ────────────────── */
+@media (max-width: 768px) {
+  /* Esconde mais colunas: VALOR LIQ, QTDE, LIQ.DIÁRIA, P/L TRAIL, LUCRO MI 26 */
+  #portfolio-table th:nth-child(5),
+  #portfolio-table tbody td:nth-child(5),
+  #portfolio-table th:nth-child(8),
+  #portfolio-table tbody td:nth-child(8),
+  #portfolio-table th:nth-child(9),
+  #portfolio-table tbody td:nth-child(9),
+  #portfolio-table th:nth-child(10),
+  #portfolio-table tbody td:nth-child(10),
+  #portfolio-table th:nth-child(19),
+  #portfolio-table tbody td:nth-child(19) { display: none; }
+
+  /* Research: vira layout vertical (sidebar como header colapsado) */
+  .research-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 56px);
+    overflow: visible;
+  }
+  .research-sidebar {
+    width: 100%;
+    min-width: 0;
+    max-height: 180px;
+    border-right: none;
+    border-bottom: 1px solid var(--orange);
+  }
+  .research-main {
+    padding: 0 10px 16px;
+    overflow-y: visible;
+  }
+
+  /* Idx panels stackam (já fazem em 900) — refinar tabela */
+  .idx-table { font-size: 9px; }
+  .idx-th-rank, .idx-td-rank { width: 22px; }
+  .idx-td-name { max-width: 140px; }
+
+  /* Cfg footer wraps */
+  .cfg-footer { flex-wrap: wrap; gap: 8px; }
+  .cfg-footer .bbg-btn { flex: 1; min-width: 100px; }
+
+  /* Macro: cards menores */
+  .macro-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; padding: 8px; }
+  .macro-card { padding: 10px 12px 8px; }
+  .macro-card-value { font-size: 18px; }
+  .macro-spark { height: 32px !important; }
+
+  /* Q&A panel: full-screen overlay em tablet */
+  .qa-panel { width: 100vw !important; max-width: 100vw !important; }
+  body.qa-panel-open { padding-right: 0 !important; }
+
+  /* Risk row sempre 1 col (já existia regra para 900, garantindo aqui também) */
+  .risk-var-grid { gap: 6px; }
+  .risk-metric-block { min-width: 0; flex: 1 1 calc(50% - 6px); }
+
+  /* Charts smaller canvas */
+  .chart-card:not(.wide) canvas { max-height: 240px; min-height: 180px; }
+}
+
+/* ── MOBILE landscape pequeno (≤600px) ──────────────────────────── */
+@media (max-width: 600px) {
+  /* Stats bar: labels e valores menores */
+  .bbg-stat-lbl { font-size: 8px; }
+  .bbg-stat-val { font-size: 10px; }
+  .bbg-stat     { padding: 0 5px; gap: 3px; }
+  .bbg-sep      { padding: 0 1px; font-size: 12px; }
+
+  /* Macro: 2 colunas fixas em mobile landscape */
+  .macro-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .macro-card-value { font-size: 16px; }
+
+  /* Login form padding seguro */
+  .research-search-wrap { min-width: 0; }
+
+  /* Hist register bar wraps everything */
+  .hist-register-bar > * { flex: 1 1 auto; }
+}
+
+/* ── MOBILE portrait (≤480px) — extends existing rule ───────────── */
+@media (max-width: 480px) {
+  /* Modais viram bottom-sheet */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100%;
+    max-width: 100vw;
+    margin: 0;
+    border-radius: 6px 6px 0 0;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-body {
+    padding: 14px 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+  }
+  .modal-footer {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .modal-footer .bbg-btn { flex: 1; min-height: 36px; }
+  .form-grid { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Topbar buttons minúsculos pra caber */
+  .bbg-btn { font-size: 8px; padding: 3px 6px; }
+  .bbg-font-btn { padding: 3px 5px; min-width: 22px; font-size: 9px; }
+  .bbg-theme-btn { font-size: 8px; padding: 3px 6px; }
+  #btn-global-font-dec { font-size: 9px; }
+  #btn-global-font-inc { font-size: 11px; }
+
+  /* Cota: clamp já cuida; ajuste fino */
+  .bbg-cota-value { font-size: clamp(18px, 5.5vw, 22px); }
+
+  /* Q&A panel ocupa tela inteira */
+  .qa-panel { width: 100vw !important; max-width: 100vw !important; min-width: 0; }
+  body.qa-panel-open { padding-right: 0 !important; }
+  .qa-panel-resize { display: none; }
+
+  /* Charts canvas menores */
+  .chart-card:not(.wide) canvas { max-height: 200px; min-height: 160px; }
+  .chart-card { padding: 8px; gap: 6px; }
+  .chart-title { font-size: 9px; letter-spacing: 0.4px; }
+
+  /* Macro: 2 cards/linha menores */
+  .macro-grid { grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; }
+  .macro-card { padding: 8px 10px 6px; min-height: 0; }
+  .macro-card-value { font-size: 14px; }
+  .macro-card-label { font-size: 8px; letter-spacing: 0.5px; }
+  .macro-spark { height: 26px !important; }
+
+  /* Idx tabela: esconde rank em mobile */
+  .idx-th-rank, .idx-td-rank { display: none; }
+  .idx-td-name { max-width: 110px; }
+
+  /* Toolbar de decisões wrap */
+  .ptf-decisions-toolbar { flex-direction: column; align-items: stretch; gap: 6px; }
+  .ptf-decisions-filters { width: 100%; }
+  .ptf-decisions-filters input,
+  .ptf-decisions-filters select { flex: 1 1 auto; min-width: 80px; }
+
+  /* Stock expand: chart menor */
+  .stock-chart-wrap { height: 160px; min-height: 140px; }
+
+  /* Risk metric blocks: 1 por linha */
+  .risk-metric-block { flex: 1 1 100%; }
+
+  /* Botões da topbar de portfolio history */
+  #portfolio-history-toolbar { gap: 6px; }
+  #portfolio-history-toolbar > div[style*="margin-left:auto"] {
+    margin-left: 0 !important;
+    width: 100%;
+    justify-content: stretch;
+  }
+}
+
+/* ── TOUCH: aumenta tap targets em dispositivos com pointer grosso ── */
+@media (pointer: coarse) {
+  .bbg-fn { min-height: 36px; }
+  .range-btn, .bench-btn, .attrib-btn, .risk-btn { min-height: 26px; min-width: 26px; }
+  .modal-close { font-size: 22px; padding: 4px 12px; }
+  .btn-edit { min-width: 28px; min-height: 26px; font-size: 13px; }
+  .bbg-btn { min-height: 28px; }
+  .research-subtab { min-height: 32px; }
+  /* Hover em touch é confuso; manter cores estáveis */
+  .bbg-fn:hover, .range-btn:hover, .bench-btn:hover { background: inherit; }
+}
+
+/* ── LANDSCAPE em telas baixas (notebooks 13" ou celular landscape) ── */
+@media (max-height: 540px) and (orientation: landscape) {
+  :root {
+    --topbar-h: 48px;
+    --stats-h: 26px;
+    --fn-h: 28px;
+  }
+  .bbg-cota-value  { font-size: 18px; }
+  .bbg-fund-ticker { font-size: 10px; }
+  .bbg-fund-sub    { font-size: 8px; }
+  .bbg-cota-label  { font-size: 8px; }
+  .bbg-cota-ref    { display: none; }
+  .bbg-btn  { padding: 3px 7px; font-size: 9px; }
+  .bbg-stat-val { font-size: 10px; }
+  .bbg-stat-lbl { font-size: 8px; }
+}
+
+/* ── Q&A panel: respeita viewport para nunca exceder ────────────── */
+.qa-panel { max-width: min(80vw, 600px); }
+
+/* ── Garantir que canvas dos charts respondem a resize ──────────── */
+.chart-card canvas { max-width: 100% !important; }
+.macro-card .macro-spark { max-width: 100% !important; }
+
+/* ── Form-grid em telas estreitas vira 1 coluna ─────────────────── */
+@media (max-width: 540px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .hist-bar-fields .cfg-field { min-width: 0; flex: 1 1 100%; }
+}
+
+/* ── Tooltip de coluna não ultrapassa viewport ───────────────────── */
+#col-tooltip { max-width: calc(100vw - 24px); }
+#col-tooltip.expanded { max-width: calc(100vw - 24px); }
+
+/* ── Login: melhora em laptop e mantém em desktop largo ─────────── */
+/* (login.html tem CSS inline; aqui só fallback) */
+
+/* ── Slides genéricos (caso a aba Apresentação use containers) ──── */
+[id*="slide"], [class*="slide-"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Imagens responsivas (canvas tem dimensões geridas pelo Chart.js) ─ */
+img, svg { max-width: 100%; height: auto; }
+canvas   { max-width: 100%; }
