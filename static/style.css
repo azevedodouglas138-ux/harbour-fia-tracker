@@ -270,13 +270,15 @@ body.qa-panel-open { padding-right: var(--qa-panel-width); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ═══════════════ TABLE ══════════════════════════════════════════ */
+/* Sem max-height: a tabela cresce com o conteúdo e a página inteira rola.
+   overflow-x: auto preserva scroll horizontal quando muitas colunas estão visíveis. */
 .table-wrapper {
-  overflow: auto;
-  max-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h));
+  overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
 }
 .table-wrapper--history {
-  max-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 72px);
+  /* mantém o mesmo comportamento — sem cap vertical */
 }
 
 table {
@@ -1036,10 +1038,11 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .perf-item-val { font-size: 10px; }
   .perf-item-lbl { font-size: 7px; }
 
-  /* Table: make it clearly scrollable on mobile */
+  /* Table: scroll horizontal natural; vertical fica com a página */
   .table-wrapper {
-    max-height: 75vh;
-    overflow: auto;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -1902,24 +1905,18 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   white-space: nowrap;
 }
 
-/* 3-column layout — scroll natural da página, sidebar sticky */
+/* 3-column layout — scroll natural da página, sem altura artificial */
 .research-layout {
   display: flex;
   align-items: flex-start;
-  min-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h) - 56px);
 }
 
-/* Sidebar: sticky, mostra tudo se couber, com scroll só se exceder a viewport */
+/* Sidebar: sem max-height/overflow — mostra todos os tickers; a página rola se exceder a viewport */
 .research-sidebar {
   width: 180px;
   min-width: 140px;
   border-right: 1px solid var(--border);
   flex-shrink: 0;
-  position: sticky;
-  top: calc(var(--topbar-h) + var(--stats-h) + var(--fn-h));
-  align-self: flex-start;
-  max-height: calc(100vh - var(--topbar-h) - var(--stats-h) - var(--fn-h));
-  overflow-y: auto;
 }
 
 .research-sidebar-section {
@@ -1960,7 +1957,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 /* Main panel */
 .research-main {
   flex: 1;
-  overflow-y: auto;
   padding: 0 16px 16px;
   min-width: 0;
 }
@@ -3404,26 +3400,19 @@ body.qa-resizing { cursor: ew-resize; user-select: none; }
   #portfolio-table th:nth-child(19),
   #portfolio-table tbody td:nth-child(19) { display: none; }
 
-  /* Research: vira layout vertical (sidebar como header colapsado) */
+  /* Research: vira layout vertical (sidebar como bloco superior, sem cap) */
   .research-layout {
     flex-direction: column;
     align-items: stretch;
-    height: auto;
-    min-height: 0;
-    overflow: visible;
   }
   .research-sidebar {
     width: 100%;
     min-width: 0;
-    max-height: 240px;
     border-right: none;
     border-bottom: 1px solid var(--orange);
-    position: static;
-    top: auto;
   }
   .research-main {
     padding: 0 10px 16px;
-    overflow-y: visible;
   }
 
   /* Idx panels stackam (já fazem em 900) — refinar tabela */
