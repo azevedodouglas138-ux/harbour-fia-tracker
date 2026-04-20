@@ -128,8 +128,8 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-history"><span class="fn-num">203)</span> HISTÓRICO DE COTAS</button>
   {% set ns.first = false %}
   {% endif %}
-  {% if role == 'admin' or viewer_config.tab_macro %}
-  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-macro"><span class="fn-num">204)</span> MACRO</button>
+  {% if role == 'admin' or viewer_config.get('tab_cvm_oficial', true) %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-cvm-oficial"><span class="fn-num">204)</span> CVM OFICIAL</button>
   {% set ns.first = false %}
   {% endif %}
   {% if role == 'admin' or viewer_config.tab_watchlist %}
@@ -160,6 +160,10 @@
   {% set ns.first = false %}
   {% if role == 'admin' or viewer_config.get('tab_research', false) %}
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-research" id="btn-tab-research"><span class="fn-num">212)</span> RESEARCH <span id="research-pending-badge" class="research-badge" style="display:none"></span></button>
+  {% set ns.first = false %}
+  {% endif %}
+  {% if role == 'admin' or viewer_config.tab_macro %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-macro"><span class="fn-num">213)</span> MACRO</button>
   {% set ns.first = false %}
   {% endif %}
 </div>
@@ -523,6 +527,12 @@
         <span class="viewer-access-label">EVENTOS</span>
         <button class="viewer-toggle {% if viewer_config.tab_events %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_events">
           {% if viewer_config.tab_events %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">CVM OFICIAL</span>
+        <button class="viewer-toggle {% if viewer_config.get('tab_cvm_oficial', true) %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_cvm_oficial">
+          {% if viewer_config.get('tab_cvm_oficial', true) %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
     </div>
@@ -1740,6 +1750,135 @@
 </div>
 
 </div><!-- /#tab-research -->
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     213) CVM OFICIAL — Informe Diário (fonte: dados.cvm.gov.br)
+     ═══════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.get('tab_cvm_oficial', true) %}
+<div id="tab-cvm-oficial" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <div class="cvm-topbar">
+    <div class="cvm-title">
+      <span class="cvm-title-main">INFORME DIÁRIO OFICIAL — CVM</span>
+      <span class="cvm-title-sub" id="cvm-fund-name">HARBOUR IAT FIF AÇÕES RL · CNPJ 29.599.391/0001-94</span>
+    </div>
+    <div class="cvm-actions">
+      <span class="cvm-last-refresh" id="cvm-last-refresh">—</span>
+      {% if role == 'admin' %}
+      <button class="bbg-btn" id="btn-cvm-refresh" title="Atualizar mês atual + M-1">↻ ATUALIZAR</button>
+      <button class="bbg-btn" id="btn-cvm-backfill" title="Recarregar histórico completo desde 2022-04">⟲ BACKFILL</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="cvm-cards">
+    <div class="cvm-card">
+      <div class="cvm-card-lbl">COTA CVM</div>
+      <div class="cvm-card-val" id="cvm-card-cota">—</div>
+      <div class="cvm-card-sub" id="cvm-card-cota-date">—</div>
+    </div>
+    <div class="cvm-card">
+      <div class="cvm-card-lbl">DIFF vs CALC</div>
+      <div class="cvm-card-val" id="cvm-card-diff">—</div>
+      <div class="cvm-card-sub">cota oficial vs calculada</div>
+    </div>
+    <div class="cvm-card">
+      <div class="cvm-card-lbl">PATRIMÔNIO LÍQUIDO</div>
+      <div class="cvm-card-val" id="cvm-card-pl">—</div>
+      <div class="cvm-card-sub">R$</div>
+    </div>
+    <div class="cvm-card">
+      <div class="cvm-card-lbl">Nº COTISTAS</div>
+      <div class="cvm-card-val" id="cvm-card-cotst">—</div>
+      <div class="cvm-card-sub" id="cvm-card-cotst-var">—</div>
+    </div>
+    <div class="cvm-card">
+      <div class="cvm-card-lbl">CAPTAÇÃO LÍQ. 30D</div>
+      <div class="cvm-card-val" id="cvm-card-capt30">—</div>
+      <div class="cvm-card-sub">últimos 30 dias</div>
+    </div>
+    <div class="cvm-card">
+      <div class="cvm-card-lbl">CAPTAÇÃO LÍQ. 12M</div>
+      <div class="cvm-card-val" id="cvm-card-capt12m">—</div>
+      <div class="cvm-card-sub">últimos 12 meses</div>
+    </div>
+  </div>
+
+  <div class="cvm-charts-grid">
+    <div class="chart-card cvm-chart-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">EVOLUÇÃO DO PATRIMÔNIO LÍQUIDO</span>
+      </div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-pl"></canvas></div>
+    </div>
+
+    <div class="chart-card cvm-chart-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">COTA CVM vs COTA CALCULADA</span>
+      </div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-cota"></canvas></div>
+    </div>
+
+    <div class="chart-card cvm-chart-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">FLUXO DIÁRIO — CAPTAÇÃO vs RESGATE</span>
+      </div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-fluxo"></canvas></div>
+    </div>
+
+    <div class="chart-card cvm-chart-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">Nº DE COTISTAS</span>
+      </div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-cotst"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cvm-cadastro">
+    <div class="cvm-cadastro-header">DADOS CADASTRAIS</div>
+    <div class="cvm-cadastro-grid" id="cvm-cadastro-body">
+      <div class="cvm-cad-row"><span class="cvm-cad-k">—</span><span class="cvm-cad-v">carregando…</span></div>
+    </div>
+  </div>
+
+  <div class="cvm-table-wrap">
+    <div class="cvm-table-header">
+      <span class="cvm-table-title">HISTÓRICO COMPLETO</span>
+      <input type="text" id="cvm-filter-year" placeholder="filtro (ex: 2025-03)"
+             style="font-family:monospace;font-size:11px;padding:3px 8px;background:#111;color:#f5a623;border:1px solid #333;outline:none">
+      <span class="cvm-table-count" id="cvm-table-count">—</span>
+    </div>
+    <div class="cvm-table-scroll">
+      <table class="cvm-table" id="cvm-table">
+        <thead>
+          <tr>
+            <th>DATA</th>
+            <th class="num">COTA CVM</th>
+            <th class="num">COTA CALC</th>
+            <th class="num">DIFF %</th>
+            <th class="num">PL (R$)</th>
+            <th class="num">CAPTAÇÃO</th>
+            <th class="num">RESGATE</th>
+            <th class="num">CAP. LÍQ.</th>
+            <th class="num">COTISTAS</th>
+            <th class="num">Δ COTIST.</th>
+          </tr>
+        </thead>
+        <tbody id="cvm-table-body">
+          <tr><td colspan="10" class="empty-state">AGUARDANDO DADOS DA CVM...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="cvm-footer-note">
+    Fonte: CVM · <a href="https://dados.cvm.gov.br/dataset/fi-doc-inf_diario" target="_blank" rel="noopener">FI-DOC INF_DIARIO</a> · Atualização T+1, seg-sáb 08h BRT. Dados reportados pelo administrador (Banco Daycoval) por obrigação regulatória.
+  </div>
+
+</div><!-- /#tab-cvm-oficial -->
 {% endif %}
 
 

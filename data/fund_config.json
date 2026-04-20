@@ -11,5 +11,7 @@
   "limite_concentracao_ativo_pct": 25.0,
   "limite_concentracao_setor_pct": 40.0,
   "enable_concentracao_ativo": true,
-  "enable_concentracao_setor": true
+  "enable_concentracao_setor": true,
+  "cnpj": "29599391000194",
+  "data_inicio_cota": "2022-04-18"
 }

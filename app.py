@@ -5311,5 +5311,156 @@ def api_research_ingest():
     })
 
 
+# =============================================================================
+# CVM OFICIAL — Informe Diário do fundo (HARBOUR IAT FIF)
+# =============================================================================
+
+import cvm_daily_fetcher as _cvm_daily
+
+# Inicia scheduler em background (faz backfill na 1ª execução, depois refresh a cada 12h)
+_cvm_daily.scheduler.start()
+
+
+def _cvm_daily_summary(records, quota_history):
+    """Computes aggregates (captação líq 30d/YTD/12m, var cotistas, diff cota) + cota history lookup."""
+    if not records:
+        return {
+            "total_rows": 0,
+            "cota_cvm_atual": None,
+            "data_cota": None,
+            "pl_atual": None,
+            "nr_cotst_atual": None,
+            "captc_liq_30d": 0.0,
+            "captc_liq_ytd": 0.0,
+            "captc_liq_12m": 0.0,
+            "var_cotst_30d": 0,
+            "var_cotst_ytd": 0,
+            "diff_cota_pct": None,
+        }
+
+    records_sorted = sorted(records, key=lambda r: r["dt_comptc"])
+    last = records_sorted[-1]
+    first = records_sorted[0]
+
+    last_date = datetime.strptime(last["dt_comptc"], "%Y-%m-%d").date()
+    d30 = last_date - timedelta(days=30)
+    d365 = last_date - timedelta(days=365)
+    year_start = last_date.replace(month=1, day=1)
+
+    def _sum_net(records_slice):
+        return sum((r.get("captc_dia") or 0) - (r.get("resg_dia") or 0) for r in records_slice)
+
+    slice_30 = [r for r in records_sorted if r["dt_comptc"] >= d30.isoformat()]
+    slice_ytd = [r for r in records_sorted if r["dt_comptc"] >= year_start.isoformat()]
+    slice_12m = [r for r in records_sorted if r["dt_comptc"] >= d365.isoformat()]
+
+    # Var cotistas
+    def _first_of(slice_):
+        return slice_[0] if slice_ else None
+
+    r30 = _first_of(slice_30)
+    rytd = _first_of(slice_ytd)
+    var_cot_30 = (last.get("nr_cotst") or 0) - (r30.get("nr_cotst") or 0) if r30 else 0
+    var_cot_ytd = (last.get("nr_cotst") or 0) - (rytd.get("nr_cotst") or 0) if rytd else 0
+
+    # Diff cota (oficial x calculada) — procura o dia mais recente em que ambos existem
+    diff_cota_pct = None
+    diff_cota_data = None
+    if quota_history:
+        try:
+            calc_map = {}
+            for q in quota_history:
+                d = q.get("data")
+                v = q.get("cota_fechamento") or q.get("quota")
+                if d and v:
+                    calc_map[d] = float(v)
+            for rec in reversed(records_sorted):
+                d = rec.get("dt_comptc")
+                cota_cvm = rec.get("vl_quota")
+                if d in calc_map and cota_cvm:
+                    cota_calc = calc_map[d]
+                    if cota_calc:
+                        diff_cota_pct = (float(cota_cvm) - cota_calc) / cota_calc * 100.0
+                        diff_cota_data = d
+                        break
+        except Exception:
+            diff_cota_pct = None
+            diff_cota_data = None
+
+    return {
+        "total_rows": len(records_sorted),
+        "cota_cvm_atual": last.get("vl_quota"),
+        "data_cota": last.get("dt_comptc"),
+        "pl_atual": last.get("vl_patrim_liq"),
+        "nr_cotst_atual": last.get("nr_cotst"),
+        "captc_liq_30d": _sum_net(slice_30),
+        "captc_liq_ytd": _sum_net(slice_ytd),
+        "captc_liq_12m": _sum_net(slice_12m),
+        "var_cotst_30d": var_cot_30,
+        "var_cotst_ytd": var_cot_ytd,
+        "diff_cota_pct": diff_cota_pct,
+        "diff_cota_data": diff_cota_data,
+        "first_record": first.get("dt_comptc"),
+    }
+
+
+@app.route("/api/cvm/fund-daily", methods=["GET"])
+def api_cvm_fund_daily():
+    """Returns the full set of CVM daily records + registration metadata."""
+    storage = _cvm_daily.load_storage()
+    cadastro = _cvm_daily.load_cadastro()
+    status = _cvm_daily.get_status()
+    return jsonify({
+        "cnpj":        storage.get("cnpj"),
+        "cota_inicio": storage.get("cota_inicio"),
+        "last_refresh": storage.get("last_refresh"),
+        "records":     storage.get("records", []),
+        "cadastro":    cadastro,
+        "scheduler":   status,
+    })
+
+
+@app.route("/api/cvm/fund-daily/summary", methods=["GET"])
+def api_cvm_fund_daily_summary():
+    """Quick summary + last 30 records for cards/charts."""
+    storage = _cvm_daily.load_storage()
+    records = storage.get("records") or []
+    # carrega quota_history calculada para comparação
+    qh_path = os.path.join(BASE_DIR, "data", "quota_history.json")
+    quota_history = []
+    if os.path.exists(qh_path):
+        try:
+            with open(qh_path, "r", encoding="utf-8") as f:
+                quota_history = json.load(f)
+        except Exception:
+            quota_history = []
+
+    summary = _cvm_daily_summary(records, quota_history)
+    summary["last_refresh"] = storage.get("last_refresh")
+    summary["cnpj"] = storage.get("cnpj")
+    return jsonify(summary)
+
+
+@app.route("/api/cvm/fund-daily/refresh", methods=["POST"])
+@require_admin
+def api_cvm_fund_daily_refresh():
+    """Dispara refresh do mês atual + M-1 em background."""
+    _cvm_daily.scheduler.run_now(mode="refresh")
+    return jsonify({"ok": True, "mode": "refresh"})
+
+
+@app.route("/api/cvm/fund-daily/backfill", methods=["POST"])
+@require_admin
+def api_cvm_fund_daily_backfill():
+    """Dispara backfill completo desde a cota_inicio em background."""
+    _cvm_daily.scheduler.run_now(mode="backfill")
+    return jsonify({"ok": True, "mode": "backfill"})
+
+
+@app.route("/api/cvm/fund-daily/status", methods=["GET"])
+def api_cvm_fund_daily_status():
+    return jsonify(_cvm_daily.get_status())
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

@@ -9,5 +9,6 @@
   "tab_risk": true,
   "tab_financials": true,
   "tab_events": true,
-  "tab_research": false
+  "tab_research": false,
+  "tab_cvm_oficial": true
 }

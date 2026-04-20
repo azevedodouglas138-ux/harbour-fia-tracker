@@ -703,6 +703,7 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-events')       loadEventsTab();
     if (btn.dataset.tab === 'tab-indices')      initIndicesTab();
     if (btn.dataset.tab === 'tab-research')     Research.init();
+    if (btn.dataset.tab === 'tab-cvm-oficial')  loadCvmOficialTab();
   });
 });
 
@@ -6825,4 +6826,416 @@ const Research = (() => {
 
   return { init };
 })();
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  213) CVM OFICIAL — Informe Diário do fundo (fonte: dados.cvm.gov.br)
+// ═══════════════════════════════════════════════════════════════════════════
+const CvmOficial = (() => {
+  let _loaded = false;
+  let _payload = null;
+  let _quotaHistory = null;
+  const _charts = {};
+
+  const fmtBrl0 = (v) => v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+  const fmtBrl2 = (v) => v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtQuota = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 6, maximumFractionDigits: 8 });
+  const fmtPct = (v, digits = 2) => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(digits) + '%';
+  const fmtInt = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR');
+
+  function _pickChartColors() {
+    const body = document.body;
+    const isLight = body.classList.contains('theme-light') || body.dataset.theme === 'light';
+    return {
+      orange: '#f5a623',
+      orangeFill: 'rgba(245, 166, 35, 0.15)',
+      cyan: '#00d4ff',
+      green: '#00cc88',
+      red: '#ff4d4f',
+      text: isLight ? '#333' : '#aaa',
+      grid: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
+    };
+  }
+
+  function _buildLineDataset(label, dates, values, color, fill = false) {
+    const colors = _pickChartColors();
+    return {
+      label,
+      data: values,
+      borderColor: color,
+      backgroundColor: fill ? colors.orangeFill : 'transparent',
+      fill,
+      tension: 0.05,
+      pointRadius: 0,
+      pointHoverRadius: 3,
+      borderWidth: 1.5,
+    };
+  }
+
+  function _baseChartOpts(title) {
+    const colors = _pickChartColors();
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: colors.text, font: { family: 'monospace', size: 10 } },
+          position: 'bottom',
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.88)',
+          borderColor: '#333',
+          borderWidth: 1,
+          titleFont: { family: 'monospace', size: 11 },
+          bodyFont: { family: 'monospace', size: 11 },
+        },
+      },
+      scales: {
+        x: {
+          type: 'category',
+          ticks: {
+            color: colors.text,
+            font: { family: 'monospace', size: 9 },
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 12,
+            callback: function(val) {
+              const lbl = this.getLabelForValue(val);
+              return lbl ? lbl.slice(0, 7) : '';    // YYYY-MM
+            },
+          },
+          grid: { color: colors.grid },
+        },
+        y: {
+          ticks: { color: colors.text, font: { family: 'monospace', size: 9 } },
+          grid: { color: colors.grid },
+        },
+      },
+    };
+  }
+
+  async function _fetchPayload() {
+    const [main, qh] = await Promise.all([
+      fetch('/api/cvm/fund-daily').then(r => r.ok ? r.json() : null),
+      fetch('/api/quota-history').then(r => r.ok ? r.json() : []).catch(() => []),
+    ]);
+    _payload = main || { records: [], cadastro: null, last_refresh: null };
+    _quotaHistory = Array.isArray(qh) ? qh
+                  : (qh && Array.isArray(qh.history)) ? qh.history
+                  : [];
+  }
+
+  function _buildQuotaCalcMap() {
+    const m = new Map();
+    for (const q of _quotaHistory) {
+      const d = q.data || q.date;
+      const v = q.cota_fechamento ?? q.quota ?? q.cota ?? q.value;
+      if (d && v != null) m.set(String(d).slice(0, 10), Number(v));
+    }
+    return m;
+  }
+
+  function _renderCards() {
+    const recs = _payload.records || [];
+    if (!recs.length) return;
+    const last = recs[recs.length - 1];
+
+    document.getElementById('cvm-card-cota').textContent = fmtQuota(last.vl_quota);
+    document.getElementById('cvm-card-cota-date').textContent = last.dt_comptc;
+    document.getElementById('cvm-card-pl').textContent = fmtBrl0(last.vl_patrim_liq);
+    document.getElementById('cvm-card-cotst').textContent = fmtInt(last.nr_cotst);
+
+    // Diff cota
+    const qMap = _buildQuotaCalcMap();
+    const cotaCalc = qMap.get(last.dt_comptc);
+    let diffEl = document.getElementById('cvm-card-diff');
+    if (cotaCalc != null && last.vl_quota) {
+      const diffPct = ((last.vl_quota - cotaCalc) / cotaCalc) * 100.0;
+      diffEl.textContent = fmtPct(diffPct);
+      diffEl.style.color = Math.abs(diffPct) < 0.5 ? 'var(--cvm-ok, #00cc88)' : 'var(--cvm-warn, #f5a623)';
+    } else {
+      diffEl.textContent = '—';
+      diffEl.style.color = '';
+    }
+
+    // Aggregates
+    const lastDt = new Date(last.dt_comptc + 'T00:00:00');
+    const d30 = new Date(lastDt); d30.setDate(d30.getDate() - 30);
+    const d365 = new Date(lastDt); d365.setDate(d365.getDate() - 365);
+    const iso = (d) => d.toISOString().slice(0, 10);
+
+    const netCap = (fromIso) => recs
+      .filter(r => r.dt_comptc >= fromIso)
+      .reduce((s, r) => s + (r.captc_dia || 0) - (r.resg_dia || 0), 0);
+
+    const capt30 = netCap(iso(d30));
+    const capt12m = netCap(iso(d365));
+
+    document.getElementById('cvm-card-capt30').textContent = fmtBrl0(capt30);
+    document.getElementById('cvm-card-capt12m').textContent = fmtBrl0(capt12m);
+    document.getElementById('cvm-card-capt30').style.color = capt30 >= 0 ? 'var(--cvm-ok, #00cc88)' : 'var(--cvm-err, #ff4d4f)';
+    document.getElementById('cvm-card-capt12m').style.color = capt12m >= 0 ? 'var(--cvm-ok, #00cc88)' : 'var(--cvm-err, #ff4d4f)';
+
+    // Var cotistas 30d
+    const rec30 = recs.find(r => r.dt_comptc >= iso(d30));
+    const varCot = rec30 ? (last.nr_cotst || 0) - (rec30.nr_cotst || 0) : 0;
+    const varEl = document.getElementById('cvm-card-cotst-var');
+    varEl.textContent = (varCot >= 0 ? '+' : '') + varCot + ' em 30d';
+    varEl.style.color = varCot > 0 ? 'var(--cvm-ok, #00cc88)' : varCot < 0 ? 'var(--cvm-err, #ff4d4f)' : '';
+
+    // Last refresh
+    if (_payload.last_refresh) {
+      document.getElementById('cvm-last-refresh').textContent =
+        'Atualizado: ' + new Date(_payload.last_refresh).toLocaleString('pt-BR');
+    }
+  }
+
+  function _renderCharts() {
+    const recs = _payload.records || [];
+    if (!recs.length) return;
+    const colors = _pickChartColors();
+    const qMap = _buildQuotaCalcMap();
+    const labels = recs.map(r => r.dt_comptc);
+
+    for (const k of Object.keys(_charts)) { _charts[k].destroy(); delete _charts[k]; }
+
+    // PL
+    const plCtx = document.getElementById('cvm-chart-pl').getContext('2d');
+    _charts.pl = new Chart(plCtx, {
+      type: 'line',
+      data: { labels, datasets: [_buildLineDataset('PL (R$)', labels, recs.map(r => r.vl_patrim_liq), colors.orange, true)] },
+      options: {
+        ..._baseChartOpts(),
+        plugins: {
+          ..._baseChartOpts().plugins,
+          tooltip: {
+            ..._baseChartOpts().plugins.tooltip,
+            callbacks: { label: (ctx) => 'PL: ' + fmtBrl0(ctx.parsed.y) },
+          },
+        },
+      },
+    });
+
+    // Cota CVM vs Calc
+    const cotaCtx = document.getElementById('cvm-chart-cota').getContext('2d');
+    const cotaCalcSeries = recs.map(r => qMap.get(r.dt_comptc) ?? null);
+    _charts.cota = new Chart(cotaCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          _buildLineDataset('Cota CVM', labels, recs.map(r => r.vl_quota), colors.orange),
+          _buildLineDataset('Cota Calc', labels, cotaCalcSeries, colors.cyan),
+        ],
+      },
+      options: {
+        ..._baseChartOpts(),
+        plugins: {
+          ..._baseChartOpts().plugins,
+          tooltip: {
+            ..._baseChartOpts().plugins.tooltip,
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${fmtQuota(ctx.parsed.y)}`,
+            },
+          },
+        },
+      },
+    });
+
+    // Fluxo: captação vs resgate (bar)
+    const fluxoCtx = document.getElementById('cvm-chart-fluxo').getContext('2d');
+    _charts.fluxo = new Chart(fluxoCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Captação', data: recs.map(r => r.captc_dia || 0), backgroundColor: colors.green, borderColor: colors.green, borderWidth: 0 },
+          { label: 'Resgate',  data: recs.map(r => -(r.resg_dia || 0)),    backgroundColor: colors.red,   borderColor: colors.red, borderWidth: 0 },
+        ],
+      },
+      options: {
+        ..._baseChartOpts(),
+        scales: {
+          ..._baseChartOpts().scales,
+          x: { ..._baseChartOpts().scales.x, stacked: true },
+          y: { ..._baseChartOpts().scales.y, stacked: true, ticks: { ..._baseChartOpts().scales.y.ticks, callback: (v) => fmtBrl0(v) } },
+        },
+        plugins: {
+          ..._baseChartOpts().plugins,
+          tooltip: {
+            ..._baseChartOpts().plugins.tooltip,
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtBrl0(Math.abs(ctx.parsed.y))}` },
+          },
+        },
+      },
+    });
+
+    // Cotistas (step)
+    const cotstCtx = document.getElementById('cvm-chart-cotst').getContext('2d');
+    _charts.cotst = new Chart(cotstCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Nº Cotistas',
+          data: recs.map(r => r.nr_cotst),
+          borderColor: colors.orange,
+          backgroundColor: 'transparent',
+          stepped: true,
+          pointRadius: 0,
+          borderWidth: 1.5,
+        }],
+      },
+      options: _baseChartOpts(),
+    });
+  }
+
+  function _renderCadastro() {
+    const cad = _payload.cadastro;
+    const wrap = document.getElementById('cvm-cadastro-body');
+    if (!cad) { wrap.innerHTML = '<div class="cvm-cad-row"><span class="cvm-cad-k">Cadastro</span><span class="cvm-cad-v">—</span></div>'; return; }
+
+    const c = cad.classe || {};
+    const f = cad.fundo || {};
+    const rows = [
+      ['Denominação', c.Denominacao_Social || f.Denominacao_Social || f.denom_social || '—'],
+      ['Situação', c.Situacao || f.Situacao || '—'],
+      ['Classificação', c.Classificacao || '—'],
+      ['Benchmark', c.Indicador_Desempenho || '—'],
+      ['Anbima', c.Classificacao_Anbima || '—'],
+      ['Condomínio', c.Forma_Condominio || '—'],
+      ['Público-alvo', c.Publico_Alvo || '—'],
+      ['Início cota pública', f.Data_Inicio_Situacao || c.Data_Inicio || '—'],
+      ['Adaptação RCVM 175', f.Data_Adaptacao_RCVM175 || '—'],
+      ['Administrador', f.Administrador || '—'],
+      ['Gestor', f.Gestor || '—'],
+      ['Auditor', c.Auditor || '—'],
+      ['Custodiante', c.Custodiante || '—'],
+      ['Código CVM (fundo / classe)', `${f.Codigo_CVM || '—'} / ${c.Codigo_CVM || '—'}`],
+    ];
+    wrap.innerHTML = rows.map(([k, v]) =>
+      `<div class="cvm-cad-row"><span class="cvm-cad-k">${k}</span><span class="cvm-cad-v">${_escape(v)}</span></div>`
+    ).join('');
+  }
+
+  function _escape(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function _renderTable(filter) {
+    const recs = (_payload.records || []).slice().reverse();  // mais recente primeiro
+    const qMap = _buildQuotaCalcMap();
+    const filtered = filter
+      ? recs.filter(r => r.dt_comptc.startsWith(filter))
+      : recs;
+
+    const body = document.getElementById('cvm-table-body');
+    document.getElementById('cvm-table-count').textContent = `${filtered.length} / ${recs.length}`;
+
+    if (!filtered.length) {
+      body.innerHTML = '<tr><td colspan="10" class="empty-state">SEM REGISTROS.</td></tr>';
+      return;
+    }
+
+    // Compute delta cotistas (on reversed order: prev = próximo item no array reverso)
+    body.innerHTML = filtered.map((r, idx) => {
+      const next = filtered[idx + 1];
+      const deltaCot = next ? (r.nr_cotst || 0) - (next.nr_cotst || 0) : 0;
+      const cotaCalc = qMap.get(r.dt_comptc);
+      const diffPct = cotaCalc && r.vl_quota ? ((r.vl_quota - cotaCalc) / cotaCalc) * 100 : null;
+      const capLiq = (r.captc_dia || 0) - (r.resg_dia || 0);
+
+      const diffClass = diffPct == null ? '' : Math.abs(diffPct) < 0.5 ? 'cvm-ok' : 'cvm-warn';
+      const capLiqClass = capLiq > 0 ? 'cvm-ok' : capLiq < 0 ? 'cvm-err' : '';
+      const deltaClass = deltaCot > 0 ? 'cvm-ok' : deltaCot < 0 ? 'cvm-err' : '';
+
+      return `<tr>
+        <td>${r.dt_comptc}</td>
+        <td class="num">${fmtQuota(r.vl_quota)}</td>
+        <td class="num">${cotaCalc != null ? fmtQuota(cotaCalc) : '—'}</td>
+        <td class="num ${diffClass}">${diffPct == null ? '—' : fmtPct(diffPct, 3)}</td>
+        <td class="num">${fmtBrl0(r.vl_patrim_liq)}</td>
+        <td class="num">${r.captc_dia ? fmtBrl0(r.captc_dia) : '—'}</td>
+        <td class="num">${r.resg_dia ? fmtBrl0(r.resg_dia) : '—'}</td>
+        <td class="num ${capLiqClass}">${capLiq ? fmtBrl0(capLiq) : '—'}</td>
+        <td class="num">${fmtInt(r.nr_cotst)}</td>
+        <td class="num ${deltaClass}">${deltaCot > 0 ? '+' : ''}${deltaCot || '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function _bindActions() {
+    const filter = document.getElementById('cvm-filter-year');
+    if (filter && !filter._bound) {
+      filter._bound = true;
+      filter.addEventListener('input', (e) => _renderTable(e.target.value.trim()));
+    }
+    const btnR = document.getElementById('btn-cvm-refresh');
+    if (btnR && !btnR._bound) {
+      btnR._bound = true;
+      btnR.addEventListener('click', async () => {
+        btnR.disabled = true; btnR.textContent = '… atualizando';
+        try {
+          await fetch('/api/cvm/fund-daily/refresh', { method: 'POST' });
+          await _pollUntilIdle();
+          await _loadAndRender();
+        } finally {
+          btnR.disabled = false; btnR.textContent = '↻ ATUALIZAR';
+        }
+      });
+    }
+    const btnB = document.getElementById('btn-cvm-backfill');
+    if (btnB && !btnB._bound) {
+      btnB._bound = true;
+      btnB.addEventListener('click', async () => {
+        if (!confirm('Recarregar todo o histórico desde 2022-04? Pode demorar 1-2 minutos.')) return;
+        btnB.disabled = true; btnB.textContent = '… recarregando';
+        try {
+          await fetch('/api/cvm/fund-daily/backfill', { method: 'POST' });
+          await _pollUntilIdle(180);
+          await _loadAndRender();
+        } finally {
+          btnB.disabled = false; btnB.textContent = '⟲ BACKFILL';
+        }
+      });
+    }
+  }
+
+  async function _pollUntilIdle(maxSeconds = 60) {
+    const deadline = Date.now() + maxSeconds * 1000;
+    while (Date.now() < deadline) {
+      try {
+        const st = await fetch('/api/cvm/fund-daily/status').then(r => r.json());
+        if (!st.running) return;
+      } catch (e) { /* ignore */ }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+
+  async function _loadAndRender() {
+    await _fetchPayload();
+    _renderCards();
+    _renderCharts();
+    _renderCadastro();
+    _renderTable(document.getElementById('cvm-filter-year')?.value.trim() || '');
+  }
+
+  async function init() {
+    _bindActions();
+    if (!_loaded) {
+      _loaded = true;
+      await _loadAndRender();
+    } else {
+      // já carregado — rerenderiza para lidar com mudança de tema etc
+      _renderCharts();
+    }
+  }
+
+  return { init };
+})();
+
+function loadCvmOficialTab() {
+  CvmOficial.init();
+}
 
