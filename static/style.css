@@ -3697,6 +3697,14 @@ body.theme-light #tab-cvm-oficial {
 .cvm-chart-wrap {
   position: relative;
   height: 320px;
+  width: 100%;
+}
+.cvm-chart-wrap > canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  display: block;
 }
 
 /* Cadastro */

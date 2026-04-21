@@ -7260,9 +7260,28 @@ const CvmOficial = (() => {
     _renderCharts();
     _renderCadastro();
     _renderTable(document.getElementById('cvm-filter-year')?.value.trim() || '');
+    _attachResizeObservers();
     requestAnimationFrame(() => {
       for (const k of Object.keys(_charts)) _charts[k]?.resize();
     });
+  }
+
+  let _resizeObserver = null;
+  function _attachResizeObservers() {
+    if (_resizeObserver) _resizeObserver.disconnect();
+    if (typeof ResizeObserver === 'undefined') return;
+    _resizeObserver = new ResizeObserver(() => {
+      for (const k of Object.keys(_charts)) {
+        const chart = _charts[k];
+        if (!chart) continue;
+        const wrap = chart.canvas.parentElement;
+        if (wrap) chart.resize(wrap.clientWidth, wrap.clientHeight);
+      }
+    });
+    for (const k of Object.keys(_charts)) {
+      const wrap = _charts[k]?.canvas?.parentElement;
+      if (wrap) _resizeObserver.observe(wrap);
+    }
   }
 
   async function init() {
