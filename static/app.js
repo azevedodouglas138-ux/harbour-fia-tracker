@@ -703,7 +703,7 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-events')       loadEventsTab();
     if (btn.dataset.tab === 'tab-indices')      initIndicesTab();
     if (btn.dataset.tab === 'tab-research')     Research.init();
-    if (btn.dataset.tab === 'tab-cvm-oficial')  loadCvmOficialTab();
+    if (btn.dataset.tab === 'tab-cvm-oficial')  requestAnimationFrame(() => loadCvmOficialTab());
   });
 });
 
@@ -7260,6 +7260,9 @@ const CvmOficial = (() => {
     _renderCharts();
     _renderCadastro();
     _renderTable(document.getElementById('cvm-filter-year')?.value.trim() || '');
+    requestAnimationFrame(() => {
+      for (const k of Object.keys(_charts)) _charts[k]?.resize();
+    });
   }
 
   async function init() {
