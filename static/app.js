@@ -7017,25 +7017,30 @@ const CvmOficial = (() => {
     const plCtx = document.getElementById('cvm-chart-pl').getContext('2d');
     const aportesAcum = _computeAportesAcumulados(recs);
     const plSeries = recs.map(r => r.vl_patrim_liq);
-    const bbgYellow = '#ffd100';
-    const yellowFill = 'rgba(255, 209, 0, 0.14)';
-    const orangeFill = 'rgba(245, 166, 35, 0.20)';
+    const lightGreen = '#a3e635';
+    const lightGreenFill = 'rgba(163, 230, 53, 0.14)';
+    const orangeFill = 'rgba(245, 166, 35, 0.22)';
 
     _charts.pl = new Chart(plCtx, {
       type: 'line',
       data: {
         labels,
         datasets: [
-          _buildLineDataset('Valor Aplicado', labels, aportesAcum, bbgYellow, true, yellowFill),
+          _buildLineDataset('Valor Aplicado', labels, aportesAcum, lightGreen, true, lightGreenFill),
           _buildLineDataset('Patrimônio Líquido', labels, plSeries, colors.orange, true, orangeFill),
         ],
       },
       options: {
         ..._baseChartOpts(),
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },
         plugins: {
           ..._baseChartOpts().plugins,
           tooltip: {
             ..._baseChartOpts().plugins.tooltip,
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false,
+            position: 'nearest',
             callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtBrl0(ctx.parsed.y)}` },
           },
         },
@@ -7043,6 +7048,7 @@ const CvmOficial = (() => {
           ..._baseChartOpts().scales,
           y: {
             ..._baseChartOpts().scales.y,
+            beginAtZero: true,
             ticks: {
               ..._baseChartOpts().scales.y.ticks,
               callback: (v) => fmtBrl0(v),
