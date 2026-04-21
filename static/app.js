@@ -6877,6 +6877,7 @@ const CvmOficial = (() => {
     return {
       responsive: true,
       maintainAspectRatio: false,
+      devicePixelRatio: 1,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
