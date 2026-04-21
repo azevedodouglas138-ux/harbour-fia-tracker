@@ -6927,11 +6927,16 @@ const CvmOficial = (() => {
   }
 
   function _computeAportesAcumulados(records) {
-    let acum = 0;
-    return records.map(r => {
-      acum += (Number(r.captc_dia) || 0) - (Number(r.resg_dia) || 0);
-      return acum;
-    });
+    if (!records.length) return [];
+    // Seed com PL inicial: no dia 1 do fundo, capital aplicado = patrimônio.
+    // A partir daí, soma captações e subtrai resgates.
+    let acum = Number(records[0].vl_patrim_liq) || 0;
+    const out = [acum];
+    for (let i = 1; i < records.length; i++) {
+      acum += (Number(records[i].captc_dia) || 0) - (Number(records[i].resg_dia) || 0);
+      out.push(acum);
+    }
+    return out;
   }
 
   function _buildQuotaCalcMap() {
@@ -7012,17 +7017,17 @@ const CvmOficial = (() => {
     const plCtx = document.getElementById('cvm-chart-pl').getContext('2d');
     const aportesAcum = _computeAportesAcumulados(recs);
     const plSeries = recs.map(r => r.vl_patrim_liq);
-    const grayLine = '#888';
-    const grayFill = 'rgba(136, 136, 136, 0.18)';
-    const greenFill = 'rgba(0, 204, 136, 0.22)';
+    const bbgYellow = '#ffd100';
+    const yellowFill = 'rgba(255, 209, 0, 0.14)';
+    const orangeFill = 'rgba(245, 166, 35, 0.20)';
 
     _charts.pl = new Chart(plCtx, {
       type: 'line',
       data: {
         labels,
         datasets: [
-          _buildLineDataset('Valor Aplicado', labels, aportesAcum, grayLine, true, grayFill),
-          _buildLineDataset('Patrimônio Líquido', labels, plSeries, colors.green, true, greenFill),
+          _buildLineDataset('Valor Aplicado', labels, aportesAcum, bbgYellow, true, yellowFill),
+          _buildLineDataset('Patrimônio Líquido', labels, plSeries, colors.orange, true, orangeFill),
         ],
       },
       options: {
