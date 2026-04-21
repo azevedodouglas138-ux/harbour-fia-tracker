@@ -6857,13 +6857,13 @@ const CvmOficial = (() => {
     };
   }
 
-  function _buildLineDataset(label, dates, values, color, fill = false) {
+  function _buildLineDataset(label, dates, values, color, fill = false, fillColor = null) {
     const colors = _pickChartColors();
     return {
       label,
       data: values,
       borderColor: color,
-      backgroundColor: fill ? colors.orangeFill : 'transparent',
+      backgroundColor: fill ? (fillColor || colors.orangeFill) : 'transparent',
       fill,
       tension: 0.05,
       pointRadius: 0,
@@ -6924,6 +6924,14 @@ const CvmOficial = (() => {
     _quotaHistory = Array.isArray(qh) ? qh
                   : (qh && Array.isArray(qh.history)) ? qh.history
                   : [];
+  }
+
+  function _computeAportesAcumulados(records) {
+    let acum = 0;
+    return records.map(r => {
+      acum += (Number(r.captc_dia) || 0) - (Number(r.resg_dia) || 0);
+      return acum;
+    });
   }
 
   function _buildQuotaCalcMap() {
@@ -7000,18 +7008,40 @@ const CvmOficial = (() => {
 
     for (const k of Object.keys(_charts)) { _charts[k].destroy(); delete _charts[k]; }
 
-    // PL
+    // Evolução do PL: Valor Aplicado Acumulado vs Patrimônio Líquido
     const plCtx = document.getElementById('cvm-chart-pl').getContext('2d');
+    const aportesAcum = _computeAportesAcumulados(recs);
+    const plSeries = recs.map(r => r.vl_patrim_liq);
+    const grayLine = '#888';
+    const grayFill = 'rgba(136, 136, 136, 0.18)';
+    const greenFill = 'rgba(0, 204, 136, 0.22)';
+
     _charts.pl = new Chart(plCtx, {
       type: 'line',
-      data: { labels, datasets: [_buildLineDataset('PL (R$)', labels, recs.map(r => r.vl_patrim_liq), colors.orange, true)] },
+      data: {
+        labels,
+        datasets: [
+          _buildLineDataset('Valor Aplicado', labels, aportesAcum, grayLine, true, grayFill),
+          _buildLineDataset('Patrimônio Líquido', labels, plSeries, colors.green, true, greenFill),
+        ],
+      },
       options: {
         ..._baseChartOpts(),
         plugins: {
           ..._baseChartOpts().plugins,
           tooltip: {
             ..._baseChartOpts().plugins.tooltip,
-            callbacks: { label: (ctx) => 'PL: ' + fmtBrl0(ctx.parsed.y) },
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtBrl0(ctx.parsed.y)}` },
+          },
+        },
+        scales: {
+          ..._baseChartOpts().scales,
+          y: {
+            ..._baseChartOpts().scales.y,
+            ticks: {
+              ..._baseChartOpts().scales.y.ticks,
+              callback: (v) => fmtBrl0(v),
+            },
           },
         },
       },
