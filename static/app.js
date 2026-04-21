@@ -703,7 +703,7 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-events')       loadEventsTab();
     if (btn.dataset.tab === 'tab-indices')      initIndicesTab();
     if (btn.dataset.tab === 'tab-research')     Research.init();
-    if (btn.dataset.tab === 'tab-cvm-oficial')  requestAnimationFrame(() => loadCvmOficialTab());
+    if (btn.dataset.tab === 'tab-cvm-oficial')  loadCvmOficialTab();
   });
 });
 
@@ -6857,13 +6857,13 @@ const CvmOficial = (() => {
     };
   }
 
-  function _buildLineDataset(label, dates, values, color, fill = false, fillColor = null) {
+  function _buildLineDataset(label, dates, values, color, fill = false) {
     const colors = _pickChartColors();
     return {
       label,
       data: values,
       borderColor: color,
-      backgroundColor: fill ? (fillColor || colors.orangeFill) : 'transparent',
+      backgroundColor: fill ? colors.orangeFill : 'transparent',
       fill,
       tension: 0.05,
       pointRadius: 0,
@@ -6877,7 +6877,6 @@ const CvmOficial = (() => {
     return {
       responsive: true,
       maintainAspectRatio: false,
-      devicePixelRatio: 1,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
@@ -6925,19 +6924,6 @@ const CvmOficial = (() => {
     _quotaHistory = Array.isArray(qh) ? qh
                   : (qh && Array.isArray(qh.history)) ? qh.history
                   : [];
-  }
-
-  function _computeAportesAcumulados(records) {
-    if (!records.length) return [];
-    // Seed com PL inicial: no dia 1 do fundo, capital aplicado = patrimônio.
-    // A partir daí, soma captações e subtrai resgates.
-    let acum = Number(records[0].vl_patrim_liq) || 0;
-    const out = [acum];
-    for (let i = 1; i < records.length; i++) {
-      acum += (Number(records[i].captc_dia) || 0) - (Number(records[i].resg_dia) || 0);
-      out.push(acum);
-    }
-    return out;
   }
 
   function _buildQuotaCalcMap() {
@@ -7014,46 +7000,18 @@ const CvmOficial = (() => {
 
     for (const k of Object.keys(_charts)) { _charts[k].destroy(); delete _charts[k]; }
 
-    // Evolução do PL: Valor Aplicado Acumulado vs Patrimônio Líquido
+    // PL
     const plCtx = document.getElementById('cvm-chart-pl').getContext('2d');
-    const aportesAcum = _computeAportesAcumulados(recs);
-    const plSeries = recs.map(r => r.vl_patrim_liq);
-    const lightGreen = '#a3e635';
-    const lightGreenFill = 'rgba(163, 230, 53, 0.14)';
-    const orangeFill = 'rgba(245, 166, 35, 0.22)';
-
     _charts.pl = new Chart(plCtx, {
       type: 'line',
-      data: {
-        labels,
-        datasets: [
-          _buildLineDataset('Valor Aplicado', labels, aportesAcum, lightGreen, true, lightGreenFill),
-          _buildLineDataset('Patrimônio Líquido', labels, plSeries, colors.orange, true, orangeFill),
-        ],
-      },
+      data: { labels, datasets: [_buildLineDataset('PL (R$)', labels, recs.map(r => r.vl_patrim_liq), colors.orange, true)] },
       options: {
         ..._baseChartOpts(),
-        interaction: { mode: 'nearest', axis: 'x', intersect: false },
         plugins: {
           ..._baseChartOpts().plugins,
           tooltip: {
             ..._baseChartOpts().plugins.tooltip,
-            mode: 'nearest',
-            axis: 'x',
-            intersect: false,
-            position: 'nearest',
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtBrl0(ctx.parsed.y)}` },
-          },
-        },
-        scales: {
-          ..._baseChartOpts().scales,
-          y: {
-            ..._baseChartOpts().scales.y,
-            beginAtZero: true,
-            ticks: {
-              ..._baseChartOpts().scales.y.ticks,
-              callback: (v) => fmtBrl0(v),
-            },
+            callbacks: { label: (ctx) => 'PL: ' + fmtBrl0(ctx.parsed.y) },
           },
         },
       },
@@ -7261,28 +7219,6 @@ const CvmOficial = (() => {
     _renderCharts();
     _renderCadastro();
     _renderTable(document.getElementById('cvm-filter-year')?.value.trim() || '');
-    _attachResizeObservers();
-    requestAnimationFrame(() => {
-      for (const k of Object.keys(_charts)) _charts[k]?.resize();
-    });
-  }
-
-  let _resizeObserver = null;
-  function _attachResizeObservers() {
-    if (_resizeObserver) _resizeObserver.disconnect();
-    if (typeof ResizeObserver === 'undefined') return;
-    _resizeObserver = new ResizeObserver(() => {
-      for (const k of Object.keys(_charts)) {
-        const chart = _charts[k];
-        if (!chart) continue;
-        const wrap = chart.canvas.parentElement;
-        if (wrap) chart.resize(wrap.clientWidth, wrap.clientHeight);
-      }
-    });
-    for (const k of Object.keys(_charts)) {
-      const wrap = _charts[k]?.canvas?.parentElement;
-      if (wrap) _resizeObserver.observe(wrap);
-    }
   }
 
   async function init() {
