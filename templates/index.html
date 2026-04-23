@@ -1345,6 +1345,15 @@
       <div class="research-sidebar-label">UNIVERSO</div>
       <div id="research-list-universo"></div>
     </div>
+    {% if role == 'admin' %}
+    <!-- Admin: Claude budget gauge -->
+    <div id="claude-budget-panel" class="budget-gauge">
+      <div class="budget-label">CLAUDE · HOJE</div>
+      <div class="budget-bar"><div class="budget-fill" id="budget-fill" style="width:0%"></div></div>
+      <div class="budget-text" id="budget-text">— / —</div>
+      <a href="#" id="btn-claude-usage-detail" style="font-size:9px;color:var(--text-muted)">ver detalhado</a>
+    </div>
+    {% endif %}
   </div>
 
   <!-- MAIN PANEL -->
@@ -1399,7 +1408,8 @@
       <!-- Sub-tabs -->
       <div class="research-subtabs">
         <button class="research-subtab active" data-subtab="subtab-tese">TESE</button>
-        <button class="research-subtab" data-subtab="subtab-intel">INTELIGÊNCIA <span class="research-badge" id="badge-intel" style="display:none"></span></button>
+        <button class="research-subtab" data-subtab="subtab-oficiais">OFICIAIS <span class="research-badge" id="badge-oficiais" style="display:none"></span></button>
+        <button class="research-subtab" data-subtab="subtab-noticias">NOTÍCIAS <span class="research-badge" id="badge-noticias" style="display:none"></span></button>
         <button class="research-subtab" data-subtab="subtab-valuation">VALUATION</button>
         <button class="research-subtab" data-subtab="subtab-historico">HISTÓRICO</button>
         <button class="research-subtab" data-subtab="__all__">TODOS</button>
@@ -1430,25 +1440,39 @@
         </div>
       </div>
 
-      <!-- ── INTELIGÊNCIA (Filings + Notícias) ─────────────────── -->
-      <div id="subtab-intel" class="research-subtab-content hidden">
-        <div class="intel-filters">
-          <button class="intel-filter-btn active" data-intel-filter="all">TODOS</button>
-          <button class="intel-filter-btn" data-intel-filter="filing">FILINGS</button>
-          <button class="intel-filter-btn" data-intel-filter="news">NOTÍCIAS</button>
-          <span class="intel-pending-count" id="intel-pending-count"></span>
+      <!-- ── OFICIAIS (Filings CVM + SEC + Manual) ─────────────── -->
+      <div id="subtab-oficiais" class="research-subtab-content hidden">
+        <div class="research-section-header">
+          <span>OFICIAIS · CVM · SEC · MANUAL</span>
+          <button class="bbg-btn" id="btn-add-oficial-manual" style="font-size:10px">+ ADICIONAR MANUAL</button>
         </div>
-        <div id="research-intel-list" class="research-list-items"></div>
-        <div id="research-intel-empty" class="research-empty-inline hidden">Nenhum filing ou notícia registrado.</div>
+        <div id="research-oficiais-list" class="research-list-items"></div>
+        <div id="research-oficiais-empty" class="research-empty-inline hidden">Nenhum filing registrado.</div>
+      </div>
+
+      <!-- ── NOTÍCIAS (100% manual — URL ou upload) ─────────────── -->
+      <div id="subtab-noticias" class="research-subtab-content hidden">
+        <div class="research-section-header">
+          <span>NOTÍCIAS</span>
+          <button class="bbg-btn" id="btn-add-noticia" style="font-size:10px">+ ADICIONAR NOTÍCIA</button>
+        </div>
+        <div id="research-noticias-list" class="research-list-items"></div>
+        <div id="research-noticias-empty" class="research-empty-inline hidden">Nenhuma notícia registrada. Clique em + ADICIONAR NOTÍCIA para colar link ou subir arquivo.</div>
       </div>
 
       <!-- ── VALUATION + NOTAS ────────────────────────────────── -->
       <div id="subtab-valuation" class="research-subtab-content hidden">
         <div class="research-section-header">
           <span>VALUATION</span>
-          <button class="bbg-btn" id="btn-research-new-valuation" style="font-size:10px">+ NOVO</button>
+          <div style="display:flex;gap:6px">
+            <button class="bbg-btn" id="btn-research-upload-excel" style="font-size:10px">↑ UPLOAD EXCEL</button>
+            <button class="bbg-btn" id="btn-research-new-valuation" style="font-size:10px">+ NOVO MANUAL</button>
+          </div>
         </div>
-        <div id="research-valuation-list" class="research-list-items"></div>
+        <!-- Hero cards (novo layout) — renderizado via JS -->
+        <div id="val-hero-container"></div>
+        <!-- Lista legacy — mantida pra compat, escondida por padrão -->
+        <div id="research-valuation-list" class="research-list-items" style="display:none"></div>
         <div id="research-valuation-empty" class="research-empty-inline hidden">Nenhum valuation registrado.</div>
         <!-- Valuation form -->
         <div id="research-valuation-form" class="research-form hidden">
@@ -1644,7 +1668,7 @@
 <div id="modal-research-ingest" class="research-modal-overlay hidden">
   <div class="research-modal">
     <div class="research-modal-header">
-      <span>ADICIONAR ARTIGO / RELATÓRIO</span>
+      <span id="ingest-modal-title">ADICIONAR ARTIGO / DOCUMENTO</span>
       <button class="research-modal-close" id="btn-ingest-modal-close">✕</button>
     </div>
     <div class="research-modal-body">
@@ -1652,20 +1676,106 @@
         <label>TICKER
           <input type="text" id="ingest-ticker" placeholder="ex: PRIO3" style="text-transform:uppercase;width:120px">
         </label>
+        <label>TIPO
+          <select id="ingest-doc-type" style="width:120px">
+            <option value="NEWS">NOTÍCIA</option>
+            <option value="FILING">FILING (oficial)</option>
+          </select>
+        </label>
         <label>FONTE
-          <input type="text" id="ingest-source" placeholder="Bloomberg, Sell-side, etc." style="width:180px">
+          <input type="text" id="ingest-source" placeholder="Valor, Bloomberg, CVM, SEC…" style="width:180px">
         </label>
       </div>
-      <div class="research-form-row">
-        <label style="flex:1">CONTEÚDO (cole o texto do artigo/relatório)
-          <textarea id="ingest-text" rows="10" style="width:100%;font-size:11px" placeholder="Cole aqui o texto completo do artigo Bloomberg, relatório de sell-side, transcrição de call, etc."></textarea>
-        </label>
+      <!-- Tabs URL / ARQUIVO -->
+      <div class="ingest-tabs">
+        <button class="ingest-tab-btn active" data-ingest-mode="url" type="button">🔗 URL</button>
+        <button class="ingest-tab-btn" data-ingest-mode="file" type="button">📄 ARQUIVO</button>
+      </div>
+      <!-- Modo URL -->
+      <div class="ingest-mode-panel" data-ingest-panel="url">
+        <div class="research-form-row">
+          <label style="flex:1">URL
+            <input type="url" id="ingest-url" placeholder="https://valor.globo.com/…  (paywalls podem falhar — nesse caso use ARQUIVO)" style="width:100%;font-size:11px">
+          </label>
+        </div>
+      </div>
+      <!-- Modo ARQUIVO -->
+      <div class="ingest-mode-panel hidden" data-ingest-panel="file">
+        <div class="ingest-dropzone" id="ingest-dropzone">
+          <div>Arraste um PDF, PNG ou JPG aqui</div>
+          <div style="font-size:10px;margin-top:4px">ou clique para selecionar</div>
+          <input type="file" id="ingest-file-input" accept=".pdf,.png,.jpg,.jpeg" hidden>
+          <div class="ingest-file-preview" id="ingest-file-preview"></div>
+        </div>
       </div>
       <div id="ingest-result" class="research-ingest-result hidden"></div>
     </div>
     <div class="research-modal-footer">
       <button class="bbg-btn" id="btn-ingest-cancel">CANCELAR</button>
       <button class="bbg-btn bbg-btn-primary" id="btn-ingest-submit">PROCESSAR COM CLAUDE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Valuation — Upload Excel ─────────────────────────────────── -->
+<div id="modal-valuation-upload" class="research-modal-overlay hidden">
+  <div class="research-modal" style="width:640px">
+    <div class="research-modal-header">
+      <span>UPLOAD EXCEL · VALUATION</span>
+      <button class="research-modal-close" id="btn-valup-modal-close">✕</button>
+    </div>
+    <div class="research-modal-body">
+      <!-- Step 1: upload -->
+      <div id="valup-step1">
+        <div class="research-form-row">
+          <label>TICKER
+            <input type="text" id="valup-ticker" style="text-transform:uppercase;width:120px">
+          </label>
+        </div>
+        <div class="ingest-dropzone" id="valup-dropzone">
+          <div>Arraste o .xlsx (modelo DCF / múltiplos / soma de partes) aqui</div>
+          <div style="font-size:10px;margin-top:4px">ou clique para selecionar</div>
+          <input type="file" id="valup-file-input" accept=".xlsx,.xlsm" hidden>
+          <div class="ingest-file-preview" id="valup-file-preview"></div>
+        </div>
+      </div>
+      <!-- Step 2: review extracted fields -->
+      <div id="valup-step2" class="hidden">
+        <div class="val-extract-summary" id="valup-extract-summary"></div>
+        <div class="research-form-row">
+          <label>METODOLOGIA
+            <select id="valup-methodology">
+              <option value="DCF">DCF</option>
+              <option value="EV/EBITDA">EV/EBITDA</option>
+              <option value="P/L">P/L</option>
+              <option value="DDM">DDM</option>
+              <option value="SOMA_PARTES">SOMA DE PARTES</option>
+            </select>
+          </label>
+          <label>PREÇO ALVO (R$)<input type="number" id="valup-target-price" step="0.01"></label>
+          <label>UPSIDE (%)<input type="number" id="valup-upside" step="0.1"></label>
+        </div>
+        <div class="research-form-row">
+          <label>WACC (%)<input type="number" id="valup-wacc" step="0.1"></label>
+          <label>GROWTH (%)<input type="number" id="valup-growth" step="0.1"></label>
+          <label>G TERMINAL (%)<input type="number" id="valup-terminal" step="0.1"></label>
+        </div>
+        <div class="research-form-row">
+          <label>EBITDA MARGIN (%)<input type="number" id="valup-ebitda-margin" step="0.1"></label>
+          <label>REVENUE CAGR (%)<input type="number" id="valup-revenue-cagr" step="0.1"></label>
+        </div>
+        <div class="research-form-row">
+          <label style="flex:1">NOTAS<textarea id="valup-notes" rows="2" style="width:100%"></textarea></label>
+        </div>
+        <div id="valup-claude-hint" class="hidden" style="margin:8px 0;padding:8px;border:1px dashed var(--orange);font-size:10px;color:var(--text-muted)">
+          Parser heurístico não achou: <strong id="valup-missing-list"></strong>.
+          <button class="bbg-btn" id="btn-valup-extract-claude" style="margin-left:8px;font-size:10px">⚡ EXTRAIR COM CLAUDE</button>
+        </div>
+      </div>
+    </div>
+    <div class="research-modal-footer">
+      <button class="bbg-btn" id="btn-valup-cancel">CANCELAR</button>
+      <button class="bbg-btn bbg-btn-primary hidden" id="btn-valup-save">SALVAR VALUATION</button>
     </div>
   </div>
 </div>
@@ -1736,6 +1846,11 @@
   <div class="qa-panel-header">
     <span id="qa-panel-title">✦ Q&A — BASE COMPLETA</span>
     <div class="qa-panel-header-actions">
+      <!-- Model toggle — Haiku (default, barato) vs Sonnet (mais preciso, ~4x custo) -->
+      <div class="qa-model-toggle" title="Escolha o modelo Claude">
+        <button class="active" data-qa-model="haiku" type="button" title="Rápido, ~5× mais barato">⚡ RÁPIDO</button>
+        <button data-qa-model="sonnet" type="button" title="Mais preciso, ~4× custo — use em perguntas complexas">🧠 DETALHADO</button>
+      </div>
       <button class="qa-font-btn" id="btn-qa-font-dec" title="Diminuir fonte">A−</button>
       <button class="qa-font-btn" id="btn-qa-font-inc" title="Aumentar fonte">A+</button>
       <button class="qa-panel-close" id="btn-qa-panel-close">✕</button>

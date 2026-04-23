@@ -4930,10 +4930,11 @@ const Research = (() => {
   let _initialized = false;
   let _allTheses = [];
   let _viewingThesisIdx = 0;
-  let _intelItems = [];
-  let _intelFilter = 'all';
+  // _intelItems / _intelFilter removidos em 2026-04-23 — sub-tab unificada substituída por OFICIAIS + NOTÍCIAS
   let _qaTicker = null;
   let _qaScope  = null; // null=empresa/global; 'portfolio' usa endpoints /portfolio/qa
+  let _qaModel  = 'haiku'; // Research v2: Haiku default (5x cheaper); toggle para Sonnet no header
+  let _currentCompanyData = null;  // armazena último response de /api/research/company/<t>
 
   // ── DOM helpers ──────────────────────────────────────────────────
   const $  = id => document.getElementById(id);
@@ -4996,6 +4997,8 @@ const Research = (() => {
     _bindPortfolioHistoryControls();
     await loadCompanies();
     await refreshPending();
+    // Admin: budget gauge (Research v2)
+    loadClaudeBudget();
   }
 
   // ── Pending counts ────────────────────────────────────────────────
@@ -5116,11 +5119,13 @@ const Research = (() => {
     // Load full company data
     const data = await apiGet(`/api/research/company/${ticker}`);
     _companyData = data;
+    _currentCompanyData = data;
 
     renderCompanyHeader(data.company);
     renderCoverageCard(data);
     renderThesisTab(data.theses);
-    renderIntelTab(data.filings, data.news);
+    renderOficiaisTab(data.filings);
+    renderNoticiasTab(data.news);
     renderValuationTab(data.valuations);
     renderNotesTab(data.notes);
     renderAuditTab(data.audit);
@@ -5130,9 +5135,10 @@ const Research = (() => {
   function updateSubTabBadges(data) {
     const filingsPending = (data.filings || []).filter(f => f.review_status === 'PENDENTE').length;
     const newsPending    = (data.news    || []).filter(n => n.review_status === 'PENDENTE').length;
-    const totalPending = filingsPending + newsPending;
-    const bi = $('badge-intel');
-    if (bi) { bi.textContent = totalPending; bi.style.display = totalPending > 0 ? '' : 'none'; }
+    const bo = $('badge-oficiais');
+    if (bo) { bo.textContent = filingsPending; bo.style.display = filingsPending > 0 ? '' : 'none'; }
+    const bn = $('badge-noticias');
+    if (bn) { bn.textContent = newsPending; bn.style.display = newsPending > 0 ? '' : 'none'; }
   }
 
   // ── Coverage card (status pills) ──────────────────────────────────
@@ -5381,17 +5387,34 @@ const Research = (() => {
   }
 
   // ── INTELIGÊNCIA TAB (Filings + News unified) ───────────────────────
-  function renderIntelTab(filings, news) {
-    _intelItems = [];
-    for (const f of (filings || [])) {
-      _intelItems.push({ ...f, _type: 'filing' });
-    }
-    for (const n of (news || [])) {
-      _intelItems.push({ ...n, _type: 'news' });
-    }
+  // ── OFICIAIS (filings) + NOTÍCIAS (news) — sub-tabs separadas (Research v2)
+  function renderOficiaisTab(filings) {
+    const items = (filings || []).map(f => ({ ...f, _type: 'filing' }));
+    _renderResearchItems(items, 'research-oficiais-list', 'research-oficiais-empty',
+                          'Nenhum filing registrado.');
+  }
 
+  function renderNoticiasTab(news) {
+    const items = (news || []).map(n => ({ ...n, _type: 'news' }));
+    _renderResearchItems(items, 'research-noticias-list', 'research-noticias-empty',
+                          'Nenhuma notícia registrada.');
+  }
+
+  function _renderResearchItems(items, containerId, emptyId, emptyMsg) {
+    const container = $(containerId);
+    const emptyEl   = $(emptyId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!items || items.length === 0) {
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    // Sort: pendentes primeiro, depois data desc
     const order = { PENDENTE: 0, APROVADO: 1, REJEITADO: 2 };
-    _intelItems.sort((a, b) => {
+    items = items.slice().sort((a, b) => {
       const statusDiff = (order[a.review_status] || 0) - (order[b.review_status] || 0);
       if (statusDiff !== 0) return statusDiff;
       const dateA = a.filing_date || a.published_at || '';
@@ -5399,47 +5422,12 @@ const Research = (() => {
       return dateB.localeCompare(dateA);
     });
 
-    // Bind filter buttons
-    document.querySelectorAll('.intel-filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.intel-filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        _intelFilter = btn.dataset.intelFilter;
-        _renderIntelList();
-      });
-    });
-
-    const pendingCount = _intelItems.filter(i => i.review_status === 'PENDENTE').length;
-    const pc = $('intel-pending-count');
-    if (pc) pc.textContent = pendingCount > 0 ? `${pendingCount} pendente${pendingCount > 1 ? 's' : ''}` : '';
-
-    _intelFilter = 'all';
-    document.querySelectorAll('.intel-filter-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.intelFilter === 'all');
-    });
-    _renderIntelList();
-  }
-
-  function _renderIntelList() {
-    const container = $('research-intel-list');
-    const emptyEl   = $('research-intel-empty');
-    container.innerHTML = '';
-
-    const filtered = _intelFilter === 'all'
-      ? _intelItems
-      : _intelItems.filter(i => i._type === _intelFilter);
-
-    if (filtered.length === 0) {
-      emptyEl.classList.remove('hidden');
-      return;
-    }
-    emptyEl.classList.add('hidden');
-
-    for (const item of filtered) {
+    for (const item of items) {
       const div = el('div', `research-item ${_reviewClass(item.review_status)}`);
       const isFiling = item._type === 'filing';
-      const typeLabel = isFiling ? `[${_escHtml(item.source || 'FILING')}]` : 'NOTÍCIA';
-      const date = isFiling ? (item.filing_date || '—') : (item.published_at ? item.published_at.slice(0, 10) : '—');
+      const typeLabel = isFiling ? `[${_escHtml(item.source || 'FILING')}]` : '';
+      const date = isFiling ? (item.filing_date || '—')
+                            : (item.published_at ? item.published_at.slice(0, 10) : '—');
       const title = _escHtml(item.title || '');
       const link = isFiling ? item.raw_url : item.url;
 
@@ -5452,6 +5440,11 @@ const Research = (() => {
           }
         } catch(e) {}
       }
+
+      const isApproved = item.review_status === 'APROVADO';
+      const suggestBtn = (isApproved && (ROLE === 'admin' || ROLE === 'equipe'))
+        ? `<button class="btn-suggest-thesis" data-suggest-type="${item._type}" data-suggest-id="${item.id}" data-suggest-ticker="${_escHtml(item.ticker || _currentTicker || '')}">⚡ SUGERIR TESE</button>`
+        : '';
 
       div.innerHTML = `
         <div class="research-item-header">
@@ -5466,6 +5459,7 @@ const Research = (() => {
           <button class="btn-approve" data-intel-approve="${item.id}" data-intel-type="${item._type}">APROVAR</button>
           <button class="btn-reject" data-intel-reject="${item.id}" data-intel-type="${item._type}">REJEITAR</button>
         </div>` : ''}
+        ${suggestBtn ? `<div class="research-item-actions">${suggestBtn}</div>` : ''}
       `;
       container.appendChild(div);
     }
@@ -5479,6 +5473,13 @@ const Research = (() => {
       const id = btn.dataset.intelReject;
       const type = btn.dataset.intelType;
       btn.onclick = () => type === 'filing' ? reviewFiling(id, 'REJECT') : reviewNews(id, 'REJECT');
+    });
+    container.querySelectorAll('[data-suggest-type]').forEach(btn => {
+      btn.onclick = () => _openThesisSuggestModal(
+        btn.dataset.suggestTicker,
+        btn.dataset.suggestType,
+        btn.dataset.suggestId,
+      );
     });
   }
 
@@ -5496,41 +5497,228 @@ const Research = (() => {
 
   // ── VALUATION TAB ─────────────────────────────────────────────────
   function renderValuationTab(valuations) {
-    const container = $('research-valuation-list');
-    const emptyEl   = $('research-valuation-empty');
-    container.innerHTML = '';
+    const host    = $('val-hero-container');
+    const emptyEl = $('research-valuation-empty');
+    if (!host) return;
+
+    host.innerHTML = '';
     if (!valuations || valuations.length === 0) {
-      emptyEl.classList.remove('hidden');
+      if (emptyEl) emptyEl.classList.remove('hidden');
       return;
     }
-    emptyEl.classList.add('hidden');
+    if (emptyEl) emptyEl.classList.add('hidden');
 
     for (const v of valuations) {
-      const upside = v.upside_pct !== null && v.upside_pct !== undefined
-        ? `<span style="color:${v.upside_pct >= 0 ? 'var(--green)' : 'var(--red)'}">${v.upside_pct >= 0 ? '+' : ''}${v.upside_pct.toFixed(1)}%</span>`
-        : '';
-      const item = el('div', 'research-item');
-      item.innerHTML = `
-        <div class="research-item-header">
-          <span class="research-item-title">${v.methodology || '—'} — Alvo: R$ ${v.target_price != null ? Number(v.target_price).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—'} ${upside}</span>
-          <span class="research-item-meta">por ${v.created_by} · ${fmt(v.created_at)}</span>
-        </div>
-        ${v.notes ? `<div class="research-item-body">${v.notes}</div>` : ''}
-        ${ROLE === 'admin' || ROLE === 'equipe' ? `
-        <div class="research-item-actions">
-          <button class="btn-icon-delete" data-val-delete="${v.id}">✕ REMOVER</button>
-        </div>` : ''}
-      `;
-      container.appendChild(item);
+      const card = _buildValuationHeroCard(v);
+      host.appendChild(card);
     }
 
-    container.querySelectorAll('[data-val-delete]').forEach(btn => {
+    // Bind delete + download actions
+    host.querySelectorAll('[data-val-delete]').forEach(btn => {
       btn.onclick = async () => {
-        if (!confirm('Remover este valuation?')) return;
+        if (!confirm('Remover este valuation? O Excel também será apagado.')) return;
         await apiDel(`/api/research/valuations/${btn.dataset.valDelete}`);
         await reloadCurrent();
       };
     });
+  }
+
+  function _fmtBR(n, digits) {
+    if (n === null || n === undefined || n === '') return '—';
+    const num = Number(n);
+    if (!Number.isFinite(num)) return '—';
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: digits ?? 2,
+      maximumFractionDigits: digits ?? 2,
+    });
+  }
+
+  function _pctStr(v, digits) {
+    if (v === null || v === undefined || v === '') return null;
+    const num = Number(v);
+    if (!Number.isFinite(num)) return null;
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: digits ?? 1,
+      maximumFractionDigits: digits ?? 1,
+    }) + '%';
+  }
+
+  function _buildValuationHeroCard(v) {
+    const wrap = el('div', 'val-hero-card');
+    const upsideVal = v.upside_pct != null ? Number(v.upside_pct) : null;
+    const upsideClass = upsideVal == null ? 'muted' : (upsideVal >= 0 ? 'pos' : 'neg');
+    const upsideStr = upsideVal == null ? '—' : `${upsideVal >= 0 ? '+' : ''}${upsideVal.toFixed(1)}%`;
+    const waccG = [];
+    if (v.wacc != null)        waccG.push(`${Number(v.wacc).toFixed(1)}%`);
+    if (v.growth_rate != null) waccG.push(`${Number(v.growth_rate).toFixed(1)}%`);
+    const waccGStr = waccG.length >= 2 ? `${waccG[0]} · g ${waccG[1]}` : (waccG[0] || '—');
+
+    // Hero header
+    const hero = document.createElement('div');
+    hero.className = 'val-hero';
+    hero.innerHTML = `
+      <div class="val-hero-title">${_escHtml(v.ticker)} · ${_escHtml(v.methodology || '—')} · por ${_escHtml(v.created_by)} · ${fmt(v.created_at)}</div>
+      <div class="val-hero-kpis">
+        <div class="val-kpi">
+          <span class="val-kpi-label">PREÇO ALVO</span>
+          <span class="val-kpi-value">R$ ${_fmtBR(v.target_price, 2)}</span>
+        </div>
+        <div class="val-kpi">
+          <span class="val-kpi-label">UPSIDE</span>
+          <span class="val-kpi-value ${upsideClass}">${upsideStr}</span>
+        </div>
+        <div class="val-kpi">
+          <span class="val-kpi-label">WACC · g</span>
+          <span class="val-kpi-value muted">${waccGStr}</span>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(hero);
+
+    // Assumptions section
+    const assumpRows = [];
+    if (v.wacc != null)            assumpRows.push(['WACC', `${Number(v.wacc).toFixed(2)}%`]);
+    if (v.growth_rate != null)     assumpRows.push(['GROWTH (g)', `${Number(v.growth_rate).toFixed(2)}%`]);
+    if (v.terminal_growth != null) assumpRows.push(['G PERPETUIDADE', `${Number(v.terminal_growth).toFixed(2)}%`]);
+    if (v.ebitda_margin != null)   assumpRows.push(['EBITDA MARGIN', `${Number(v.ebitda_margin).toFixed(1)}%`]);
+    if (v.revenue_cagr != null)    assumpRows.push(['REVENUE CAGR', `${Number(v.revenue_cagr).toFixed(1)}%`]);
+    if (assumpRows.length > 0) {
+      const sec = document.createElement('div');
+      sec.className = 'val-section';
+      sec.innerHTML = `
+        <div class="val-section-title">ASSUMPTIONS</div>
+        <div class="val-section-grid">
+          ${assumpRows.map(([l, val]) => `
+            <div class="val-kpi">
+              <span class="val-kpi-label">${l}</span>
+              <span class="val-kpi-value">${val}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      wrap.appendChild(sec);
+    }
+
+    // Scenarios section
+    const scen = (typeof v.scenarios === 'string')
+      ? _tryJsonParse(v.scenarios) : v.scenarios;
+    if (scen && typeof scen === 'object') {
+      const bear = scen.bear || {}, base = scen.base || {}, bull = scen.bull || {};
+      if (bear.price || base.price || bull.price) {
+        const sec = document.createElement('div');
+        sec.className = 'val-section';
+        const mkCard = (cls, label, obj) => {
+          if (!obj || obj.price == null) return `
+            <div class="val-scenario-card ${cls}">
+              <div class="val-scenario-label">${label}</div>
+              <div class="val-scenario-value" style="color:var(--text-muted)">—</div>
+            </div>`;
+          const u = obj.upside != null ? ` (${obj.upside >= 0 ? '+' : ''}${Number(obj.upside).toFixed(1)}%)` : '';
+          return `
+            <div class="val-scenario-card ${cls}">
+              <div class="val-scenario-label">${label}</div>
+              <div class="val-scenario-value">R$ ${_fmtBR(obj.price, 2)}${u}</div>
+            </div>`;
+        };
+        sec.innerHTML = `
+          <div class="val-section-title">CENÁRIOS</div>
+          <div class="val-scenarios">
+            ${mkCard('scen-bear', 'BEAR', bear)}
+            ${mkCard('scen-base', 'BASE', base)}
+            ${mkCard('scen-bull', 'BULL', bull)}
+          </div>
+        `;
+        wrap.appendChild(sec);
+      }
+    }
+
+    // Sensitivity heatmap
+    const sens = (typeof v.sensitivity === 'string')
+      ? _tryJsonParse(v.sensitivity) : v.sensitivity;
+    if (sens && sens.matrix && sens.rows && sens.cols) {
+      const sec = document.createElement('div');
+      sec.className = 'val-section';
+      sec.innerHTML = `
+        <div class="val-section-title">SENSIBILIDADE</div>
+        ${_renderHeatmap(sens)}
+      `;
+      wrap.appendChild(sec);
+    }
+
+    // Notes
+    if (v.notes) {
+      const sec = document.createElement('div');
+      sec.className = 'val-section';
+      sec.innerHTML = `
+        <div class="val-section-title">NOTAS</div>
+        <div style="font-size:11px;line-height:1.6;color:var(--text);white-space:pre-wrap">${_escHtml(v.notes)}</div>
+      `;
+      wrap.appendChild(sec);
+    }
+
+    // Footer actions
+    const actions = document.createElement('div');
+    actions.className = 'val-actions';
+    const excelBtn = v.excel_path
+      ? `<a class="bbg-btn" href="/api/research/valuations/${v.id}/excel" style="font-size:10px;text-decoration:none">↓ BAIXAR EXCEL</a>`
+      : '';
+    const canEdit = (ROLE === 'admin' || ROLE === 'equipe');
+    actions.innerHTML = `
+      ${excelBtn}
+      ${canEdit ? `<button class="btn-danger" data-val-delete="${v.id}">✕ REMOVER</button>` : ''}
+    `;
+    wrap.appendChild(actions);
+
+    return wrap;
+  }
+
+  function _tryJsonParse(s) {
+    try { return JSON.parse(s); } catch(e) { return null; }
+  }
+
+  function _renderHeatmap(sens) {
+    const { rows, cols, matrix, base } = sens;
+    if (!rows || !cols || !matrix || matrix.length === 0) return '';
+    // Compute min/max of numeric cells
+    let mn = Infinity, mx = -Infinity;
+    for (const r of matrix) {
+      for (const v of r) {
+        if (v == null || !Number.isFinite(Number(v))) continue;
+        const n = Number(v);
+        if (n < mn) mn = n;
+        if (n > mx) mx = n;
+      }
+    }
+    if (!Number.isFinite(mn)) return '';
+
+    const bRow = Array.isArray(base) ? base[0] : -1;
+    const bCol = Array.isArray(base) ? base[1] : -1;
+
+    const cellBg = (v) => {
+      if (v == null || !Number.isFinite(Number(v))) return '';
+      const n = Number(v);
+      const norm = mx === mn ? 0.5 : (n - mn) / (mx - mn);
+      // green at high, red at low. Hue 0=red, 120=green. Use HSL.
+      const hue = Math.round(norm * 120);
+      const light = 18 + norm * 12; // 18% to 30% — dark bg friendly
+      return `background: hsl(${hue}, 50%, ${light}%)`;
+    };
+
+    let html = `<table class="val-sensitivity-heatmap"><thead><tr><th></th>`;
+    for (const c of cols) html += `<th>${_escHtml(String(c))}</th>`;
+    html += `</tr></thead><tbody>`;
+    for (let i = 0; i < matrix.length; i++) {
+      html += `<tr><th>${_escHtml(String(rows[i] || ''))}</th>`;
+      for (let j = 0; j < matrix[i].length; j++) {
+        const v = matrix[i][j];
+        const isBase = (i === bRow && j === bCol);
+        const style = cellBg(v);
+        html += `<td class="${isBase ? 'base' : ''}" style="${style}">${v == null ? '—' : _fmtBR(v, 1)}</td>`;
+      }
+      html += `</tr>`;
+    }
+    html += `</tbody></table>`;
+    return html;
   }
 
   // ── NOTES TAB ────────────────────────────────────────────────────
@@ -5597,8 +5785,10 @@ const Research = (() => {
     if (!_currentTicker) return;
     const data = await apiGet(`/api/research/company/${_currentTicker}`);
     _companyData = data;
+    _currentCompanyData = data;
     renderThesisTab(data.theses);
-    renderIntelTab(data.filings, data.news);
+    renderOficiaisTab(data.filings);
+    renderNoticiasTab(data.news);
     renderValuationTab(data.valuations);
     renderNotesTab(data.notes);
     renderAuditTab(data.audit);
@@ -5681,13 +5871,42 @@ const Research = (() => {
     $('btn-pipeline-set-interval')?.addEventListener('click', setPipelineInterval);
     $('btn-cnpj-save')?.addEventListener('click', saveCnpjMapping);
 
-    // Manual article ingestor
-    $('btn-research-add-article')?.addEventListener('click', openIngestModal);
+    // Manual article ingestor (Research v2: URL/ARQUIVO)
+    $('btn-research-add-article')?.addEventListener('click', () => openIngestModal());
+    $('btn-add-oficial-manual')?.addEventListener('click', () => openIngestModal('FILING'));
+    $('btn-add-noticia')?.addEventListener('click', () => openIngestModal('NEWS'));
     $('btn-ingest-modal-close')?.addEventListener('click', closeIngestModal);
     $('btn-ingest-cancel')?.addEventListener('click', closeIngestModal);
     $('btn-ingest-submit')?.addEventListener('click', submitIngest);
+    document.querySelectorAll('.ingest-tab-btn').forEach(b => {
+      b.addEventListener('click', () => _ingestSetMode(b.dataset.ingestMode));
+    });
+    _bindIngestDropzone();
 
-    // New valuation
+    // Valuation upload Excel modal
+    $('btn-research-upload-excel')?.addEventListener('click', openValuationUploadModal);
+    $('btn-valup-modal-close')?.addEventListener('click', closeValuationUploadModal);
+    $('btn-valup-cancel')?.addEventListener('click', closeValuationUploadModal);
+    $('btn-valup-extract-claude')?.addEventListener('click', _requestClaudeExtraction);
+    $('btn-valup-save')?.addEventListener('click', _saveValuationFromUpload);
+    _bindValupDropzone();
+
+    // Q&A model toggle
+    document.querySelectorAll('.qa-model-toggle button').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.qa-model-toggle button').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        _qaModel = b.dataset.qaModel || 'haiku';
+      });
+    });
+
+    // Claude budget (admin)
+    $('btn-claude-usage-detail')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      _openClaudeUsageDetail();
+    });
+
+    // New valuation (manual form)
     $('btn-research-new-valuation')?.addEventListener('click', () => {
       $('research-valuation-form').classList.toggle('hidden');
     });
@@ -6017,60 +6236,460 @@ const Research = (() => {
     await loadCnpjMappings();
   }
 
-  // ── Manual article ingestor ────────────────────────────────────────────
-  function openIngestModal() {
+  // ── Manual ingestor (Research v2 — URL + FILE modes) ───────────────────
+  let _ingestMode = 'url';         // 'url' | 'file'
+  let _ingestSelectedFile = null;
+
+  function openIngestModal(docType) {
     $('modal-research-ingest').classList.remove('hidden');
     $('ingest-result').classList.add('hidden');
     $('ingest-result').textContent = '';
     // Pre-fill ticker if company is selected
     if (_currentTicker) $('ingest-ticker').value = _currentTicker;
+    if (docType) $('ingest-doc-type').value = docType;
+    _ingestSetMode('url');
+    _ingestSelectedFile = null;
+    const prev = $('ingest-file-preview');
+    if (prev) prev.textContent = '';
   }
 
   function closeIngestModal() {
     $('modal-research-ingest').classList.add('hidden');
   }
 
+  function _ingestSetMode(mode) {
+    _ingestMode = mode === 'file' ? 'file' : 'url';
+    document.querySelectorAll('.ingest-tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.ingestMode === _ingestMode);
+    });
+    document.querySelectorAll('[data-ingest-panel]').forEach(p => {
+      p.classList.toggle('hidden', p.dataset.ingestPanel !== _ingestMode);
+    });
+  }
+
+  function _bindIngestDropzone() {
+    const dz = $('ingest-dropzone');
+    const input = $('ingest-file-input');
+    const prev = $('ingest-file-preview');
+    if (!dz || !input) return;
+    dz.addEventListener('click', () => input.click());
+    input.addEventListener('change', (e) => {
+      const f = (e.target.files || [])[0] || null;
+      _ingestSelectedFile = f;
+      if (prev) prev.textContent = f ? `📎 ${f.name} (${Math.round(f.size/1024)} KB)` : '';
+    });
+    dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dz.classList.remove('dragover');
+      const f = (e.dataTransfer.files || [])[0] || null;
+      if (f) {
+        _ingestSelectedFile = f;
+        if (prev) prev.textContent = `📎 ${f.name} (${Math.round(f.size/1024)} KB)`;
+      }
+    });
+  }
+
   async function submitIngest() {
-    const ticker = ($('ingest-ticker').value || '').trim().toUpperCase();
-    const text   = ($('ingest-text').value   || '').trim();
-    const source = ($('ingest-source').value || 'Manual').trim();
+    const ticker   = ($('ingest-ticker').value || '').trim().toUpperCase();
+    const source   = ($('ingest-source').value || 'Manual').trim();
+    const docType  = ($('ingest-doc-type').value || 'NEWS').trim().toUpperCase();
     if (!ticker) { alert('Informe o ticker'); return; }
-    if (!text)   { alert('Cole o conteúdo do artigo'); return; }
 
     const btn = $('btn-ingest-submit');
     btn.disabled = true;
     btn.textContent = 'PROCESSANDO...';
+    const resultEl = $('ingest-result');
+    resultEl.classList.remove('hidden');
+    resultEl.textContent = 'Aguarde, Claude pode levar 5–15s…';
 
     try {
-      const res = await fetch('/api/research/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker, text, source }),
-      });
-      const data = await res.json();
-      const resultEl = $('ingest-result');
-      resultEl.classList.remove('hidden');
-      if (data.ok) {
+      let data;
+      if (_ingestMode === 'url') {
+        const url = ($('ingest-url').value || '').trim();
+        if (!url) { alert('Cole a URL'); resultEl.classList.add('hidden'); return; }
+        const res = await fetch('/api/research/ingest/url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticker, url, source, doc_type: docType }),
+        });
+        data = await res.json();
+        if (res.status === 429) throw Object.assign(new Error(data.message || 'Budget excedido'), { budget: true });
+      } else {
+        if (!_ingestSelectedFile) { alert('Selecione um arquivo (PDF, PNG ou JPG)'); resultEl.classList.add('hidden'); return; }
+        const fd = new FormData();
+        fd.append('ticker', ticker);
+        fd.append('doc_type', docType);
+        fd.append('source', source);
+        fd.append('file', _ingestSelectedFile);
+        const res = await fetch('/api/research/ingest/file', { method: 'POST', body: fd });
+        data = await res.json();
+        if (res.status === 429) throw Object.assign(new Error(data.message || 'Budget excedido'), { budget: true });
+      }
+
+      if (data && data.ok) {
         const a = data.analysis || {};
         resultEl.innerHTML = `
-          <div style="color:var(--green);margin-bottom:6px">✓ Artigo processado e adicionado como PENDENTE</div>
+          <div style="color:var(--green);margin-bottom:6px">✓ Processado e adicionado como PENDENTE</div>
           <div><strong>Resumo:</strong> ${_escHtml(a.summary || '')}</div>
           ${a.sentiment ? `<div><strong>Sentiment:</strong> ${a.sentiment}</div>` : ''}
           ${a.relevance !== undefined ? `<div><strong>Relevância:</strong> ${a.relevance}/10</div>` : ''}
           ${a.update_thesis ? `<div style="color:var(--yellow)">⚠ Claude sugere revisar a tese de investimento</div>` : ''}
         `;
-        $('ingest-text').value = '';
+        $('ingest-url').value = '';
+        _ingestSelectedFile = null;
+        const prev = $('ingest-file-preview');
+        if (prev) prev.textContent = '';
+        const fi = $('ingest-file-input');
+        if (fi) fi.value = '';
         if (_currentTicker === ticker) await reloadCurrent();
         await refreshPending();
+        if (typeof loadClaudeBudget === 'function') loadClaudeBudget();
       } else {
         resultEl.innerHTML = `<span style="color:var(--red)">Erro: ${_escHtml(data.error || 'desconhecido')}</span>`;
       }
     } catch(e) {
-      alert('Erro ao processar: ' + e.message);
+      if (e.budget) {
+        resultEl.innerHTML = `<span style="color:var(--red)">⚠ Budget do dia atingido. Tente amanhã (reset meia-noite UTC).</span>`;
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red)">Erro: ${_escHtml(e.message || String(e))}</span>`;
+      }
     } finally {
       btn.disabled = false;
       btn.textContent = 'PROCESSAR COM CLAUDE';
     }
+  }
+
+  // ── Valuation Excel upload modal ───────────────────────────────────────
+  let _valUploadState = null; // { tmp_path, ticker, parsed, form_values }
+
+  function openValuationUploadModal() {
+    $('modal-valuation-upload').classList.remove('hidden');
+    $('valup-step1').classList.remove('hidden');
+    $('valup-step2').classList.add('hidden');
+    $('btn-valup-save').classList.add('hidden');
+    if (_currentTicker) $('valup-ticker').value = _currentTicker;
+    $('valup-file-preview').textContent = '';
+    _valUploadState = null;
+  }
+
+  function closeValuationUploadModal() {
+    $('modal-valuation-upload').classList.add('hidden');
+  }
+
+  function _bindValupDropzone() {
+    const dz = $('valup-dropzone');
+    const input = $('valup-file-input');
+    const prev = $('valup-file-preview');
+    if (!dz || !input) return;
+    dz.addEventListener('click', () => input.click());
+    input.addEventListener('change', (e) => {
+      const f = (e.target.files || [])[0] || null;
+      if (!f) return;
+      prev.textContent = `📎 ${f.name} (${Math.round(f.size/1024)} KB)`;
+      _submitValuationExcel(f);
+    });
+    dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dz.classList.remove('dragover');
+      const f = (e.dataTransfer.files || [])[0] || null;
+      if (f) {
+        prev.textContent = `📎 ${f.name} (${Math.round(f.size/1024)} KB)`;
+        _submitValuationExcel(f);
+      }
+    });
+  }
+
+  async function _submitValuationExcel(file) {
+    const ticker = ($('valup-ticker').value || '').trim().toUpperCase();
+    if (!ticker) { alert('Informe o ticker primeiro'); return; }
+
+    const fd = new FormData();
+    fd.append('file', file);
+    const prev = $('valup-file-preview');
+    prev.textContent += ' — processando…';
+    try {
+      const res = await fetch(`/api/research/valuations/${encodeURIComponent(ticker)}/upload-excel`, {
+        method: 'POST', body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'upload falhou');
+      _valUploadState = { ticker, tmp_path: data.tmp_path, parsed: data };
+      _populateValupForm(data);
+      $('valup-step1').classList.add('hidden');
+      $('valup-step2').classList.remove('hidden');
+      $('btn-valup-save').classList.remove('hidden');
+    } catch(e) {
+      prev.textContent = `⚠ ${e.message}`;
+    }
+  }
+
+  function _populateValupForm(parsed) {
+    const ex = parsed.extracted || {};
+    const set = (id, v) => { const el = $(id); if (el) el.value = (v != null ? v : ''); };
+    if (ex.methodology) set('valup-methodology', ex.methodology);
+    set('valup-target-price', ex.target_price);
+    set('valup-upside', ex.upside);
+    set('valup-wacc', ex.wacc);
+    set('valup-growth', ex.growth_rate);
+    set('valup-terminal', ex.terminal_growth);
+    set('valup-ebitda-margin', ex.ebitda_margin);
+    set('valup-revenue-cagr', ex.revenue_cagr);
+
+    // Summary
+    const foundKeys = Object.keys(ex).filter(k => ex[k] != null);
+    const missing = parsed.missing || [];
+    const summary = $('valup-extract-summary');
+    if (summary) {
+      summary.innerHTML = `
+        <div class="found">✓ Encontrados: ${foundKeys.length ? foundKeys.join(', ') : '(nenhum)'}</div>
+        ${missing.length ? `<div class="missing">○ Faltando: ${missing.join(', ')}</div>` : ''}
+        ${parsed.scenarios ? `<div>✓ Cenários detectados</div>` : ''}
+        ${parsed.sensitivity ? `<div>✓ Sensibilidade 2D detectada</div>` : ''}
+      `;
+    }
+
+    const hint = $('valup-claude-hint');
+    const list = $('valup-missing-list');
+    if (hint && list) {
+      if (missing.length) {
+        hint.classList.remove('hidden');
+        list.textContent = missing.join(', ');
+      } else {
+        hint.classList.add('hidden');
+      }
+    }
+  }
+
+  async function _requestClaudeExtraction() {
+    if (!_valUploadState || !_valUploadState.tmp_path) return;
+    const btn = $('btn-valup-extract-claude');
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const res = await fetch('/api/research/valuations/extract-with-claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tmp_path: _valUploadState.tmp_path,
+          ticker: _valUploadState.ticker,
+          missing_fields: _valUploadState.parsed.missing || [],
+        }),
+      });
+      const data = await res.json();
+      if (res.status === 429) {
+        alert('⚠ Budget do dia atingido. Preencha manualmente.');
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'extract failed');
+      const ex = data.extracted || {};
+      // Merge: only fill empty fields
+      const setIfEmpty = (id, v) => { const el = $(id); if (el && !el.value && v != null) el.value = v; };
+      setIfEmpty('valup-target-price', ex.target_price);
+      setIfEmpty('valup-upside', ex.upside);
+      setIfEmpty('valup-wacc', ex.wacc);
+      setIfEmpty('valup-growth', ex.growth_rate);
+      setIfEmpty('valup-terminal', ex.terminal_growth);
+      setIfEmpty('valup-ebitda-margin', ex.ebitda_margin);
+      setIfEmpty('valup-revenue-cagr', ex.revenue_cagr);
+      if (ex.methodology && !$('valup-methodology').value) $('valup-methodology').value = ex.methodology;
+      // Also remember scenarios/sensitivity if Claude found them
+      if (_valUploadState) {
+        if (ex.scenarios) _valUploadState.parsed.scenarios = ex.scenarios;
+        if (ex.sensitivity) _valUploadState.parsed.sensitivity = ex.sensitivity;
+      }
+      $('valup-claude-hint').classList.add('hidden');
+      if (typeof loadClaudeBudget === 'function') loadClaudeBudget();
+    } catch(e) {
+      alert('Erro Claude: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⚡ EXTRAIR COM CLAUDE';
+    }
+  }
+
+  async function _saveValuationFromUpload() {
+    if (!_valUploadState) return;
+    const st = _valUploadState;
+    const g = id => {
+      const v = $(id).value;
+      return v === '' ? null : Number(v);
+    };
+    const payload = {
+      target_price: g('valup-target-price'),
+      methodology: $('valup-methodology').value,
+      upside_pct: g('valup-upside'),
+      wacc: g('valup-wacc'),
+      growth_rate: g('valup-growth'),
+      terminal_growth: g('valup-terminal'),
+      ebitda_margin: g('valup-ebitda-margin'),
+      revenue_cagr: g('valup-revenue-cagr'),
+      notes: $('valup-notes').value || null,
+      scenarios: st.parsed.scenarios || null,
+      sensitivity: st.parsed.sensitivity || null,
+      tmp_path: st.tmp_path,
+      extraction_method: 'excel_heuristic',
+    };
+    if (payload.target_price == null) { alert('Preço alvo é obrigatório'); return; }
+    const btn = $('btn-valup-save');
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      const res = await fetch(`/api/research/valuations/${encodeURIComponent(st.ticker)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'save failed');
+      closeValuationUploadModal();
+      if (_currentTicker === st.ticker) await reloadCurrent();
+    } catch(e) {
+      alert('Erro: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'SALVAR VALUATION';
+    }
+  }
+
+  // ── Manual thesis suggestion modal ─────────────────────────────────────
+  async function _openThesisSuggestModal(ticker, type, id) {
+    // Find the item in current data to get trigger_summary
+    const isFiling = type === 'filing';
+    const list = (isFiling ? (_currentCompanyData?.filings || []) : (_currentCompanyData?.news || []));
+    const item = list.find(x => String(x.id) === String(id));
+    if (!item) { alert('Item não encontrado'); return; }
+
+    const triggerSummary = `${isFiling ? 'Filing' : 'Notícia'}: ${item.title || ''}\n${item.summary || ''}`;
+    if (!confirm(`Claude vai gerar um rascunho de tese atualizado com base neste ${isFiling ? 'filing' : 'notícia'}.\nCusto estimado: ~$0.04. Continuar?`)) return;
+
+    try {
+      const res = await fetch(`/api/research/theses/${encodeURIComponent(ticker)}/suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trigger_summary: triggerSummary,
+          trigger_type: isFiling ? 'filing' : 'news',
+        }),
+      });
+      if (res.status === 429) { alert('⚠ Budget do dia atingido.'); return; }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'failed');
+      _showThesisSuggestResult(ticker, data.draft || '');
+      if (typeof loadClaudeBudget === 'function') loadClaudeBudget();
+    } catch(e) {
+      alert('Erro: ' + e.message);
+    }
+  }
+
+  function _showThesisSuggestResult(ticker, draft) {
+    // Simple modal reusing research-modal styles
+    const overlay = el('div', 'research-modal-overlay');
+    overlay.innerHTML = `
+      <div class="research-modal" style="width:700px">
+        <div class="research-modal-header">
+          <span>SUGESTÃO DE TESE — ${_escHtml(ticker)}</span>
+          <button class="research-modal-close">✕</button>
+        </div>
+        <div class="research-modal-body">
+          <div class="thesis-suggest-preview">${_escHtml(draft)}</div>
+        </div>
+        <div class="research-modal-footer">
+          <button class="bbg-btn" data-close>CANCELAR</button>
+          <button class="bbg-btn bbg-btn-primary" data-save>CRIAR RASCUNHO COM ESSE TEXTO</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('.research-modal-close').onclick = close;
+    overlay.querySelector('[data-close]').onclick = close;
+    overlay.querySelector('[data-save]').onclick = async () => {
+      try {
+        await apiPost(`/api/research/theses/${encodeURIComponent(ticker)}`, { content: draft });
+        close();
+        if (_currentTicker === ticker) await reloadCurrent();
+      } catch(e) { alert('Erro: ' + e.message); }
+    };
+  }
+
+  // ── Claude budget gauge ────────────────────────────────────────────────
+  async function loadClaudeBudget() {
+    const panel = $('claude-budget-panel');
+    if (!panel) return;  // only rendered for admin
+    try {
+      const res = await fetch('/api/research/claude/budget');
+      if (!res.ok) return;
+      const data = await res.json();
+      const pct = data.cap > 0 ? Math.min(100, (data.spent / data.cap) * 100) : 0;
+      const fill = $('budget-fill');
+      if (fill) {
+        fill.style.width = pct + '%';
+        fill.classList.toggle('warn', pct > 70 && pct <= 90);
+        fill.classList.toggle('crit', pct > 90 || data.over);
+      }
+      const text = $('budget-text');
+      if (text) {
+        text.textContent = data.over
+          ? `✕ $${Number(data.spent).toFixed(3)} / $${Number(data.cap).toFixed(2)} (atingido)`
+          : `$${Number(data.spent).toFixed(3)} / $${Number(data.cap).toFixed(2)}`;
+      }
+    } catch(e) { /* silent */ }
+  }
+
+  async function _openClaudeUsageDetail() {
+    try {
+      const res = await fetch('/api/research/claude/usage?days=30');
+      if (!res.ok) { alert('forbidden'); return; }
+      const data = await res.json();
+      const rows = data.usage || [];
+      const total = rows.reduce((acc, r) => acc + Number(r.cost_usd || 0), 0);
+      const overlay = el('div', 'research-modal-overlay');
+      overlay.innerHTML = `
+        <div class="research-modal" style="width:700px">
+          <div class="research-modal-header">
+            <span>CLAUDE USAGE · ÚLTIMOS ${data.days} DIAS</span>
+            <button class="research-modal-close">✕</button>
+          </div>
+          <div class="research-modal-body">
+            <table style="width:100%;font-family:var(--mono);font-size:11px;border-collapse:collapse">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);color:var(--text-muted)">
+                  <th style="text-align:left;padding:6px">USER</th>
+                  <th style="text-align:left;padding:6px">OPERAÇÃO</th>
+                  <th style="text-align:left;padding:6px">MODELO</th>
+                  <th style="text-align:right;padding:6px">CHAMADAS</th>
+                  <th style="text-align:right;padding:6px">CUSTO</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map(r => `
+                  <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:6px">${_escHtml(r.user || '')}</td>
+                    <td style="padding:6px">${_escHtml(r.operation || '')}</td>
+                    <td style="padding:6px">${_escHtml((r.model || '').replace('claude-',''))}</td>
+                    <td style="padding:6px;text-align:right">${r.calls || 0}</td>
+                    <td style="padding:6px;text-align:right">$${Number(r.cost_usd || 0).toFixed(4)}</td>
+                  </tr>
+                `).join('')}
+                <tr style="font-weight:700;border-top:2px solid var(--orange)">
+                  <td style="padding:6px" colspan="4">TOTAL (cap diário: $${Number(data.cap_usd).toFixed(2)})</td>
+                  <td style="padding:6px;text-align:right">$${total.toFixed(4)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="research-modal-footer">
+            <button class="bbg-btn" data-close>FECHAR</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      const close = () => overlay.remove();
+      overlay.querySelector('.research-modal-close').onclick = close;
+      overlay.querySelector('[data-close]').onclick = close;
+    } catch(e) { alert(e.message); }
   }
 
   // ── Q&A Panel lateral (unified) ─────────────────────────────────────
@@ -6165,7 +6784,7 @@ const Research = (() => {
         body     = {question};
       } else {
         endpoint = '/api/research/qa';
-        body     = _qaTicker ? {question, ticker: _qaTicker} : {question};
+        body     = _qaTicker ? {question, ticker: _qaTicker, model: _qaModel} : {question, model: _qaModel};
       }
       const data = await apiPost(endpoint, body);
       if (data && data.answer) {

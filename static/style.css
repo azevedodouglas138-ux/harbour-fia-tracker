@@ -3803,3 +3803,300 @@ table.cvm-table .cvm-warn { color: var(--cvm-warn); }
 }
 .cvm-footer-note a { color: var(--cvm-warn); text-decoration: none; }
 .cvm-footer-note a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESEARCH V2 (2026-04-23) — OFICIAIS/NOTÍCIAS · VALUATION DASHBOARD
+   · INGEST MODAL (URL/ARQUIVO) · Q&A MODEL TOGGLE · BUDGET PANEL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Valuation dashboard (hero + seções) ─────────────────────────────────── */
+#val-hero-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.val-hero-card {
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.val-hero {
+  background: var(--surface3);
+  padding: 16px 20px;
+  border-bottom: 2px solid var(--border2);
+}
+.val-hero-title {
+  font-size: 11px;
+  color: var(--orange);
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+.val-hero-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 20px;
+}
+.val-kpi { display: flex; flex-direction: column; }
+.val-kpi-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 4px;
+}
+.val-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--mono);
+  line-height: 1.1;
+}
+.val-kpi-value.pos { color: #4CAF50; }
+.val-kpi-value.neg { color: #f44336; }
+.val-kpi-value.muted { color: var(--text-muted); font-size: 13px; }
+
+.val-section {
+  padding: 14px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.val-section:last-of-type { border-bottom: none; }
+.val-section-title {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+.val-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.val-section-grid .val-kpi { background: var(--surface3); padding: 10px 12px; border-radius: 2px; }
+.val-section-grid .val-kpi-value { font-size: 15px; }
+
+.val-scenarios {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.val-scenario-card {
+  border: 1px solid var(--border2);
+  padding: 10px 14px;
+  background: var(--surface3);
+  border-radius: 2px;
+}
+.val-scenario-card.scen-bear   { border-left: 3px solid #f44336; }
+.val-scenario-card.scen-base   { border-left: 3px solid var(--orange); }
+.val-scenario-card.scen-bull   { border-left: 3px solid #4CAF50; }
+.val-scenario-label { font-size: 9px; color: var(--text-muted); letter-spacing: 1px; }
+.val-scenario-value { font-size: 15px; font-weight: 700; font-family: var(--mono); margin-top: 4px; }
+
+.val-sensitivity-heatmap {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+  width: 100%;
+  max-width: 500px;
+}
+.val-sensitivity-heatmap th,
+.val-sensitivity-heatmap td {
+  padding: 6px 10px;
+  text-align: right;
+  border: 1px solid var(--border);
+}
+.val-sensitivity-heatmap th {
+  color: var(--text-muted);
+  font-weight: 700;
+  background: var(--surface3);
+}
+.val-sensitivity-heatmap td.base {
+  outline: 2px solid var(--orange);
+  outline-offset: -2px;
+  font-weight: 700;
+}
+
+.val-actions {
+  padding: 12px 20px;
+  background: var(--surface3);
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+}
+.val-actions .btn-danger {
+  background: rgba(244,67,54,0.12);
+  border: 1px solid rgba(244,67,54,0.5);
+  color: #f44336;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 4px 14px;
+  cursor: pointer;
+  border-radius: 2px;
+  margin-left: auto;
+}
+.val-actions .btn-danger:hover { background: rgba(244,67,54,0.25); }
+
+/* ── Ingest modal — tabs URL / ARQUIVO + dropzone ────────────────────────── */
+.ingest-tabs {
+  display: flex;
+  margin: 10px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.ingest-tab-btn {
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 1px;
+  font-family: var(--mono);
+}
+.ingest-tab-btn.active {
+  color: var(--orange);
+  border-bottom: 2px solid var(--orange);
+  margin-bottom: -1px;
+}
+
+.ingest-mode-panel { margin-top: 8px; }
+.ingest-mode-panel.hidden { display: none; }
+
+.ingest-dropzone {
+  border: 2px dashed var(--border2);
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 3px;
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.ingest-dropzone:hover {
+  border-color: var(--orange-text);
+  color: var(--text);
+}
+.ingest-dropzone.dragover {
+  border-color: var(--orange);
+  background: var(--orange-dim);
+  color: var(--orange);
+}
+.ingest-file-preview {
+  margin-top: 10px;
+  color: #4CAF50;
+  font-family: var(--mono);
+  font-size: 11px;
+  min-height: 14px;
+}
+
+/* ── Valuation upload modal ──────────────────────────────────────────────── */
+.val-extract-summary {
+  background: var(--surface3);
+  border-left: 3px solid var(--orange);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text);
+}
+.val-extract-summary .found { color: #4CAF50; }
+.val-extract-summary .missing { color: var(--orange); }
+
+/* ── Q&A model toggle ─────────────────────────────────────────────────────── */
+.qa-model-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 8px;
+}
+.qa-model-toggle button {
+  font-size: 10px;
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 2px;
+  font-family: var(--mono);
+  letter-spacing: 0.5px;
+}
+.qa-model-toggle button:hover {
+  color: var(--text);
+}
+.qa-model-toggle button.active {
+  background: var(--orange-dim);
+  border-color: var(--orange);
+  color: var(--orange-text);
+}
+
+/* ── Admin budget gauge ──────────────────────────────────────────────────── */
+.budget-gauge {
+  margin: 14px 10px 8px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: var(--mono);
+}
+.budget-label {
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+.budget-bar {
+  height: 5px;
+  background: var(--surface3);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.budget-fill {
+  height: 100%;
+  background: #4CAF50;
+  transition: width 0.3s, background 0.3s;
+}
+.budget-fill.warn { background: var(--orange); }
+.budget-fill.crit { background: #f44336; }
+.budget-text {
+  color: var(--text);
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+
+/* ── Botão "Sugerir tese" inline em cards de filing/news aprovados ────────── */
+.btn-suggest-thesis {
+  background: rgba(0, 150, 255, 0.12);
+  border: 1px solid rgba(0, 150, 255, 0.5);
+  color: #4fc3f7;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: bold;
+  padding: 3px 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+}
+.btn-suggest-thesis:hover { background: rgba(0, 150, 255, 0.25); }
+
+/* ── Suggestion modal (Claude output preview) ─────────────────────────────── */
+.thesis-suggest-preview {
+  white-space: pre-wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  max-height: 320px;
+  overflow-y: auto;
+  font-family: var(--mono);
+  border-radius: 2px;
+}
