@@ -116,16 +116,41 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 
 CREATE TABLE IF NOT EXISTS valuations (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticker       TEXT NOT NULL REFERENCES companies(ticker),
-    target_price REAL,
-    methodology  TEXT CHECK(methodology IN ('DCF','EV/EBITDA','P/L','DDM','SOMA_PARTES')),
-    upside_pct   REAL,
-    assumptions  TEXT,   -- JSON
-    notes        TEXT,
-    created_by   TEXT NOT NULL DEFAULT 'admin',
-    created_at   TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker            TEXT NOT NULL REFERENCES companies(ticker),
+    target_price      REAL,
+    methodology       TEXT CHECK(methodology IN ('DCF','EV/EBITDA','P/L','DDM','SOMA_PARTES')),
+    upside_pct        REAL,
+    assumptions       TEXT,   -- JSON
+    notes             TEXT,
+    wacc              REAL,
+    growth_rate       REAL,
+    terminal_growth   REAL,
+    ebitda_margin     REAL,
+    revenue_cagr      REAL,
+    scenarios         TEXT,   -- JSON {bear:{price,upside}, base:..., bull:...}
+    sensitivity       TEXT,   -- JSON {rows, cols, matrix, base:[r,c]}
+    excel_path        TEXT,
+    extraction_method TEXT,   -- manual | excel_heuristic | excel_claude_haiku
+    created_by        TEXT NOT NULL DEFAULT 'admin',
+    created_at        TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
 );
+
+CREATE TABLE IF NOT EXISTS claude_usage (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at            TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
+    date_utc              TEXT NOT NULL,
+    user                  TEXT NOT NULL DEFAULT 'system',
+    operation             TEXT NOT NULL,
+    model                 TEXT NOT NULL,
+    input_tokens          INTEGER DEFAULT 0,
+    cache_read_tokens     INTEGER DEFAULT 0,
+    cache_creation_tokens INTEGER DEFAULT 0,
+    output_tokens         INTEGER DEFAULT 0,
+    cost_usd              REAL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_claude_usage_date ON claude_usage(date_utc);
+CREATE INDEX IF NOT EXISTS idx_claude_usage_user ON claude_usage(user);
 
 CREATE TABLE IF NOT EXISTS audit_log (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,6 +233,16 @@ _MIGRATIONS = [
     "ALTER TABLE filings ADD COLUMN update_reason TEXT",
     "ALTER TABLE news_items ADD COLUMN update_thesis INTEGER DEFAULT 0",
     "ALTER TABLE news_items ADD COLUMN update_reason TEXT",
+    # Research v2 (2026-04-23) — Valuation estruturado
+    "ALTER TABLE valuations ADD COLUMN wacc REAL",
+    "ALTER TABLE valuations ADD COLUMN growth_rate REAL",
+    "ALTER TABLE valuations ADD COLUMN terminal_growth REAL",
+    "ALTER TABLE valuations ADD COLUMN ebitda_margin REAL",
+    "ALTER TABLE valuations ADD COLUMN revenue_cagr REAL",
+    "ALTER TABLE valuations ADD COLUMN scenarios TEXT",
+    "ALTER TABLE valuations ADD COLUMN sensitivity TEXT",
+    "ALTER TABLE valuations ADD COLUMN excel_path TEXT",
+    "ALTER TABLE valuations ADD COLUMN extraction_method TEXT",
 ]
 
 
@@ -473,31 +508,99 @@ def delete_note(note_id, user="admin"):
 # Valuations
 # ---------------------------------------------------------------------------
 
+_VAL_JSON_FIELDS = ("assumptions", "scenarios", "sensitivity")
+_VAL_UPDATABLE_FIELDS = (
+    "target_price", "methodology", "upside_pct", "assumptions", "notes",
+    "wacc", "growth_rate", "terminal_growth", "ebitda_margin", "revenue_cagr",
+    "scenarios", "sensitivity", "excel_path", "extraction_method",
+)
+
+
+def _hydrate_valuation(row):
+    """Convert row to dict and parse JSON fields."""
+    d = dict(row)
+    for f in _VAL_JSON_FIELDS:
+        v = d.get(f)
+        if v:
+            try:
+                d[f] = json.loads(v)
+            except (TypeError, ValueError):
+                pass
+    return d
+
+
 def get_valuations(ticker):
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT * FROM valuations WHERE ticker=? ORDER BY created_at DESC",
             (ticker,)
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [_hydrate_valuation(r) for r in rows]
+
+
+def get_valuation(valuation_id):
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM valuations WHERE id=?", (valuation_id,)
+        ).fetchone()
+    return _hydrate_valuation(row) if row else None
 
 
 def create_valuation(ticker, target_price, methodology, upside_pct=None,
-                     assumptions=None, notes=None, user="admin"):
+                     assumptions=None, notes=None, user="admin",
+                     wacc=None, growth_rate=None, terminal_growth=None,
+                     ebitda_margin=None, revenue_cagr=None,
+                     scenarios=None, sensitivity=None,
+                     excel_path=None, extraction_method="manual"):
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO valuations (ticker, target_price, methodology, upside_pct, assumptions, notes, created_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            """INSERT INTO valuations
+               (ticker, target_price, methodology, upside_pct, assumptions, notes,
+                wacc, growth_rate, terminal_growth, ebitda_margin, revenue_cagr,
+                scenarios, sensitivity, excel_path, extraction_method, created_by)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (ticker, target_price, methodology, upside_pct,
              json.dumps(assumptions, ensure_ascii=False) if assumptions else None,
-             notes, user)
+             notes,
+             wacc, growth_rate, terminal_growth, ebitda_margin, revenue_cagr,
+             json.dumps(scenarios, ensure_ascii=False) if scenarios else None,
+             json.dumps(sensitivity, ensure_ascii=False) if sensitivity else None,
+             excel_path, extraction_method, user)
         )
         new_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
         new = {"id": new_id, "ticker": ticker, "target_price": target_price,
                "methodology": methodology, "upside_pct": upside_pct,
-               "assumptions": assumptions, "notes": notes, "created_by": user}
+               "wacc": wacc, "growth_rate": growth_rate,
+               "extraction_method": extraction_method}
         audit(conn, "valuation", new_id, ticker, "CREATE", user, None, new)
     return new_id
+
+
+def update_valuation(valuation_id, fields, user="admin"):
+    """Partial update. Only fields in _VAL_UPDATABLE_FIELDS are honored."""
+    set_clauses = []
+    params = []
+    for k, v in fields.items():
+        if k not in _VAL_UPDATABLE_FIELDS:
+            continue
+        if k in _VAL_JSON_FIELDS and v is not None and not isinstance(v, str):
+            v = json.dumps(v, ensure_ascii=False)
+        set_clauses.append(f"{k}=?")
+        params.append(v)
+    if not set_clauses:
+        return False
+    params.append(valuation_id)
+    with get_conn() as conn:
+        old = conn.execute("SELECT * FROM valuations WHERE id=?", (valuation_id,)).fetchone()
+        if not old:
+            return False
+        conn.execute(
+            f"UPDATE valuations SET {', '.join(set_clauses)} WHERE id=?",
+            params
+        )
+        audit(conn, "valuation", valuation_id, old["ticker"], "UPDATE", user,
+              dict(old), fields)
+    return True
 
 
 def delete_valuation(valuation_id, user="admin"):
@@ -508,7 +611,69 @@ def delete_valuation(valuation_id, user="admin"):
         old = dict(row)
         conn.execute("DELETE FROM valuations WHERE id=?", (valuation_id,))
         audit(conn, "valuation", valuation_id, old["ticker"], "DELETE", user, old, None)
+    # Remove the Excel file from disk if present (best-effort).
+    excel_path = old.get("excel_path")
+    if excel_path:
+        try:
+            if os.path.isfile(excel_path):
+                os.remove(excel_path)
+        except OSError as exc:
+            logger.warning("Failed to delete excel file %s: %s", excel_path, exc)
     return True
+
+
+# ---------------------------------------------------------------------------
+# Claude usage tracking
+# ---------------------------------------------------------------------------
+
+def insert_claude_usage(user, operation, model,
+                         input_tokens, cache_read_tokens,
+                         cache_creation_tokens, output_tokens, cost_usd):
+    date_utc = datetime.utcnow().strftime("%Y-%m-%d")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO claude_usage
+               (date_utc, user, operation, model, input_tokens,
+                cache_read_tokens, cache_creation_tokens, output_tokens, cost_usd)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (date_utc, user, operation, model,
+             int(input_tokens or 0), int(cache_read_tokens or 0),
+             int(cache_creation_tokens or 0), int(output_tokens or 0),
+             float(cost_usd or 0))
+        )
+
+
+def sum_claude_usage(date_utc=None):
+    """Returns total cost_usd for a specific date (UTC). Defaults to today."""
+    if date_utc is None:
+        date_utc = datetime.utcnow().strftime("%Y-%m-%d")
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(cost_usd), 0) AS total FROM claude_usage WHERE date_utc=?",
+            (date_utc,)
+        ).fetchone()
+    return float(row["total"] or 0)
+
+
+def claude_usage_grouped(days=30):
+    """Grouped by (user, operation, model) over last N days."""
+    since = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT user, operation, model,
+                      SUM(input_tokens)          AS input_tokens,
+                      SUM(cache_read_tokens)     AS cache_read_tokens,
+                      SUM(cache_creation_tokens) AS cache_creation_tokens,
+                      SUM(output_tokens)         AS output_tokens,
+                      SUM(cost_usd)              AS cost_usd,
+                      COUNT(*)                   AS calls
+                 FROM claude_usage
+                WHERE date_utc >= ?
+             GROUP BY user, operation, model
+             ORDER BY cost_usd DESC""",
+            (since,)
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 # ---------------------------------------------------------------------------

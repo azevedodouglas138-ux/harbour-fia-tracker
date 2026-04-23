@@ -1,13 +1,17 @@
 """
 research_pipeline.py — Pipeline de ingestão para a aba RESEARCH (212).
 
-Fetchers:
+Fetchers automáticos (scheduler a cada N horas):
   CVMFetcher   — Fatos Relevantes, ITR, DFP via dados.cvm.gov.br (tickers BR)
   SECFetcher   — 8-K, 10-K, 10-Q via EDGAR (tickers US / BDRs)
-  RSSFetcher   — Notícias via feedparser + yfinance (todos os tickers)
-  ManualIngestor — Processamento de artigos colados manualmente
+
+Ingestão manual (acionada pela UI):
+  URLIngestor    — Artigo via URL (fetch + BeautifulSoup + Claude)
+  FileIngestor   — Upload de arquivo (PDF texto; PDF/imagem via Claude Vision)
+  ManualIngestor — Texto colado (legacy — compat interna)
 
 PipelineScheduler — Background thread que coordena os fetchers a cada N horas.
+  RSS removido em 2026-04-23 — notícias agora são 100% manuais (URL ou arquivo).
 
 Mapeamento CNPJ: data/ticker_cnpj.json  (editável pelo admin)
 """
@@ -410,186 +414,246 @@ class SECFetcher:
 
 
 # ---------------------------------------------------------------------------
-# RSSFetcher
+# URL + File ingestors (replace RSSFetcher 2026-04-23)
 # ---------------------------------------------------------------------------
+# RSS removido em 2026-04-23. Se quiser reativar no futuro, restaure:
+#   - feedparser>=6.0.0 no requirements.txt
+#   - a classe RSSFetcher (ver git log commit antes desta data)
+#   - o bloco em _run_once() que chama RSSFetcher().fetch_all(...)
 
-RSS_FEEDS = [
-    ("InfoMoney",    "https://www.infomoney.com.br/feed/"),
-    ("Exame",        "https://exame.com/feed/"),
-    ("E-Investidor", "https://einvestidor.estadao.com.br/feed/"),
-]
-
-# Ticker → termos de busca em notícias (ticker + nomes alternativos da empresa)
-TICKER_SEARCH_TERMS = {
-    "PRIO3":   ["PRIO3", "PRIO S.A", "PetroRio", "Petro Rio"],
-    "CSNA3":   ["CSNA3", "CSN", "Siderúrgica Nacional", "Siderurgica Nacional"],
-    "BMEB4":   ["BMEB4", "Mercantil Brasil", "Banco Mercantil"],
-    "MDNE3":   ["MDNE3", "Moura Dubeux"],
-    "TEND3":   ["TEND3", "Tenda", "Construtora Tenda"],
-    "VTRU3":   ["VTRU3", "Vitru", "UniCesumar", "Uniasselvi"],
-    "TTEN3":   ["TTEN3", "3Tentos", "Três Tentos", "Tres Tentos"],
-    "SIMH3":   ["SIMH3", "Simpar", "JSL", "Movida", "Vamos"],
-    "RAPT4":   ["RAPT4", "Randon", "Randoncorp"],
-    "MUTC34":  ["MUTC34", "Micron", "MU"],
-    "NVDC34":  ["NVDC34", "Nvidia", "NVDA"],
-    "A1MD34":  ["A1MD34", "AMD", "Advanced Micro"],
-    "M1TA34":  ["M1TA34", "Meta", "Facebook"],
-    "MELI34":  ["MELI34", "MercadoLibre", "Mercado Livre", "MELI"],
-    "INBR32":  ["INBR32", "Inter&Co", "Banco Inter", "INTR"],
-}
+_ALLOWED_FILE_EXTS = {".pdf", ".png", ".jpg", ".jpeg"}
+_MIN_EXTRACT_CHARS = 200   # abaixo disso consideramos que extracao falhou
 
 
-class RSSFetcher:
-    """Fetch news from RSS feeds and yfinance, matching against known tickers."""
+def _save_upload(file_bytes, ticker, filename, subdir):
+    """Save uploaded file to uploads/{subdir}/{ticker}/{ts}_{safe}.ext."""
+    import re as _re
+    from datetime import datetime as _dt
 
-    def fetch_all(self, tickers, days_back=3):
+    safe = _re.sub(r"[^A-Za-z0-9._-]+", "_", filename or "upload")
+    ts = _dt.utcnow().strftime("%Y%m%dT%H%M%S")
+    dest_dir = os.path.join(BASE_DIR, "uploads", subdir, ticker.upper())
+    os.makedirs(dest_dir, exist_ok=True)
+    dest_path = os.path.join(dest_dir, f"{ts}_{safe}")
+    with open(dest_path, "wb") as f:
+        f.write(file_bytes)
+    return dest_path
+
+
+def _fetch_url_text(url, timeout=20):
+    """Fetch a URL and extract (title, text) via BeautifulSoup.
+
+    Raises ValueError if extracted text is below _MIN_EXTRACT_CHARS.
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError as exc:
+        raise RuntimeError("beautifulsoup4 nao instalado") from exc
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml",
+    }
+    r = requests.get(url, timeout=timeout, headers=headers)
+    r.raise_for_status()
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    title = ""
+    if soup.title and soup.title.string:
+        title = soup.title.string.strip()
+    if not title:
+        h1 = soup.find("h1")
+        if h1:
+            title = h1.get_text(strip=True)
+
+    container = soup.find("article") or soup.find("main") or soup.body
+    if container is None:
+        container = soup
+
+    for tag in container(["script", "style", "nav", "footer", "aside", "noscript", "iframe"]):
+        tag.decompose()
+
+    text = container.get_text(separator="\n", strip=True)
+
+    if len(text) < _MIN_EXTRACT_CHARS:
+        raise ValueError(
+            f"Extracao falhou: so {len(text)} chars do corpo. "
+            "Site pode ter paywall ou JS rendering â tente upload de PDF/imagem."
+        )
+
+    return title, text
+
+
+def _extract_pdf_text(file_bytes):
+    """Try to extract text from a PDF. Returns str (may be empty)."""
+    try:
+        import pdfplumber
+    except ImportError:
+        logger.warning("pdfplumber nao instalado â PDFs cairao em fallback vision")
+        return ""
+
+    try:
+        import io as _io
+        text_parts = []
+        with pdfplumber.open(_io.BytesIO(file_bytes)) as pdf:
+            for page in pdf.pages[:10]:  # cap a 10 paginas pra evitar custo
+                t = page.extract_text() or ""
+                if t:
+                    text_parts.append(t)
+        return "\n\n".join(text_parts).strip()
+    except Exception as exc:
+        logger.warning("pdfplumber extract failed: %s", exc)
+        return ""
+
+
+class URLIngestor:
+    """Ingest a news article (or filing) by URL: fetch HTML -> Claude."""
+
+    def ingest(self, ticker, url, source="Manual", doc_type="NEWS", user="admin"):
+        if not url or not url.strip():
+            return None, None
         try:
-            import feedparser
-        except ImportError:
-            logger.error("feedparser não instalado — RSS desabilitado")
-            return 0
+            title, text = _fetch_url_text(url)
+        except ValueError as exc:
+            logger.info("URLIngestor extract failed: %s", exc)
+            return None, {"error": str(exc)}
 
-        since_dt = datetime.now(timezone.utc) - timedelta(days=days_back)
-        ticker_set = set(t.upper() for t in tickers)
-        total = 0
+        analysis = _claude.process_news_from_url(
+            text, ticker=ticker, headline=title or url, source=source, user=user,
+        )
+        if not analysis:
+            return None, None
 
-        # RSS feeds
-        for source_name, feed_url in RSS_FEEDS:
-            total += self._fetch_feed(feed_url, source_name, ticker_set, since_dt)
+        from datetime import datetime as _dt
+        pub_str = _dt.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
-        # yfinance news for each ticker
-        for ticker in tickers:
-            total += self._fetch_yfinance(ticker, since_dt)
-
-        return total
-
-    def _fetch_feed(self, feed_url, source_name, ticker_set, since_dt):
-        try:
-            import feedparser
-            feed = feedparser.parse(feed_url)
-        except Exception as e:
-            logger.warning("RSSFetcher feed %s: %s", feed_url, e)
-            return 0
-
-        count = 0
-        for entry in feed.entries:
-            # Parse published date
-            published = None
-            if hasattr(entry, "published_parsed") and entry.published_parsed:
-                import calendar
-                ts = calendar.timegm(entry.published_parsed)
-                published = datetime.fromtimestamp(ts, tz=timezone.utc)
-            if published and published < since_dt:
-                continue
-
-            title = getattr(entry, "title", "")
-            summary_raw = getattr(entry, "summary", "") or getattr(entry, "description", "")
-            url = getattr(entry, "link", "")
-
-            # Match against tickers
-            matched = self._match_tickers(title + " " + summary_raw, ticker_set)
-            if not matched:
-                continue
-
-            for ticker in matched:
-                count += self._ingest_news(
-                    ticker=ticker,
-                    title=title,
-                    source=source_name,
-                    url=url,
-                    published_dt=published,
-                    text=summary_raw,
-                )
-
-        return count
-
-    def _fetch_yfinance(self, ticker, since_dt):
-        """Use yfinance to get recent news for a ticker."""
-        try:
-            import yfinance as yf
-            # Map BDR to underlying for better news results
-            yf_ticker = BDR_UNDERLYING.get(ticker, ticker)
-            suffix = "" if yf_ticker == ticker and not ticker.endswith(".SA") else ""
-            # For BR tickers, try with .SA suffix
-            if ticker not in BDR_UNDERLYING and not ticker.endswith(".SA"):
-                yf_ticker_str = ticker + ".SA"
-            else:
-                yf_ticker_str = yf_ticker
-
-            t = yf.Ticker(yf_ticker_str)
-            news_list = t.news or []
-        except Exception as e:
-            logger.warning("RSSFetcher.yfinance [%s]: %s", ticker, e)
-            return 0
-
-        count = 0
-        for item in news_list:
-            # yfinance news items are dicts with providerPublishTime (unix timestamp)
-            pub_ts = item.get("providerPublishTime") or 0
-            if pub_ts:
-                pub_dt = datetime.fromtimestamp(pub_ts, tz=timezone.utc)
-                if pub_dt < since_dt:
-                    continue
-                pub_str = pub_dt.strftime("%Y-%m-%dT%H:%M:%S")
-            else:
-                pub_str = None
-
-            title   = item.get("title", "")
-            url     = item.get("link", "")
-            source  = item.get("publisher", "yfinance")
-            summary_text = title  # yfinance doesn't provide full text
-
-            count += self._ingest_news(
+        if (doc_type or "").upper() == "FILING":
+            # filings.source is constrained to CVM or SEC. For manual uploads
+            # that don't specify a regulator, default to CVM (brazilian market).
+            filing_source = source if source in ("CVM", "SEC") else "CVM"
+            new_id = _rdb.create_filing(
                 ticker=ticker,
-                title=title,
-                source=source,
-                url=url,
-                published_dt=datetime.fromtimestamp(pub_ts, tz=timezone.utc) if pub_ts else None,
-                text=summary_text,
+                source=filing_source,
+                type_="MANUAL",
+                title=title or url,
+                filing_date=pub_str[:10],
+                raw_url=url,
+                summary=analysis.get("summary"),
+                key_points=analysis.get("key_points"),
+                sentiment=analysis.get("sentiment"),
+                update_thesis=analysis.get("update_thesis", False),
+                update_reason=analysis.get("update_reason"),
+                user=user,
             )
+            return new_id, analysis
 
-        return count
-
-    def _match_tickers(self, text, ticker_set):
-        """Return set of tickers mentioned in text (by ticker symbol or company name)."""
-        text_upper = text.upper()
-        matched = set()
-        for ticker in ticker_set:
-            terms = TICKER_SEARCH_TERMS.get(ticker, [ticker])
-            if any(term.upper() in text_upper for term in terms):
-                matched.add(ticker)
-        return matched
-
-    def _ingest_news(self, ticker, title, source, url, published_dt, text):
-        """Insert news item if not already in DB."""
-        if not title:
-            return 0
-
-        # Deduplicate by URL or title
-        if url:
-            existing = _rdb.get_news(ticker=ticker)
-            for n in existing:
-                if n.get("url") == url:
-                    return 0
-
-        pub_str = published_dt.strftime("%Y-%m-%dT%H:%M:%S") if published_dt else None
-        # Store raw text for Q&A context (no Claude analysis — cost control)
-        raw_summary = (text or title)[:1000] if (text or title) else None
-
-        _rdb.create_news(
+        news_id = _rdb.create_news(
             ticker=ticker,
-            title=title,
+            title=title or url,
             source=source,
             url=url,
             published_at=pub_str,
-            summary=raw_summary,
-            sentiment=None,
-            relevance=5,
-            update_thesis=False,
-            update_reason=None,
-            user="pipeline",
+            summary=analysis.get("summary"),
+            sentiment=analysis.get("sentiment"),
+            relevance=analysis.get("relevance", 5),
+            update_thesis=analysis.get("update_thesis", False),
+            update_reason=analysis.get("update_reason"),
+            user=user,
         )
-        return 1
+        return news_id, analysis
+
+
+class FileIngestor:
+    """Ingest an uploaded file (PDF / PNG / JPG). PDF text first, fallback Vision."""
+
+    def ingest(self, ticker, file_bytes, filename, mime,
+                doc_type="NEWS", source="Manual", user="admin"):
+        if not file_bytes:
+            return None, None
+
+        ext = os.path.splitext(filename or "")[1].lower()
+        if ext not in _ALLOWED_FILE_EXTS:
+            raise ValueError(
+                f"Extensao nao suportada: {ext}. Aceitas: {sorted(_ALLOWED_FILE_EXTS)}"
+            )
+
+        saved_path = _save_upload(file_bytes, ticker, filename, subdir="research")
+
+        is_pdf   = (mime == "application/pdf") or ext == ".pdf"
+        is_image = (mime or "").startswith("image/") or ext in {".png", ".jpg", ".jpeg"}
+
+        analysis = None
+        if is_pdf:
+            text = _extract_pdf_text(file_bytes)
+            if text and len(text) >= _MIN_EXTRACT_CHARS:
+                if (doc_type or "").upper() == "FILING":
+                    analysis = _claude.process_filing(
+                        text, ticker=ticker, doc_type="MANUAL",
+                        doc_title=filename, user=user,
+                    )
+                else:
+                    analysis = _claude.process_news(
+                        text, ticker=ticker, headline=filename,
+                        source=source, user=user,
+                    )
+            else:
+                logger.info("PDF text extraction empty - falling back to Claude Vision")
+                analysis = _claude.process_document_image(
+                    file_bytes, "application/pdf", ticker, doc_type,
+                    title=filename, source=source, user=user,
+                )
+        elif is_image:
+            analysis = _claude.process_document_image(
+                file_bytes, mime or "image/png", ticker, doc_type,
+                title=filename, source=source, user=user,
+            )
+        else:
+            raise ValueError(f"MIME type nao tratado: {mime}")
+
+        if not analysis:
+            return None, None
+
+        from datetime import datetime as _dt
+        pub_str = _dt.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+
+        if (doc_type or "").upper() == "FILING":
+            # filings.source is constrained to CVM or SEC. For manual uploads
+            # that don't specify a regulator, default to CVM (brazilian market).
+            filing_source = source if source in ("CVM", "SEC") else "CVM"
+            new_id = _rdb.create_filing(
+                ticker=ticker,
+                source=filing_source,
+                type_="MANUAL",
+                title=filename or "(upload)",
+                filing_date=pub_str[:10],
+                raw_url=saved_path,
+                summary=analysis.get("summary"),
+                key_points=analysis.get("key_points"),
+                sentiment=analysis.get("sentiment"),
+                update_thesis=analysis.get("update_thesis", False),
+                update_reason=analysis.get("update_reason"),
+                user=user,
+            )
+            return new_id, analysis
+
+        news_id = _rdb.create_news(
+            ticker=ticker,
+            title=filename or "(upload)",
+            source=source,
+            url=saved_path,
+            published_at=pub_str,
+            summary=analysis.get("summary"),
+            sentiment=analysis.get("sentiment"),
+            relevance=analysis.get("relevance", 5),
+            update_thesis=analysis.get("update_thesis", False),
+            update_reason=analysis.get("update_reason"),
+            user=user,
+        )
+        return news_id, analysis
 
 
 # ---------------------------------------------------------------------------
@@ -698,7 +762,8 @@ class PipelineScheduler:
             self._status["error"] = None
 
         started = datetime.now(timezone.utc)
-        result = {"cvm": 0, "sec": 0, "rss": 0, "errors": []}
+        # RSS removido em 2026-04-23 (noticias viraram 100% manuais via URLIngestor/FileIngestor)
+        result = {"cvm": 0, "sec": 0, "errors": []}
 
         try:
             # Get all known tickers from research DB
@@ -725,18 +790,10 @@ class PipelineScheduler:
                 result["errors"].append(f"SEC: {e}")
                 logger.error("PipelineScheduler SEC: %s", e)
 
-            # RSS + yfinance
-            try:
-                rss = RSSFetcher()
-                result["rss"] = rss.fetch_all(tickers, days_back=3)
-            except Exception as e:
-                result["errors"].append(f"RSS: {e}")
-                logger.error("PipelineScheduler RSS: %s", e)
-
             elapsed = (datetime.now(timezone.utc) - started).total_seconds()
             logger.info(
-                "PipelineScheduler concluído em %.1fs — CVM:%d SEC:%d RSS:%d erros:%d",
-                elapsed, result["cvm"], result["sec"], result["rss"], len(result["errors"])
+                "PipelineScheduler concluído em %.1fs — CVM:%d SEC:%d erros:%d",
+                elapsed, result["cvm"], result["sec"], len(result["errors"])
             )
 
         except Exception as e:
@@ -757,3 +814,5 @@ class PipelineScheduler:
 
 scheduler = PipelineScheduler(interval_hours=6)
 manual_ingestor = ManualIngestor()
+url_ingestor = URLIngestor()
+file_ingestor = FileIngestor()
