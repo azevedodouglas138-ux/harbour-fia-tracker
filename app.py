@@ -4564,11 +4564,33 @@ def api_index_members():
 
 import research_db as _rdb
 import research_claude as _claude
+import research_budget as _budget
+import research_excel_parser as _excel_parser
 
 # Initialise DB and sync from portfolio/watchlist on startup
 _rdb.init_db()
 _rdb.sync_from_portfolio(PORTFOLIO_FILE, WATCHLIST_FILE, user="system")
 _rdb.ensure_portfolio_thesis_seed(user="system")
+
+# Upload size cap (filings PDFs / valuation Excels)
+app.config.setdefault("MAX_CONTENT_LENGTH", 20 * 1024 * 1024)  # 20 MB
+
+# Paths for uploaded files
+_RESEARCH_BASE = os.path.dirname(os.path.abspath(__file__))
+_UPLOADS_DIR   = os.path.join(_RESEARCH_BASE, "uploads")
+_VAL_UPLOADS   = os.path.join(_UPLOADS_DIR, "valuations")
+_RESEARCH_UPS  = os.path.join(_UPLOADS_DIR, "research")
+os.makedirs(_VAL_UPLOADS, exist_ok=True)
+os.makedirs(_RESEARCH_UPS, exist_ok=True)
+
+
+@app.errorhandler(_budget.BudgetExceededError)
+def _handle_budget_exceeded(exc):
+    return jsonify({
+        "error": "budget_exceeded",
+        "message": str(exc),
+    }), 429
+
 
 def _research_user():
     return session.get("role", "viewer")
@@ -4580,6 +4602,15 @@ def _require_team(f):
         role = session.get("role")
         if role not in ("admin", "equipe"):
             return jsonify({"error": "forbidden"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _require_admin_decorator(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get("role") != "admin":
+            return jsonify({"error": "admin only"}), 403
         return f(*args, **kwargs)
     return decorated
 
@@ -4732,6 +4763,13 @@ def api_research_valuations_get(ticker):
     return jsonify({"valuations": _rdb.get_valuations(ticker.upper())})
 
 
+def _optf(v):
+    try:
+        return float(v) if v is not None and v != "" else None
+    except (TypeError, ValueError):
+        return None
+
+
 @app.route("/api/research/valuations/<ticker>", methods=["POST"])
 @_require_team
 def api_research_valuations_create(ticker):
@@ -4741,15 +4779,44 @@ def api_research_valuations_create(ticker):
     except (KeyError, TypeError, ValueError):
         return jsonify({"error": "target_price required"}), 400
     methodology = payload.get("methodology", "DCF")
-    upside_pct  = payload.get("upside_pct")
+    upside_pct  = _optf(payload.get("upside_pct") or payload.get("upside"))
     assumptions = payload.get("assumptions")
     notes       = payload.get("notes")
+
+    # If tmp_path present (from upload-excel flow), move the file to its
+    # final location after we know the valuation id.
+    tmp_path = payload.get("tmp_path")
+    excel_path = None
+
     new_id = _rdb.create_valuation(
         ticker.upper(), target_price, methodology,
-        upside_pct=float(upside_pct) if upside_pct is not None else None,
-        assumptions=assumptions, notes=notes, user=_research_user()
+        upside_pct=upside_pct,
+        assumptions=assumptions, notes=notes,
+        wacc=_optf(payload.get("wacc")),
+        growth_rate=_optf(payload.get("growth_rate")),
+        terminal_growth=_optf(payload.get("terminal_growth")),
+        ebitda_margin=_optf(payload.get("ebitda_margin")),
+        revenue_cagr=_optf(payload.get("revenue_cagr")),
+        scenarios=payload.get("scenarios"),
+        sensitivity=payload.get("sensitivity"),
+        extraction_method=payload.get("extraction_method") or "manual",
+        user=_research_user(),
     )
-    return jsonify({"ok": True, "id": new_id})
+
+    if tmp_path and os.path.isfile(tmp_path):
+        ts = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+        dest_dir = os.path.join(_VAL_UPLOADS, ticker.upper())
+        os.makedirs(dest_dir, exist_ok=True)
+        ext = os.path.splitext(tmp_path)[1].lower() or ".xlsx"
+        dest_path = os.path.join(dest_dir, f"{new_id}_{ts}{ext}")
+        try:
+            os.replace(tmp_path, dest_path)
+            excel_path = dest_path
+            _rdb.update_valuation(new_id, {"excel_path": excel_path}, user=_research_user())
+        except OSError as exc:
+            app.logger.warning("failed to move tmp excel %s -> %s: %s", tmp_path, dest_path, exc)
+
+    return jsonify({"ok": True, "id": new_id, "excel_path": excel_path})
 
 
 @app.route("/api/research/valuations/<int:valuation_id>", methods=["DELETE"])
@@ -4759,6 +4826,77 @@ def api_research_valuation_delete(valuation_id):
     if not ok:
         return jsonify({"error": "not found"}), 404
     return jsonify({"ok": True})
+
+
+@app.route("/api/research/valuations/<int:valuation_id>/excel", methods=["GET"])
+@_require_team
+def api_research_valuation_excel(valuation_id):
+    v = _rdb.get_valuation(valuation_id)
+    if not v:
+        return jsonify({"error": "not found"}), 404
+    path = v.get("excel_path")
+    if not path or not os.path.isfile(path):
+        return jsonify({"error": "excel file missing"}), 404
+    return send_file(path, as_attachment=True, download_name=os.path.basename(path))
+
+
+@app.route("/api/research/valuations/<ticker>/upload-excel", methods=["POST"])
+@_require_team
+def api_research_valuation_upload_excel(ticker):
+    """Accept an .xlsx / .xlsm upload, run heuristic parser, return result + tmp_path."""
+    f = request.files.get("file")
+    if f is None or not f.filename:
+        return jsonify({"error": "file required"}), 400
+    ext = os.path.splitext(f.filename)[1].lower()
+    if ext not in (".xlsx", ".xlsm"):
+        return jsonify({"error": f"extension {ext} not supported"}), 400
+
+    ticker = ticker.upper()
+    from werkzeug.utils import secure_filename
+    safe = secure_filename(f.filename) or f"upload{ext}"
+    tmp_id = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")
+    dest_dir = os.path.join(_VAL_UPLOADS, ticker)
+    os.makedirs(dest_dir, exist_ok=True)
+    tmp_path = os.path.join(dest_dir, f"tmp_{tmp_id}_{safe}")
+    f.save(tmp_path)
+
+    try:
+        parsed = _excel_parser.parse_excel(tmp_path)
+    except Exception as exc:
+        app.logger.error("parse_excel failed [%s]: %s", tmp_path, exc)
+        try: os.remove(tmp_path)
+        except OSError: pass
+        return jsonify({"error": f"failed to parse excel: {exc}"}), 500
+
+    parsed["tmp_path"] = tmp_path
+    return jsonify(parsed)
+
+
+@app.route("/api/research/valuations/extract-with-claude", methods=["POST"])
+@_require_team
+def api_research_valuation_extract_claude():
+    """Fallback extraction via Claude Haiku when heuristic missed fields."""
+    data = request.get_json(force=True) or {}
+    tmp_path = data.get("tmp_path")
+    ticker   = (data.get("ticker") or "").strip().upper()
+    missing  = data.get("missing_fields") or []
+    if not tmp_path or not os.path.isfile(tmp_path):
+        return jsonify({"error": "tmp_path invalid or expired"}), 400
+    if not ticker:
+        return jsonify({"error": "ticker required"}), 400
+    # Keep tmp_path scoped to our uploads dir to prevent path traversal.
+    if os.path.commonpath([os.path.abspath(tmp_path), _VAL_UPLOADS]) != _VAL_UPLOADS:
+        return jsonify({"error": "tmp_path outside allowed dir"}), 400
+
+    try:
+        md = _excel_parser.excel_to_markdown(tmp_path)
+    except Exception as exc:
+        return jsonify({"error": f"failed to render markdown: {exc}"}), 500
+
+    extracted = _claude.extract_valuation_from_excel(
+        md, ticker, missing, user=_research_user()
+    )
+    return jsonify({"extracted": extracted or {}})
 
 
 # ── Filings ────────────────────────────────────────────────────────────────
@@ -4795,12 +4933,8 @@ def api_research_filing_review(filing_id):
     ok = _rdb.review_filing(filing_id, action, user=_research_user())
     if not ok:
         return jsonify({"error": "not found"}), 404
-    if action == "APPROVE":
-        filing = _rdb.get_filing(filing_id)
-        if filing and filing.get("update_thesis") and filing.get("ticker"):
-            _trigger_thesis_suggestion(
-                filing["ticker"], filing.get("summary", ""), "filing", filing_id
-            )
+    # Thesis suggestion auto-trigger removed 2026-04-23 — UI oferece botao
+    # manual "Sugerir atualizacao de tese" via /api/research/theses/<t>/suggest.
     return jsonify({"ok": True})
 
 
@@ -4871,6 +5005,11 @@ def api_research_qa_post():
     data    = request.get_json(force=True) or {}
     question = (data.get("question") or "").strip()
     ticker   = (data.get("ticker") or "").strip().upper() or None
+    # Allow UI to choose a cheaper/faster Haiku or a more-nuanced Sonnet.
+    # Default is 'haiku' (~5x cheaper).
+    model    = (data.get("model") or "haiku").strip().lower()
+    if model not in ("haiku", "sonnet"):
+        model = "haiku"
     if not question:
         return jsonify({"error": "question required"}), 400
 
@@ -4878,7 +5017,8 @@ def api_research_qa_post():
     context_chunks = _rdb.build_rag_context(question, ticker=ticker)
     _rdb.save_qa_message(ticker, "user", question, None, user)
 
-    result = _claude.answer_question(question, ticker, context_chunks)
+    result = _claude.answer_question(question, ticker, context_chunks,
+                                      user=user, model=model)
     if result is None:
         return jsonify({"error": "Claude API error"}), 500
 
@@ -5308,6 +5448,155 @@ def api_research_ingest():
         "ok":      True,
         "news_id": news_id,
         "analysis": analysis,
+    })
+
+
+# ── URL / File ingestors (Research v2) ─────────────────────────────────────
+
+@app.route("/api/research/ingest/url", methods=["POST"])
+@_require_team
+def api_research_ingest_url():
+    """Ingest an article (or filing) by URL. Backend fetches HTML + Claude summarize.
+
+    Body: { ticker, url, source?, doc_type? }  (doc_type: 'NEWS' default or 'FILING')
+    """
+    data = request.get_json(silent=True) or {}
+    ticker   = (data.get("ticker") or "").upper().strip()
+    url      = (data.get("url") or "").strip()
+    source   = (data.get("source") or "Manual").strip()
+    doc_type = (data.get("doc_type") or "NEWS").upper().strip()
+    if not ticker or not url:
+        return jsonify({"error": "ticker e url obrigatórios"}), 400
+    if doc_type not in ("NEWS", "FILING"):
+        doc_type = "NEWS"
+
+    user = _research_user()
+    try:
+        new_id, analysis = _pipeline.url_ingestor.ingest(
+            ticker=ticker, url=url, source=source,
+            doc_type=doc_type, user=user,
+        )
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 500
+    except Exception as exc:
+        app.logger.error("ingest_url [%s]: %s", ticker, exc)
+        return jsonify({"error": f"Falha ao processar URL: {exc}"}), 500
+
+    if new_id is None:
+        # Either extract failed (analysis is {error:...}) or Claude returned None.
+        msg = (analysis or {}).get("error") if isinstance(analysis, dict) else None
+        return jsonify({
+            "error": msg or "Falha ao extrair conteúdo da URL ou analisar com Claude",
+        }), 422
+
+    key = "filing_id" if doc_type == "FILING" else "news_id"
+    return jsonify({"ok": True, key: new_id, "analysis": analysis})
+
+
+@app.route("/api/research/ingest/file", methods=["POST"])
+@_require_team
+def api_research_ingest_file():
+    """Ingest a file upload (PDF / PNG / JPG). Multipart form fields:
+    ticker, doc_type, source, file.
+    """
+    f = request.files.get("file")
+    if f is None or not f.filename:
+        return jsonify({"error": "file required"}), 400
+
+    ticker   = (request.form.get("ticker") or "").upper().strip()
+    doc_type = (request.form.get("doc_type") or "NEWS").upper().strip()
+    source   = (request.form.get("source") or "Manual").strip()
+    if not ticker:
+        return jsonify({"error": "ticker required"}), 400
+    if doc_type not in ("NEWS", "FILING"):
+        doc_type = "NEWS"
+
+    ext = os.path.splitext(f.filename)[1].lower()
+    if ext not in (".pdf", ".png", ".jpg", ".jpeg"):
+        return jsonify({"error": f"extensão {ext} não suportada"}), 400
+
+    file_bytes = f.read()
+    user = _research_user()
+    try:
+        new_id, analysis = _pipeline.file_ingestor.ingest(
+            ticker=ticker, file_bytes=file_bytes, filename=f.filename,
+            mime=f.mimetype, doc_type=doc_type, source=source, user=user,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        app.logger.error("ingest_file [%s]: %s", ticker, exc)
+        return jsonify({"error": f"Falha ao processar arquivo: {exc}"}), 500
+
+    if new_id is None:
+        return jsonify({"error": "Falha ao analisar com Claude"}), 422
+
+    key = "filing_id" if doc_type == "FILING" else "news_id"
+    return jsonify({"ok": True, key: new_id, "analysis": analysis})
+
+
+# ── Manual thesis suggestion (triggered by UI button after approve) ────────
+
+@app.route("/api/research/theses/<ticker>/suggest", methods=["POST"])
+@_require_team
+def api_research_thesis_suggest(ticker):
+    """Generate a draft thesis update on demand (replaces the auto-trigger).
+
+    Body: { current?, trigger_summary, trigger_type? }
+    """
+    data = request.get_json(silent=True) or {}
+    trigger_summary = (data.get("trigger_summary") or "").strip()
+    trigger_type    = (data.get("trigger_type") or "filing").strip().lower()
+    if not trigger_summary:
+        return jsonify({"error": "trigger_summary required"}), 400
+
+    current = data.get("current")
+    if current is None:
+        active = _rdb.get_active_thesis(ticker.upper())
+        current = active["content"] if active else ""
+
+    draft = _claude.suggest_thesis_update(
+        current, trigger_summary, trigger_type, user=_research_user()
+    )
+    if not draft:
+        return jsonify({"error": "Claude returned empty draft"}), 500
+    return jsonify({"ok": True, "draft": draft})
+
+
+# ── Claude budget / usage ──────────────────────────────────────────────────
+
+@app.route("/api/research/claude/budget", methods=["GET"])
+@_require_team
+def api_research_claude_budget():
+    """Returns {spent, cap, remaining, date_utc}. If already over cap, returns
+    the last known numbers with `over=true` rather than raising 429."""
+    try:
+        info = _budget.check_budget()
+        info["over"] = False
+    except _budget.BudgetExceededError as exc:
+        info = {
+            "spent": _budget.today_spend_usd(),
+            "cap": _budget.daily_cap_usd(),
+            "remaining": 0.0,
+            "date_utc": datetime.utcnow().strftime("%Y-%m-%d"),
+            "over": True,
+            "message": str(exc),
+        }
+    return jsonify(info)
+
+
+@app.route("/api/research/claude/usage", methods=["GET"])
+@_require_admin_decorator
+def api_research_claude_usage():
+    try:
+        days = int(request.args.get("days", 30))
+    except (TypeError, ValueError):
+        days = 30
+    days = max(1, min(365, days))
+    return jsonify({
+        "usage": _budget.usage_by_user(days=days),
+        "days": days,
+        "cap_usd": _budget.daily_cap_usd(),
     })
 
 
