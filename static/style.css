@@ -3008,8 +3008,22 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   border-color: var(--orange);
   color: var(--orange-text);
 }
+/* Thesis status = ATIVA (estrelinha *) — verde pra destacar a versão vigente */
+.thesis-version-tab.is-thesis-active {
+  background: rgba(76, 175, 80, 0.12);
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+.thesis-version-tab.is-thesis-active.active {
+  background: rgba(76, 175, 80, 0.22);
+  color: #6fd672;
+}
 .thesis-version-tab.is-draft {
   border-color: var(--orange);
+  color: var(--orange);
+}
+.thesis-version-tab.is-draft.active {
+  background: rgba(255,140,0,0.20);
   color: var(--orange);
 }
 .thesis-versions-spacer {

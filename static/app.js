@@ -5272,45 +5272,46 @@ const Research = (() => {
       banner.classList.add('hidden');
     }
 
-    // Version tabs bar
+    // Version tabs bar — sempre renderizado pra ter o botão "+ NOVA TESE" visível
     const bar = $('thesis-versions-bar');
-    if (_allTheses.length === 0) {
-      bar.style.display = 'none';
-      _viewingThesisIdx = -1;
-      _renderThesisContent(null);
-      return;
-    }
-
     bar.style.display = 'flex';
     bar.innerHTML = '';
 
-    const activeIdx = _allTheses.findIndex(t => t.status === 'ATIVA');
-    _viewingThesisIdx = activeIdx >= 0 ? activeIdx : _allTheses.length - 1;
+    if (_allTheses.length > 0) {
+      const activeIdx = _allTheses.findIndex(t => t.status === 'ATIVA');
+      _viewingThesisIdx = activeIdx >= 0 ? activeIdx : _allTheses.length - 1;
 
-    for (let i = 0; i < _allTheses.length; i++) {
-      const t = _allTheses[i];
-      const tab = el('button', 'thesis-version-tab');
-      const label = `v${t.version}${t.status === 'ATIVA' ? '*' : ''}`;
-      tab.textContent = label;
-      if (t.status === 'RASCUNHO') tab.classList.add('is-draft');
-      if (i === _viewingThesisIdx) tab.classList.add('active');
-      tab.addEventListener('click', () => {
-        _viewingThesisIdx = i;
-        _refreshVersionTabs();
-        _renderThesisContent(_allTheses[i]);
-      });
-      bar.appendChild(tab);
+      for (let i = 0; i < _allTheses.length; i++) {
+        const t = _allTheses[i];
+        const tab = el('button', 'thesis-version-tab');
+        const label = `v${t.version}${t.status === 'ATIVA' ? '*' : ''}`;
+        tab.textContent = label;
+        if (t.status === 'RASCUNHO') tab.classList.add('is-draft');
+        if (t.status === 'ATIVA')    tab.classList.add('is-thesis-active');
+        if (i === _viewingThesisIdx) tab.classList.add('active');
+        tab.addEventListener('click', () => {
+          _viewingThesisIdx = i;
+          _refreshVersionTabs();
+          _renderThesisContent(_allTheses[i]);
+        });
+        bar.appendChild(tab);
+      }
+    } else {
+      _viewingThesisIdx = -1;
     }
 
     const spacer = el('div', 'thesis-versions-spacer');
     bar.appendChild(spacer);
 
-    const btnNew = el('button', 'bbg-btn', '+ NOVA TESE');
-    btnNew.style.fontSize = '10px';
-    btnNew.addEventListener('click', () => showThesisEditor(null, ''));
-    bar.appendChild(btnNew);
+    // Admin/equipe: botão "+ NOVA TESE" sempre disponível (mesmo sem tese ainda)
+    if (ROLE === 'admin' || ROLE === 'equipe') {
+      const btnNew = el('button', 'bbg-btn', '+ NOVA TESE');
+      btnNew.style.fontSize = '10px';
+      btnNew.addEventListener('click', () => showThesisEditor(null, ''));
+      bar.appendChild(btnNew);
+    }
 
-    _renderThesisContent(_allTheses[_viewingThesisIdx]);
+    _renderThesisContent(_allTheses.length > 0 ? _allTheses[_viewingThesisIdx] : null);
   }
 
   function _refreshVersionTabs() {
