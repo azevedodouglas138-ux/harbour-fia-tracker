@@ -5393,6 +5393,48 @@ const Research = (() => {
     const items = (filings || []).map(f => ({ ...f, _type: 'filing' }));
     _renderResearchItems(items, 'research-oficiais-list', 'research-oficiais-empty',
                           'Nenhum filing registrado.');
+    // Show/hide "APROVAR TODOS" based on pending count (admin only)
+    const btnAll = $('btn-approve-all-oficiais');
+    if (btnAll) {
+      const pending = items.filter(i => i.review_status === 'PENDENTE');
+      if (pending.length > 0) {
+        btnAll.style.display = '';
+        btnAll.textContent = `✓ APROVAR TODOS (${pending.length})`;
+        btnAll.dataset.pendingIds = pending.map(p => p.id).join(',');
+      } else {
+        btnAll.style.display = 'none';
+      }
+    }
+  }
+
+  async function _approveAllOficiais() {
+    const btn = $('btn-approve-all-oficiais');
+    if (!btn) return;
+    const ids = (btn.dataset.pendingIds || '').split(',').filter(Boolean);
+    if (ids.length === 0) return;
+    if (!confirm(`Aprovar ${ids.length} filing(s) pendente(s) de uma vez?`)) return;
+
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = `APROVANDO 0/${ids.length}...`;
+
+    let done = 0, failed = 0;
+    await Promise.all(ids.map(async (id) => {
+      try {
+        await apiPost(`/api/research/filings/${id}/review`, { action: 'APPROVE' });
+      } catch (e) {
+        console.error('approve-all filing', id, e);
+        failed++;
+      }
+      done++;
+      btn.textContent = `APROVANDO ${done}/${ids.length}...`;
+    }));
+
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    if (failed > 0) alert(`${failed} filing(s) falharam. Veja o console pra detalhes.`);
+    await reloadCurrent();
+    await refreshPending();
   }
 
   function renderNoticiasTab(news) {
@@ -5876,6 +5918,7 @@ const Research = (() => {
     $('btn-research-add-article')?.addEventListener('click', () => openIngestModal());
     $('btn-add-oficial-manual')?.addEventListener('click', () => openIngestModal('FILING'));
     $('btn-add-noticia')?.addEventListener('click', () => openIngestModal('NEWS'));
+    $('btn-approve-all-oficiais')?.addEventListener('click', _approveAllOficiais);
     $('btn-ingest-modal-close')?.addEventListener('click', closeIngestModal);
     $('btn-ingest-cancel')?.addEventListener('click', closeIngestModal);
     $('btn-ingest-submit')?.addEventListener('click', submitIngest);

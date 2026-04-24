@@ -1444,7 +1444,12 @@
       <div id="subtab-oficiais" class="research-subtab-content hidden">
         <div class="research-section-header">
           <span>OFICIAIS · CVM · SEC · MANUAL</span>
-          <button class="bbg-btn" id="btn-add-oficial-manual" style="font-size:10px">+ ADICIONAR MANUAL</button>
+          <div style="display:flex;gap:6px">
+            {% if role == 'admin' %}
+            <button class="bbg-btn" id="btn-approve-all-oficiais" style="display:none;font-size:10px">✓ APROVAR TODOS</button>
+            {% endif %}
+            <button class="bbg-btn" id="btn-add-oficial-manual" style="font-size:10px">+ ADICIONAR MANUAL</button>
+          </div>
         </div>
         <div id="research-oficiais-list" class="research-list-items"></div>
         <div id="research-oficiais-empty" class="research-empty-inline hidden">Nenhum filing registrado.</div>
