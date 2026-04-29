@@ -1,8 +1,8 @@
 {
   "source": "registro_fundo_classe",
   "classe": {
-    "ID_Registro_Fundo": "56606",
-    "ID_Registro_Classe": "8288",
+    "ID_Registro_Fundo": "56633",
+    "ID_Registro_Classe": "8269",
     "CNPJ_Classe": "29599391000194",
     "Codigo_CVM": "192066",
     "Data_Registro": "2025-05-12",
@@ -18,15 +18,15 @@
     "Tributacao_Longo_Prazo": "N/A",
     "Forma_Condominio": "Aberto",
     "Publico_Alvo": "Público Geral",
-    "Patrimonio_Liquido": "13090130.66",
-    "Data_Patrimonio_Liquido": "2026-04-15",
+    "Patrimonio_Liquido": "13600627.83",
+    "Data_Patrimonio_Liquido": "2026-04-22",
     "CNPJ_Auditor": "61562112000120",
     "Auditor": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA.",
     "CNPJ_Custodiante": "62232889000190",
     "Custodiante": "BANCO DAYCOVAL S.A."
   },
   "fundo": {
-    "ID_Registro_Fundo": "56606",
+    "ID_Registro_Fundo": "56633",
     "CNPJ_Fundo": "29599391000194",
     "Codigo_CVM": "455725",
     "Data_Registro": "2022-04-13",
@@ -45,5 +45,5 @@
     "CPF_CNPJ_Gestor": "36040900000100",
     "Gestor": "HARBOUR CAPITAL ADMINISTRADORA DE CARTEIRAS DE VALORES MOBILIÁRIOS LTDA."
   },
-  "fetched_at": "2026-04-20T15:41:05-03:00"
+  "fetched_at": "2026-04-27T15:41:22-03:00"
 }

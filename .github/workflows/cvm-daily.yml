@@ -1,0 +1,44 @@
+name: Atualizar informe diário CVM
+
+on:
+  schedule:
+    # 14:00 UTC = 11:00 BRT (segunda a sexta) — depois da janela CVM publicar T-1
+    - cron: '0 14 * * 1-5'
+    # Janela de retry às 17:00 UTC = 14:00 BRT caso o dado de T-1 ainda não tenha sido publicado às 11h
+    - cron: '0 17 * * 1-5'
+  workflow_dispatch:  # permite disparar manualmente pelo GitHub
+
+permissions:
+  contents: write  # necessário para fazer commit/push do JSON atualizado
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências mínimas do fetcher
+        run: pip install requests
+
+      - name: Rodar refresh_current()
+        run: |
+          python -c "from cvm_daily_fetcher import refresh_current; import json; print(json.dumps(refresh_current(), indent=2, ensure_ascii=False))"
+
+      - name: Commit e push se houver mudança
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/cvm_daily.json data/cvm_cadastro.json; then
+            echo "Sem mudança no informe diário CVM."
+            exit 0
+          fi
+          git add data/cvm_daily.json data/cvm_cadastro.json
+          git commit -m "chore: refresh informe diário CVM via GitHub Actions"
+          git push

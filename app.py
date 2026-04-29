@@ -1,17 +1,42 @@
 import base64
 import csv
+import gc
+import importlib
+import importlib.util
 import io
 import json
 import os
+import sys
 import threading
 import time
 from datetime import datetime, timedelta
 from functools import wraps
 
-import yfinance as yf
 from flask import Flask, Response, jsonify, render_template, request, send_file, session, redirect, url_for
 
 from risk_methodology import RISK_METHODOLOGY
+
+
+# ---------------------------------------------------------------------------
+# Lazy import de yfinance — adia o pull de pandas/numpy/lxml até a 1ª request
+# que precisar de dados de mercado. Reduz baseline do worker no boot do Render
+# (~80-100MB) e permite que healthcheck/login não paguem o overhead do yfinance.
+# ---------------------------------------------------------------------------
+def _lazy_import(name: str):
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.find_spec(name)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"módulo não encontrado: {name}")
+    loader = importlib.util.LazyLoader(spec.loader)
+    spec.loader = loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    loader.exec_module(module)
+    return module
+
+
+yf = _lazy_import("yfinance")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
@@ -710,6 +735,24 @@ def require_login():
         return
     if not session.get("role"):
         return redirect(url_for("login"))
+
+
+# Endpoints que alocam DataFrames pandas grandes via yf.download/.history e
+# precisam que o GC libere memória imediatamente (Render Starter tem só 512MB).
+_HEAVY_PATHS_PREFIX = ("/api/risk/",)
+_HEAVY_PATHS_EXACT = {
+    "/api/macro", "/api/attribution", "/api/history",
+    "/api/performance-chart", "/api/drawdown-volatility",
+    "/api/performance-indicators", "/api/monthly-returns", "/api/annual-returns",
+    "/api/screener", "/api/index-members", "/api/events",
+}
+
+@app.after_request
+def _release_heavy_memory(response):
+    p = request.path
+    if p.startswith(_HEAVY_PATHS_PREFIX) or p in _HEAVY_PATHS_EXACT:
+        gc.collect()
+    return response
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -4563,8 +4606,9 @@ def api_index_members():
 
 import cvm_daily_fetcher as _cvm_daily
 
-# Inicia scheduler em background (faz backfill na 1ª execução, depois refresh a cada 12h)
-_cvm_daily.scheduler.start()
+# Refresh do informe diário CVM roda no GitHub Actions (.github/workflows/cvm-daily.yml),
+# que executa fetcher no runner e dá commit do data/cvm_daily.json. O Flask só serve o
+# JSON pronto — sem thread daemon dentro do worker, sem download de ZIP em memória.
 
 
 def _cvm_daily_summary(records, quota_history):
@@ -4690,17 +4734,21 @@ def api_cvm_fund_daily_summary():
 @app.route("/api/cvm/fund-daily/refresh", methods=["POST"])
 @require_admin
 def api_cvm_fund_daily_refresh():
-    """Dispara refresh do mês atual + M-1 em background."""
-    _cvm_daily.scheduler.run_now(mode="refresh")
-    return jsonify({"ok": True, "mode": "refresh"})
+    """Refresh manual do mês atual + M-1. Síncrono — para uso eventual via UI admin.
+    O refresh diário automático roda no GitHub Actions (cvm-daily.yml) para não
+    consumir memória do worker do Render."""
+    result = _cvm_daily.refresh_current()
+    return jsonify({"ok": True, "mode": "refresh", "result": result})
 
 
 @app.route("/api/cvm/fund-daily/backfill", methods=["POST"])
 @require_admin
 def api_cvm_fund_daily_backfill():
-    """Dispara backfill completo desde a cota_inicio em background."""
-    _cvm_daily.scheduler.run_now(mode="backfill")
-    return jsonify({"ok": True, "mode": "backfill"})
+    """Backfill completo desde a cota_inicio. Síncrono — só dispare em ambiente
+    com folga de memória (preferir rodar local ou via GitHub Actions, nunca no
+    Render Starter durante operação)."""
+    result = _cvm_daily.backfill_since(_cvm_daily.COTA_INICIO[:7])
+    return jsonify({"ok": True, "mode": "backfill", "result": result})
 
 
 @app.route("/api/cvm/fund-daily/status", methods=["GET"])

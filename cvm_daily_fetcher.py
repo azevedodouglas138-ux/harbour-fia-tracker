@@ -12,11 +12,14 @@ Exposed:
     backfill_since(start="2022-04") -> dict      # recarrega todo o histórico
     load_storage()               -> dict         # lê cvm_daily.json
     load_cadastro()              -> dict         # lê cvm_cadastro.json
-    get_status()                 -> dict         # info do scheduler
-    CVMDailyScheduler            # thread daemon (12h)
+    get_status()                 -> dict         # info do último refresh
 
 A linha do fundo é filtrada em memória por HARBOUR_CNPJ — baixamos o mensal
 inteiro mas só gravamos ~20 linhas/mês (dias úteis do fundo).
+
+O refresh diário é orquestrado pelo GitHub Actions (.github/workflows/cvm-daily.yml),
+que roda refresh_current() no runner e dá commit do JSON. O Flask só serve o
+arquivo pronto — sem thread daemon dentro do worker do Render (memória apertada).
 """
 
 from __future__ import annotations
@@ -62,15 +65,6 @@ _SESSION.headers.update({
 })
 
 _io_lock = threading.Lock()
-_status_lock = threading.Lock()
-_status = {
-    "running": False,
-    "last_run": None,
-    "last_result": None,
-    "next_run": None,
-    "error": None,
-    "target_date": None,
-}
 
 
 # ---------------------------------------------------------------------------
@@ -458,137 +452,16 @@ def backfill_since(start: str = "2022-04", end: str | None = None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Scheduler
+# Status
 # ---------------------------------------------------------------------------
 
 def get_status() -> dict:
-    with _status_lock:
-        return dict(_status)
-
-
-def _last_weekday(today) -> "datetime.date":
-    """Último dia útil anterior a `today` (segundas retornam sexta)."""
-    from datetime import date, timedelta as _td
-    d = today - _td(days=1)
-    while d.weekday() >= 5:  # 5=sáb, 6=dom
-        d -= _td(days=1)
-    return d
-
-
-def _have_date(storage: dict, target_iso: str) -> bool:
-    return any(r.get("dt_comptc") == target_iso for r in storage.get("records", []))
-
-
-class CVMDailyScheduler:
-    """Thread daemon que:
-       - faz backfill na primeira execução (se storage vazio)
-       - depois opera por janela: tenta capturar o informe de T-1 entre
-         window_start_hour e window_end_hour (BRT), com retry a cada
-         retry_minutes enquanto o dado não chega. Ao capturar, dorme até
-         window_start_hour do próximo dia.
-
-       Motivação: o Daycoval aprova a cota ~09h e só depois envia à CVM;
-       o dado de T-1 tipicamente fica disponível após 10h, mas pode atrasar.
-    """
-
-    def __init__(self, window_start_hour: int = 10, window_end_hour: int = 22,
-                 retry_minutes: int = 30):
-        self.window_start_hour = window_start_hour
-        self.window_end_hour = window_end_hour
-        self.retry_minutes = retry_minutes
-        self._thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
-
-    def start(self):
-        if self._thread and self._thread.is_alive():
-            return
-        self._stop_event.clear()
-        self._thread = threading.Thread(target=self._loop, daemon=True, name="cvm-daily-scheduler")
-        self._thread.start()
-        logger.info(
-            "CVMDailyScheduler iniciado (janela %02dh-%02dh BRT, retry %smin)",
-            self.window_start_hour, self.window_end_hour, self.retry_minutes,
-        )
-
-    def stop(self):
-        self._stop_event.set()
-
-    def run_now(self, mode: str = "refresh"):
-        t = threading.Thread(target=self._run_once, args=(mode,), daemon=True)
-        t.start()
-
-    def _next_window_start(self, now: datetime) -> datetime:
-        base = now + timedelta(days=1)
-        return base.replace(hour=self.window_start_hour, minute=0, second=0, microsecond=0)
-
-    def _today_window_start(self, now: datetime) -> datetime:
-        return now.replace(hour=self.window_start_hour, minute=0, second=0, microsecond=0)
-
-    def _loop(self):
-        # Espera pequena para não bloquear o startup do Flask
-        if self._stop_event.wait(5):
-            return
-        while not self._stop_event.is_set():
-            storage = load_storage()
-
-            # Primeira execução: backfill se vazio.
-            if not storage.get("records"):
-                self._run_once("backfill")
-                storage = load_storage()
-
-            now = datetime.now(BRT_OFFSET)
-            target = _last_weekday(now.date()).isoformat()
-
-            if _have_date(storage, target):
-                # Já temos T-1 → dorme até próxima janela (amanhã 10h).
-                next_run = self._next_window_start(now)
-            elif now.hour < self.window_start_hour:
-                # Antes do início da janela → espera até window_start_hour hoje.
-                next_run = self._today_window_start(now)
-            elif now.hour >= self.window_end_hour:
-                # Passou do fim da janela → espera amanhã.
-                next_run = self._next_window_start(now)
-            else:
-                # Dentro da janela e ainda sem T-1 → tenta agora.
-                self._run_once("refresh")
-                storage = load_storage()
-                if _have_date(storage, target):
-                    next_run = self._next_window_start(now)
-                else:
-                    next_run = datetime.now(BRT_OFFSET) + timedelta(minutes=self.retry_minutes)
-
-            with _status_lock:
-                _status["next_run"] = next_run.isoformat(timespec="seconds")
-                _status["target_date"] = target
-
-            wait_s = max(60.0, (next_run - datetime.now(BRT_OFFSET)).total_seconds())
-            if self._stop_event.wait(wait_s):
-                break
-
-    def _run_once(self, mode: str):
-        with _status_lock:
-            if _status["running"]:
-                logger.info("CVMDailyScheduler: já em execução, pulando")
-                return
-            _status["running"] = True
-            _status["error"] = None
-
-        started = datetime.now(BRT_OFFSET)
-        try:
-            if mode == "backfill":
-                result = backfill_since(COTA_INICIO[:7])
-            else:
-                result = refresh_current()
-            with _status_lock:
-                _status["last_result"] = result
-                _status["last_run"] = started.isoformat(timespec="seconds")
-        except Exception as e:
-            logger.error("CVMDailyScheduler._run_once: %s", e)
-            with _status_lock:
-                _status["error"] = str(e)
-        finally:
-            with _status_lock:
-                _status["running"] = False
-
-
-scheduler = CVMDailyScheduler(window_start_hour=10, window_end_hour=22, retry_minutes=30)
+    """Retorna info do último refresh. Lê do JSON em disco (fonte de verdade
+    cross-process — refresh roda no GitHub Actions, não no worker do Flask)."""
+    storage = load_storage()
+    return {
+        "last_refresh": storage.get("last_refresh"),
+        "total_rows":   len(storage.get("records") or []),
+        "cnpj":         storage.get("cnpj"),
+        "cota_inicio":  storage.get("cota_inicio"),
+    }
