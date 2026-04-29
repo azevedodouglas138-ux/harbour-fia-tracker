@@ -60,6 +60,12 @@ Chart.defaults.color       = '#888888';
 Chart.defaults.borderColor = '#2a2a2a';
 Chart.defaults.font.family = "'Cascadia Code','Courier New',monospace";
 Chart.defaults.font.size   = 10;
+// devicePixelRatio=1 corrige offset de tooltip em telas HiDPI (Windows com
+// escalonamento 125%/150% → DPR 1.25/1.5). Sem isso, canvas.width interno do
+// Chart.js fica dessincronizado de canvas.clientWidth e o mapping mouseX →
+// dataIndex calcula posição errada (cursor no fim mostra dado de meses antes).
+// Trade-off: leve perda de nitidez em HiDPI, mas precisão do cursor é prioridade.
+Chart.defaults.devicePixelRatio = 1;
 
 // ── Format helpers ───────────────────────────────────────────────
 const fmt    = (v, d=2, fb='—') => v == null || isNaN(v) ? fb : Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
