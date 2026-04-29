@@ -429,6 +429,7 @@ async function loadStockChart(ticker, yahooTicker, shortName, range) {
       },
       options: {
         responsive: true,
+        devicePixelRatio: 1,
         maintainAspectRatio: false,
         animation: { duration: 300 },
         interaction: { mode: 'index', intersect: false },
@@ -908,6 +909,7 @@ async function loadHistoryChart(days) {
       data: { labels, datasets },
       options: {
         responsive: true,
+        devicePixelRatio: 1,
         animation: { duration: 350 },
         interaction: { mode: 'index', intersect: false },
         plugins: {
@@ -1006,6 +1008,7 @@ function renderSectorChart() {
     data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#000', borderWidth: 2, hoverOffset: 6 }] },
     options: {
       responsive: true,
+      devicePixelRatio: 1,
       cutout: '62%',
       plugins: {
         legend: { display: false },
@@ -1049,7 +1052,7 @@ function renderUpsideChart() {
     data: { labels: rows.map(r => r.ticker),
       datasets: [{ label: 'Upside %', data: rows.map(r => r.upside_pct),
         backgroundColor: colors, borderColor: colors, borderWidth: 1, borderRadius: 2 }] },
-    options: { responsive: true, indexAxis: 'y',
+    options: { responsive: true, devicePixelRatio: 1, indexAxis: 'y',
       plugins: { legend: { display: false },
         tooltip: { backgroundColor: '#0d0d0d', borderColor: '#2a2a2a', borderWidth: 1,
           callbacks: { label: ctx => ` ${ctx.parsed.x>=0?'+':''}${ctx.parsed.x.toFixed(2)}%` } } },
@@ -1162,6 +1165,7 @@ function renderDDVol(series) {
 
   const baseOpts = (yFmt) => ({
     responsive: true,
+    devicePixelRatio: 1,
     animation: { duration: 350 },
     interaction: { mode: 'index', intersect: false },
     plugins: {
@@ -1813,6 +1817,7 @@ async function loadAttribution(period) {
       },
       options: {
         responsive: true,
+        devicePixelRatio: 1,
         indexAxis: 'y',
         plugins: {
           legend: { display: false },
@@ -2766,6 +2771,7 @@ async function _loadRollingBeta() {
       },
       options: {
         responsive: true,
+        devicePixelRatio: 1,
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -3165,6 +3171,7 @@ async function _loadRollingRatios() {
     },
     options: {
       responsive: true,
+      devicePixelRatio: 1,
       plugins: {
         legend: {
           display: true,
@@ -3262,6 +3269,7 @@ async function _loadReturnDist() {
     data: { labels: d.bin_centers.map(v => fmt(v, 2) + '%'), datasets },
     options: {
       responsive: true,
+      devicePixelRatio: 1,
       maintainAspectRatio: false,
       plugins: {
         legend: {
@@ -4892,6 +4900,7 @@ function renderIdxTreemap(rows) {
     },
     options: {
       responsive: true,
+      devicePixelRatio: 1,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
@@ -4969,6 +4978,7 @@ const CvmOficial = (() => {
     const colors = _pickChartColors();
     return {
       responsive: true,
+      devicePixelRatio: 1,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
