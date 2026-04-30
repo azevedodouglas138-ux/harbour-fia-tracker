@@ -1144,99 +1144,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .attrib-table td { padding: 4px 10px; border-bottom: 1px solid var(--border); }
 .attrib-table td.num { text-align: right; }
 
-/* ══════════════ MACRO DASHBOARD ════════════════════════════════ */
-.macro-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  padding: 14px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-.macro-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--orange);
-  padding: 14px 16px 10px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.macro-card-label {
-  font-size: 9px; color: var(--orange-text);
-  letter-spacing: 1px; font-weight: 700;
-}
-.macro-card-value {
-  font-size: 24px; font-weight: 700; color: var(--text);
-  font-family: var(--mono); line-height: 1.1;
-}
-.macro-card-change {
-  font-size: 11px; font-weight: 700;
-}
-.macro-card-change.positive { color: var(--green); }
-.macro-card-change.negative { color: var(--red); }
-.macro-spark { width: 100% !important; height: 40px !important; margin-top: 4px; }
-
-/* Seções temáticas */
-.macro-section { margin-bottom: 20px; }
-.macro-section-title {
-  font-size: 9px; font-weight: 700; color: var(--text-dim);
-  letter-spacing: 2px; padding: 0 4px 8px;
-  border-bottom: 1px solid var(--border); margin-bottom: 10px;
-}
-.macro-section .macro-grid { padding: 0; }
-
-/* Cards Focus (expectativas de mercado) */
-.macro-card-focus { min-height: 80px; }
-.macro-focus-body { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-.macro-focus-row { font-size: 11px; line-height: 1.4; color: var(--text); }
-.macro-focus-year { color: var(--orange-text); font-weight: 700; margin-right: 4px; font-family: var(--mono); }
-.macro-focus-med { font-weight: 700; font-family: var(--mono); }
-.macro-focus-range { color: var(--text-dim); font-size: 9px; }
-
-/* ══════════════ WATCHLIST ══════════════════════════════════════ */
-.wl-status {
-  display: inline-block; padding: 2px 6px; border-radius: 2px;
-  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
-}
-.wl-status-analise    { background: rgba(255,140,0,0.15); color: var(--orange); border: 1px solid rgba(255,140,0,0.3); }
-.wl-status-monitor    { background: rgba(0,170,204,0.12); color: var(--cyan);   border: 1px solid rgba(0,170,204,0.3); }
-.wl-status-descartado { background: rgba(136,136,136,0.1); color: var(--text-muted); border: 1px solid var(--border2); }
-
-.wl-gatilho { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 10px; }
-.wl-tese    { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: 10px; cursor: help; }
-
-/* ══════════════ SCREENER ════════════════════════════════════════ */
-.screener-filters {
-  background: var(--surface2); border-bottom: 1px solid var(--border);
-  padding: 10px 14px;
-}
-.screener-filter-title {
-  font-size: 9px; color: var(--orange-text); letter-spacing: 1px;
-  font-weight: 700; display: block; margin-bottom: 8px;
-}
-.screener-filter-row {
-  display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end;
-}
-.screener-filter-field {
-  display: flex; flex-direction: column; gap: 3px;
-}
-.screener-filter-field label {
-  font-size: 9px; color: var(--text-muted); letter-spacing: 0.5px;
-}
-.screener-filter-field input, .screener-filter-field select {
-  background: var(--surface); border: 1px solid var(--border2);
-  color: var(--text); font-family: var(--mono); font-size: 11px;
-  padding: 4px 7px; border-radius: 2px; outline: none; width: 90px;
-}
-.screener-filter-field select { width: 130px; }
-.screener-filter-field input:focus, .screener-filter-field select:focus {
-  border-color: var(--orange);
-}
-.screener-filter-btns { flex-direction: row; gap: 6px; }
-.screener-status {
-  font-size: 9px; color: var(--text-muted); margin-top: 6px;
-  letter-spacing: 0.5px;
-}
-
 /* ══════════════ RISCO (207) ═════════════════════════════════════ */
 .risk-row {
   display: grid;
@@ -1516,68 +1423,14 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .risk-liq-bar.bbg-orange { background: var(--orange); }
 
 /* ══════════════════════════════════════════════════════════════
-   208) FINANCIALS
+   Toolbar/sub-tabs reaproveitados (eventos, índices)
    ══════════════════════════════════════════════════════════════ */
-.fin-loading.hidden   { display: none; }
-.fin-unavailable.hidden { display: none; }
-.fin-table-wrap.hidden  { display: none; }
-
-/* Header toolbar */
 .fin-header {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px 16px 0;
 }
-.fin-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.fin-select {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--amber);
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 4px 8px;
-  cursor: pointer;
-  min-width: 140px;
-}
-.fin-period-toggle {
-  display: flex;
-  gap: 0;
-}
-.fin-period-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  color: var(--orange-text);
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  padding: 4px 12px;
-  cursor: pointer;
-  opacity: 0.55;
-  transition: all .12s;
-}
-.fin-period-btn:first-child { border-right: none; }
-.fin-period-btn:hover {
-  background: var(--orange-dim);
-  border-color: var(--orange);
-  color: var(--orange);
-  opacity: 1;
-}
-.fin-period-btn.active {
-  border-color: var(--orange);
-  color: var(--orange);
-  background: transparent;
-  font-weight: 700;
-  opacity: 1;
-}
-
-/* Statement sub-tabs */
 .fin-stmt-tabs {
   display: flex;
   gap: 0;
@@ -1600,99 +1453,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   border-bottom-color: var(--orange);
 }
 .fin-stmt-btn:hover { color: var(--orange); }
-
-/* Currency note */
-.fin-currency-note {
-  font-size: 9px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-}
-
-/* Table container */
-.fin-table-container {
-  padding: 12px 16px;
-  overflow-x: auto;
-}
-.fin-loading {
-  color: var(--amber);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  padding: 24px 0;
-  text-align: center;
-}
-.fin-unavailable {
-  color: var(--text-muted);
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 24px 0;
-  text-align: center;
-}
-.fin-table-wrap {
-  overflow-x: auto;
-}
-
-/* The table itself */
-.fin-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--mono);
-  font-size: 11px;
-}
-.fin-table thead tr {
-  border-bottom: 1px solid var(--border2);
-}
-.fin-th-label {
-  text-align: left;
-  color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  padding: 6px 12px 6px 0;
-  min-width: 260px;
-  white-space: nowrap;
-}
-.fin-th-val {
-  text-align: right;
-  color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  padding: 6px 0 6px 20px;
-  min-width: 110px;
-  white-space: nowrap;
-}
-.fin-table tbody tr {
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-}
-.fin-table tbody tr:hover { background: var(--surface2); }
-
-.fin-td-label {
-  text-align: left;
-  color: #47c9e5;   /* cyan-ish, like Yahoo Finance links */
-  padding: 5px 12px 5px 0;
-  white-space: nowrap;
-}
-.fin-td-val {
-  text-align: right;
-  color: var(--text);
-  padding: 5px 0 5px 20px;
-  white-space: nowrap;
-}
-
-/* Highlighted rows (Gross Profit, Net Income, etc.) */
-.fin-row-highlight .fin-td-label,
-.fin-row-highlight .fin-td-val {
-  color: var(--amber);
-  font-weight: bold;
-}
-
-/* Positive / Negative value colouring */
-.fin-positive { color: var(--green) !important; }
-.fin-negative { color: var(--red)   !important; }
-/* Keep highlight rows amber even when positive */
-.fin-row-highlight .fin-positive,
-.fin-row-highlight .fin-negative { color: var(--amber) !important; }
-
-
 
 /* ── Pré-Trade Histórico ── */
 .pretrade-history-item {
@@ -1823,7 +1583,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
      901-1100 Tablet land — esconde mais colunas, idx panels mantém 2 col
      769-900  Tablet     — single col charts, mais colunas hidden
      601-768  Mobile lnd — research vira drawer, modais quase full
-     481-600  Mobile     — macro 2/row, idx tabela compacta
+     481-600  Mobile     — idx tabela compacta
      ≤480     Portrait   — minimal cols, modais bottom-sheet
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -1837,7 +1597,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .charts-grid    { max-width: 1900px; gap: 16px; }
   .charts-toolbar { max-width: 1900px; }
   .cfg-grid       { max-width: 1500px; }
-  .macro-grid     { max-width: 1700px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
   .chart-card:not(.wide) canvas { max-height: 320px; }
 }
 
@@ -1853,9 +1612,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   #portfolio-table tbody td:nth-child(12),
   #portfolio-table th:nth-child(13),
   #portfolio-table tbody td:nth-child(13) { display: none; }
-
-  /* Macro: valor menor em laptop */
-  .macro-card-value { font-size: 22px; }
 }
 
 /* ── TABLET landscape (≤1100px) ─────────────────────────────────── */
@@ -1916,10 +1672,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   /* Q&A panel não pode ser maior que 70vw em tablet */
   .qa-panel { max-width: 70vw; }
 
-  /* Macro cards: card menor */
-  .macro-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); padding: 10px; gap: 10px; }
-  .macro-card-value { font-size: 20px; }
-
   /* Stock expand: layout vertical em tablet */
   .stock-expand-body { flex-direction: column; gap: 10px; }
   .stock-stats-sidebar { flex-direction: row; flex-wrap: wrap; padding: 8px 0 0; border-left: none; border-top: 1px solid var(--border); min-width: 0; gap: 14px; }
@@ -1963,12 +1715,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .cfg-footer { flex-wrap: wrap; gap: 8px; }
   .cfg-footer .bbg-btn { flex: 1; min-width: 100px; }
 
-  /* Macro: cards menores */
-  .macro-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; padding: 8px; }
-  .macro-card { padding: 10px 12px 8px; }
-  .macro-card-value { font-size: 18px; }
-  .macro-spark { height: 32px !important; }
-
   /* Q&A panel: full-screen overlay em tablet */
   .qa-panel { width: 100vw !important; max-width: 100vw !important; }
   body.qa-panel-open { padding-right: 0 !important; }
@@ -1988,10 +1734,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .bbg-stat-val { font-size: 10px; }
   .bbg-stat     { padding: 0 5px; gap: 3px; }
   .bbg-sep      { padding: 0 1px; font-size: 12px; }
-
-  /* Macro: 2 colunas fixas em mobile landscape */
-  .macro-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
-  .macro-card-value { font-size: 16px; }
 
   /* Login form padding seguro */
   .research-search-wrap { min-width: 0; }
@@ -2046,13 +1788,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .chart-card:not(.wide) canvas { max-height: 200px; min-height: 160px; }
   .chart-card { padding: 8px; gap: 6px; }
   .chart-title { font-size: 9px; letter-spacing: 0.4px; }
-
-  /* Macro: 2 cards/linha menores */
-  .macro-grid { grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; }
-  .macro-card { padding: 8px 10px 6px; min-height: 0; }
-  .macro-card-value { font-size: 14px; }
-  .macro-card-label { font-size: 8px; letter-spacing: 0.5px; }
-  .macro-spark { height: 26px !important; }
 
   /* Idx tabela: esconde rank em mobile */
   .idx-th-rank, .idx-td-rank { display: none; }
@@ -2113,7 +1848,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 
 /* ── Garantir que canvas dos charts respondem a resize ──────────── */
 .chart-card canvas { max-width: 100% !important; }
-.macro-card .macro-spark { max-width: 100% !important; }
 
 /* ── Form-grid em telas estreitas vira 1 coluna ─────────────────── */
 @media (max-width: 540px) {
