@@ -815,7 +815,7 @@ async function loadHistoryChart(days) {
     summary.classList.remove('hidden');
 
     // ── Build gradient fill ──
-    loading.classList.add('hidden'); canvas.style.display = '';
+    loading.classList.add('hidden'); canvas.parentElement.style.display = '';
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 300);
     grad.addColorStop(0,   'rgba(255,140,0,0.18)');
@@ -956,7 +956,7 @@ async function loadHistoryChart(days) {
     requestAnimationFrame(() => historyChart?.resize());
   } catch (e) {
     loading.textContent = 'ERRO: ' + e.message;
-    loading.classList.remove('hidden'); canvas.style.display = 'none';
+    loading.classList.remove('hidden'); canvas.parentElement.style.display = 'none';
   }
 }
 
@@ -1167,7 +1167,7 @@ function renderDDVol(series) {
   const ddCanvas  = document.getElementById('dd-chart');
   const ddLoading = document.getElementById('dd-loading');
   ddLoading.classList.add('hidden');
-  ddCanvas.style.display = '';
+  ddCanvas.parentElement.style.display = '';
 
   const ddCtx  = ddCanvas.getContext('2d');
   const ddGrad = ddCtx.createLinearGradient(0, 0, 0, ddCanvas.clientHeight || 200);
@@ -1210,7 +1210,7 @@ function renderDDVol(series) {
   const volCanvas  = document.getElementById('vol-chart');
   const volLoading = document.getElementById('vol-loading');
   volLoading.classList.add('hidden');
-  volCanvas.style.display = '';
+  volCanvas.parentElement.style.display = '';
 
   const volCtx  = volCanvas.getContext('2d');
   const volGrad = volCtx.createLinearGradient(0, 0, 0, volCanvas.clientHeight || 200);
@@ -1751,7 +1751,7 @@ async function loadAttribution(period) {
   if (!loading) return;
   loading.classList.remove('hidden');
   loading.textContent = 'CARREGANDO ATRIBUIÇÃO...';
-  if (canvas) canvas.style.display = 'none';
+  if (canvas) canvas.parentElement.style.display = 'none';
   if (summary) summary.classList.add('hidden');
   if (tableWrap) tableWrap.classList.add('hidden');
 
@@ -1769,7 +1769,7 @@ async function loadAttribution(period) {
     const colors = values.map(v => v > 0 ? 'rgba(0,204,68,0.75)' : v < 0 ? 'rgba(255,51,51,0.75)' : 'rgba(136,136,136,0.5)');
     const borders = values.map(v => v > 0 ? '#00cc44' : v < 0 ? '#ff3333' : '#888');
 
-    canvas.style.display = '';
+    canvas.parentElement.style.display = '';
     if (attribChart) attribChart.destroy();
     attribChart = new Chart(canvas.getContext('2d'), {
       type: 'bar',
