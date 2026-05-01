@@ -180,11 +180,14 @@
     </div>
   </div>
   {% endif %}
+  <div class="carteira-toolbar">
+    <button type="button" class="bbg-btn" id="btn-toggle-all-cols">+ COLUNAS</button>
+  </div>
   <div class="table-wrapper table-wrap carteira-table-wrap">
     <table id="portfolio-table" class="carteira-table">
       <thead>
         <tr>
-          <th data-col="ticker" data-tier="1">ATIVO</th>
+          <th data-col="ticker" data-tier="1" class="sticky-col">ATIVO</th>
           <th data-col="categoria" data-tier="3">CATEG.</th>
           <th data-col="sector" data-tier="2">SETOR</th>
           <th data-col="pct_total" data-tier="1" class="num">% TOTAL</th>

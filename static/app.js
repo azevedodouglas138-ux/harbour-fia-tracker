@@ -197,7 +197,7 @@ function renderTable() {
     }
 
     tr.innerHTML = `
-      <td data-tier="${tierMap['ticker']}" class="ticker-cell"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
+      <td data-tier="${tierMap['ticker']}" class="ticker-cell sticky-col"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
       <td data-tier="${tierMap['categoria']}">${row.categoria||'—'}</td>
       <td data-tier="${tierMap['sector']}">${row.sector||'—'}</td>
       <td data-tier="${tierMap['pct_total']}" class="num">${row.pct_total!=null?fmt(row.pct_total,2)+'%':'—'}</td>
@@ -4640,4 +4640,30 @@ const CvmOficial = (() => {
 function loadCvmOficialTab() {
   CvmOficial.init();
 }
+
+/* ═══ Botão "+ COLUNAS" — força mostrar todas as 21 colunas ═══ */
+(function setupForceAllCols() {
+  const KEY = 'carteira-force-all-cols';
+  const btn = document.getElementById('btn-toggle-all-cols');
+  if (!btn) return;
+
+  const apply = (on) => {
+    if (on) {
+      document.body.dataset.forceAllCols = 'true';
+      localStorage.setItem(KEY, 'true');
+      btn.classList.add('active');
+      btn.textContent = '− COLUNAS';
+    } else {
+      delete document.body.dataset.forceAllCols;
+      localStorage.removeItem(KEY);
+      btn.classList.remove('active');
+      btn.textContent = '+ COLUNAS';
+    }
+  };
+
+  apply(localStorage.getItem(KEY) === 'true');
+  btn.addEventListener('click', () => {
+    apply(localStorage.getItem(KEY) !== 'true');
+  });
+})();
 

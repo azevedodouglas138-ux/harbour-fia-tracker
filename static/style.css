@@ -2140,7 +2140,30 @@ table.cvm-table .cvm-warn { color: var(--cvm-warn); }
   .carteira-table [data-tier="4"] { display: none; }
 }
 
-/* Override pelo botão "+ COLUNAS" (Task 6, ainda não implementado) */
+/* Override pelo botão "+ COLUNAS" */
 body[data-force-all-cols="true"] .carteira-table [data-tier] {
   display: revert;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   TABELA CARTEIRA — sticky col + botão + COLUNAS (spec 2026-05-01)
+   ═══════════════════════════════════════════════════════════════ */
+.carteira-toolbar {
+  display: flex;
+  gap: var(--gap-sm);
+  margin-bottom: var(--gap-sm);
+}
+#btn-toggle-all-cols.active {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* Sticky-col na carteira: garantir z-index acima das outras células e bg sólido */
+.carteira-table th.sticky-col,
+.carteira-table td.sticky-col {
+  background: var(--surface);
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+.carteira-table thead th.sticky-col { z-index: 3; }
