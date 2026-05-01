@@ -535,7 +535,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   padding: 12px; display: flex; flex-direction: column; gap: 10px;
 }
 .chart-card.wide { grid-column: 1 / -1; }
-.chart-card:not(.wide) canvas { max-height: 280px; min-height: 220px; }
 
 .chart-card-header {
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
@@ -1580,7 +1579,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .charts-grid    { max-width: 1900px; gap: 16px; }
   .charts-toolbar { max-width: 1900px; }
   .cfg-grid       { max-width: 1500px; }
-  .chart-card:not(.wide) canvas { max-height: 320px; }
 }
 
 /* ── LAPTOP / Desktop pequeno (901px-1280px) ────────────────────── */
@@ -1705,9 +1703,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   /* Risk row sempre 1 col (já existia regra para 900, garantindo aqui também) */
   .risk-var-grid { gap: 6px; }
   .risk-metric-block { min-width: 0; flex: 1 1 calc(50% - 6px); }
-
-  /* Charts smaller canvas */
-  .chart-card:not(.wide) canvas { max-height: 240px; min-height: 180px; }
 }
 
 /* ── MOBILE landscape pequeno (≤600px) ──────────────────────────── */
@@ -1764,8 +1759,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   body.qa-panel-open { padding-right: 0 !important; }
   .qa-panel-resize { display: none; }
 
-  /* Charts canvas menores */
-  .chart-card:not(.wide) canvas { max-height: 200px; min-height: 160px; }
   .chart-card { padding: 8px; gap: 6px; }
   .chart-title { font-size: 9px; letter-spacing: 0.4px; }
 
