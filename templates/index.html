@@ -818,9 +818,9 @@
 <div id="tab-pretrade" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
 
-  <div class="risk-row">
+  <div class="dashboard-grid">
     <!-- Basket de Operações -->
-    <div class="chart-card risk-card" style="flex:1.3;min-width:0">
+    <div class="chart-card chart-card--lg risk-card">
       <div class="chart-card-header" style="justify-content:space-between">
         <span class="chart-card-title">BASKET DE OPERAÇÕES</span>
         <div style="display:flex;gap:6px;align-items:center">
@@ -830,8 +830,8 @@
         </div>
       </div>
       <div style="padding:14px">
-        <div style="overflow-x:auto">
-          <table id="pt-basket-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+        <div class="table-wrap">
+          <table id="pt-basket-table" class="pt-basket-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
             <thead>
               <tr style="color:#888;border-bottom:1px solid #333">
                 <th style="text-align:left;padding:4px 6px;white-space:nowrap">ATIVO</th>
@@ -859,7 +859,7 @@
     </div>
 
     <!-- Impacto na Cota -->
-    <div class="chart-card risk-card" id="pretrade-cota-card" style="flex:1">
+    <div class="chart-card chart-card--md risk-card" id="pretrade-cota-card">
       <div class="chart-card-header">
         <span class="chart-card-title">IMPACTO NA COTA &amp; NAV</span>
       </div>
@@ -867,11 +867,9 @@
         <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Execute uma simulação para ver o impacto.</p>
       </div>
     </div>
-  </div>
 
-  <div class="risk-row">
     <!-- Compliance -->
-    <div class="chart-card risk-card" id="pretrade-compliance-card" style="flex:1">
+    <div class="chart-card chart-card--md risk-card" id="pretrade-compliance-card">
       <div class="chart-card-header">
         <span class="chart-card-title">COMPLIANCE — RESOLUÇÃO CVM 175</span>
       </div>
@@ -881,7 +879,7 @@
     </div>
 
     <!-- Carteira Antes vs Depois -->
-    <div class="chart-card risk-card" id="pretrade-portfolio-card" style="flex:1">
+    <div class="chart-card chart-card--md risk-card" id="pretrade-portfolio-card">
       <div class="chart-card-header">
         <span class="chart-card-title">CARTEIRA — ANTES vs DEPOIS</span>
       </div>
