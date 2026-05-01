@@ -243,7 +243,7 @@
   <div class="charts-toolbar">
     <button class="bbg-btn" id="btn-export-pdf">&#8595; PDF</button>
   </div>
-  <div class="charts-grid">
+  <div class="dashboard-grid charts-grid">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">RENTABILIDADE ACUMULADA — HARBOUR IAT FIF AÇÕES RL</span>
@@ -283,7 +283,9 @@
         <button class="bench-btn" data-bench="nasdaq">NASDAQ $</button>
       </div>
       <div class="chart-loading" id="history-loading">CARREGANDO HISTÓRICO DE COTAS...</div>
-      <canvas id="history-chart" height="75"></canvas>
+      <div class="chart-canvas-wrap chart-canvas-wrap--line">
+        <canvas id="history-chart"></canvas>
+      </div>
       <div id="perf-summary" class="perf-summary hidden"></div>
     </div>
     <!-- Índices de Rentabilidade -->
@@ -300,14 +302,18 @@
       <div class="chart-card-header">
         <span class="chart-title">CONCENTRAÇÃO POR ATIVO</span>
       </div>
-      <canvas id="sector-chart"></canvas>
+      <div class="chart-canvas-wrap chart-canvas-wrap--pie">
+        <canvas id="sector-chart"></canvas>
+      </div>
       <div id="sector-legend" class="sector-legend"></div>
     </div>
     <div class="chart-card">
       <div class="chart-card-header">
         <span class="chart-title">UPSIDE POR ATIVO (%)</span>
       </div>
-      <canvas id="upside-chart"></canvas>
+      <div class="chart-canvas-wrap chart-canvas-wrap--bar">
+        <canvas id="upside-chart"></canvas>
+      </div>
     </div>
 
     <!-- Drawdown -->
@@ -317,7 +323,9 @@
         <span id="dd-current" class="chart-badge"></span>
       </div>
       <div class="chart-loading" id="dd-loading">CARREGANDO...</div>
-      <canvas id="dd-chart" style="display:none"></canvas>
+      <div class="chart-canvas-wrap chart-canvas-wrap--line" style="display:none">
+        <canvas id="dd-chart"></canvas>
+      </div>
     </div>
 
     <!-- Volatilidade Rolante -->
@@ -327,12 +335,14 @@
         <span id="vol-current" class="chart-badge"></span>
       </div>
       <div class="chart-loading" id="vol-loading">CARREGANDO...</div>
-      <canvas id="vol-chart" style="display:none"></canvas>
+      <div class="chart-canvas-wrap chart-canvas-wrap--line" style="display:none">
+        <canvas id="vol-chart"></canvas>
+      </div>
     </div>
   </div>
 
   <!-- Atribuição de Retorno -->
-  <div class="charts-grid" style="padding-top:0">
+  <div class="dashboard-grid charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">ATRIBUIÇÃO DE RETORNO — CONTRIBUIÇÃO POR ATIVO</span>
@@ -344,14 +354,16 @@
         </div>
       </div>
       <div class="chart-loading" id="attrib-loading">CARREGANDO ATRIBUIÇÃO...</div>
-      <canvas id="attrib-chart" style="max-height:280px;display:none"></canvas>
+      <div class="chart-canvas-wrap chart-canvas-wrap--bar" style="display:none">
+        <canvas id="attrib-chart"></canvas>
+      </div>
       <div id="attrib-summary" class="attrib-summary hidden"></div>
       <div id="attrib-table-wrap" class="hidden"></div>
     </div>
   </div>
 
   <!-- Rentabilidade Histórica Mensal -->
-  <div class="charts-grid" style="padding-top:0">
+  <div class="dashboard-grid charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">RENTABILIDADE HISTÓRICA MENSAL — HARBOUR IAT vs IBOV</span>
@@ -362,7 +374,7 @@
   </div>
 
   <!-- Consistência -->
-  <div class="charts-grid" style="padding-top:0">
+  <div class="dashboard-grid charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">CONSISTÊNCIA — HARBOUR IAT FIF AÇÕES RL</span>
