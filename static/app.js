@@ -650,29 +650,6 @@ document.getElementById('btn-refresh').addEventListener('click', async () => {
   btn.disabled = false;
 });
 
-/* ═══ Global font scale (zoom no terminal inteiro) ═══════════════════ */
-(function setupGlobalFontScale() {
-  const KEY = 'terminal-font-scale';
-  const MIN = 0.75, MAX = 1.6, STEP = 0.05, DEFAULT = 1.0;
-  const apply = (s) => {
-    const clamped = Math.max(MIN, Math.min(MAX, s));
-    document.body.style.zoom = clamped;
-    localStorage.setItem(KEY, String(clamped));
-  };
-  const saved = parseFloat(localStorage.getItem(KEY));
-  if (!isNaN(saved) && saved >= MIN && saved <= MAX) apply(saved);
-  const cur = () => parseFloat(localStorage.getItem(KEY)) || DEFAULT;
-  document.getElementById('btn-global-font-inc')?.addEventListener('click', () => apply(cur() + STEP));
-  document.getElementById('btn-global-font-dec')?.addEventListener('click', () => apply(cur() - STEP));
-  document.getElementById('btn-global-font-reset')?.addEventListener('click', () => apply(DEFAULT));
-  document.addEventListener('keydown', (e) => {
-    if (!(e.ctrlKey || e.metaKey)) return;
-    if (e.key === '=' || e.key === '+') { e.preventDefault(); apply(cur() + STEP); }
-    else if (e.key === '-' || e.key === '_') { e.preventDefault(); apply(cur() - STEP); }
-    else if (e.key === '0') { e.preventDefault(); apply(DEFAULT); }
-  });
-})();
-
 // ── Theme toggle (Light / Dark) ──────────────────────────────────
 (function initThemeToggle() {
   const root = document.documentElement;
