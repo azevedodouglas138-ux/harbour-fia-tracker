@@ -2057,3 +2057,75 @@ table.cvm-table .cvm-warn { color: var(--cvm-warn); }
 .cvm-footer-note a { color: var(--cvm-warn); text-decoration: none; }
 .cvm-footer-note a:hover { text-decoration: underline; }
 
+/* ═══════════════════════════════════════════════════════════════
+   SISTEMA RESPONSIVO — primitivos (spec 2026-05-01)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Container raiz: max-width 1920px centralizado, padding fluido. */
+.app-container,
+.tab-content {
+  max-width: var(--bp-xl);
+  margin: 0 auto;
+  padding-inline: clamp(12px, 2vw, 32px);
+}
+/* Topbar (.bbg-topbar) e fnbar (.bbg-fnbar) ficam intencionalmente fora deste
+   container — vão até as bordas da tela, como o Bloomberg de verdade. */
+
+/* Grid fluido para dashboards de cards. */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--card-min, 360px), 1fr));
+  gap: var(--gap-md);
+}
+
+/* Card visual padrão. */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: var(--gap-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  min-width: 0;
+}
+
+/* Modificadores de tamanho intrínseco. */
+.chart-card--md { --card-min: 480px; }
+.chart-card--lg {
+  --card-min: 640px;
+  grid-column: span 2;
+}
+/* Em telas onde só cabe 1 coluna no grid, o span 2 é absorvido naturalmente
+   pelo auto-fit (vira 1 coluna). Nenhuma regra adicional necessária. */
+
+/* Wrapper único de tabelas. ÚNICO local com scroll horizontal no projeto. */
+.table-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+.table-wrap > table {
+  min-width: max-content;
+}
+.table-wrap .sticky-col {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+/* Wrapper de canvas Chart.js — aspect-ratio fixo + min/max-height. */
+.chart-canvas-wrap {
+  position: relative;
+  width: 100%;
+  min-height: var(--chart-min, 200px);
+  max-height: var(--chart-max, 420px);
+}
+.chart-canvas-wrap--line { aspect-ratio: 16 / 9; }
+.chart-canvas-wrap--bar  { aspect-ratio: 4 / 3;  --chart-max: 380px; }
+.chart-canvas-wrap--pie  { aspect-ratio: 1 / 1;  --chart-min: 200px; --chart-max: 320px; }
+.chart-canvas-wrap--heat { aspect-ratio: 1 / 1;  --chart-min: 280px; --chart-max: 480px; }
+.chart-canvas-wrap--dist { aspect-ratio: 16 / 9; --chart-min: 220px; --chart-max: 360px; }
+.chart-canvas-wrap > canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
