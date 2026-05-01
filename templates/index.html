@@ -392,9 +392,9 @@
 {% if role == 'admin' or viewer_config.tab_config %}
 <div id="tab-config" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
-  <div class="cfg-grid">
+  <div class="dashboard-grid cfg-grid">
 
-    <div class="cfg-panel">
+    <div class="chart-card cfg-panel">
       <div class="cfg-panel-title">◆ COTA DO FUNDO</div>
       <div class="cfg-fields">
         <div class="cfg-field">
@@ -413,7 +413,7 @@
       </div>
     </div>
 
-    <div class="cfg-panel">
+    <div class="chart-card cfg-panel">
       <div class="cfg-panel-title">◆ CAIXA E AJUSTES (R$)</div>
       <div class="cfg-fields">
         <div class="cfg-field">
@@ -431,7 +431,7 @@
       </div>
     </div>
 
-    <div class="cfg-panel">
+    <div class="chart-card cfg-panel">
       <div class="cfg-panel-title">◆ TAXA DE PERFORMANCE</div>
       <div class="cfg-fields">
         <div class="cfg-field">
@@ -456,7 +456,7 @@
   </div>
 
   <!-- ◆ ACESSO VIEWER — painel admin -->
-  <div class="cfg-panel viewer-access-panel">
+  <div class="chart-card cfg-panel viewer-access-panel">
     <div class="cfg-panel-title">◆ ACESSO VIEWER</div>
     <div class="viewer-access-list">
       <div class="viewer-access-row">
