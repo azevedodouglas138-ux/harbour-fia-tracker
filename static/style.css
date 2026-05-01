@@ -2123,3 +2123,24 @@ table.cvm-table .cvm-warn { color: var(--cvm-warn); }
   width: 100% !important;
   height: 100% !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   TABELA CARTEIRA — sistema de tiers (spec 2026-05-01)
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1099px) {
+  .carteira-table [data-tier="2"],
+  .carteira-table [data-tier="3"],
+  .carteira-table [data-tier="4"] { display: none; }
+}
+@media (min-width: 1100px) and (max-width: 1439px) {
+  .carteira-table [data-tier="3"],
+  .carteira-table [data-tier="4"] { display: none; }
+}
+@media (min-width: 1440px) and (max-width: 1919px) {
+  .carteira-table [data-tier="4"] { display: none; }
+}
+
+/* Override pelo botão "+ COLUNAS" (Task 6, ainda não implementado) */
+body[data-force-all-cols="true"] .carteira-table [data-tier] {
+  display: revert;
+}

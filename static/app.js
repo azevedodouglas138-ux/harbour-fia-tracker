@@ -167,6 +167,12 @@ function renderTable() {
   const tbody = document.getElementById('portfolio-body');
   tbody.innerHTML = '';
 
+  // Mapping data-col → data-tier lido do header (single source of truth)
+  const tierMap = {};
+  document.querySelectorAll('#portfolio-table thead th[data-col]').forEach(th => {
+    tierMap[th.dataset.col] = th.dataset.tier;
+  });
+
   rows.forEach(row => {
     const tr = document.createElement('tr');
     tr.dataset.ticker = row.ticker;
@@ -191,27 +197,27 @@ function renderTable() {
     }
 
     tr.innerHTML = `
-      <td class="ticker-cell"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
-      <td>${row.categoria||'—'}</td>
-      <td>${row.sector||'—'}</td>
-      <td class="num">${row.pct_total!=null?fmt(row.pct_total,2)+'%':'—'}</td>
-      <td class="num">${fmtBRL(row.valor_liquido)}</td>
-      <td class="num">${fmtBRL(row.preco)}</td>
-      <td class="num ${colorCls(row.var_dia_pct)}">${row.var_dia_pct!=null?sign(row.var_dia_pct)+fmt(row.var_dia_pct,2)+'%':'—'}</td>
-      <td class="num">${fmtInt(row.quantidade)}</td>
-      <td class="num">${liqHtml}</td>
-      <td class="num">${fmt(row.trailing_pe,1)}</td>
-      <td class="num">${fmt(row.forward_pe,1)}</td>
-      <td class="num">${fmt(row.peg_ratio,2)}</td>
-      <td class="num">${fmt(row.enterprise_to_ebitda,1)}</td>
-      <td class="num ${colorCls(row.return_on_equity)}">${row.return_on_equity!=null?fmt(row.return_on_equity,1)+'%':'—'}</td>
-      <td class="num">${fmt(row.beta,2)}</td>
-      <td class="num">${fmt(row.price_to_book,1)}</td>
-      <td class="num">${row.dividend_yield!=null?fmt(row.dividend_yield,2)+'%':'—'}</td>
-      <td class="num">${row.market_cap_bi!=null?'R$'+fmt(row.market_cap_bi,1)+'B':'—'}</td>
-      <td class="num">${row.lucro_mi_26!=null?fmtInt(row.lucro_mi_26):'—'}</td>
-      <td class="num">${fmtBRL(row.preco_alvo)}</td>
-      <td class="num ${upsideCls(row.upside_pct)}">${row.upside_pct!=null?sign(row.upside_pct)+fmt(row.upside_pct,2)+'%':'—'}</td>
+      <td data-tier="${tierMap['ticker']}" class="ticker-cell"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
+      <td data-tier="${tierMap['categoria']}">${row.categoria||'—'}</td>
+      <td data-tier="${tierMap['sector']}">${row.sector||'—'}</td>
+      <td data-tier="${tierMap['pct_total']}" class="num">${row.pct_total!=null?fmt(row.pct_total,2)+'%':'—'}</td>
+      <td data-tier="${tierMap['valor_liquido']}" class="num">${fmtBRL(row.valor_liquido)}</td>
+      <td data-tier="${tierMap['preco']}" class="num">${fmtBRL(row.preco)}</td>
+      <td data-tier="${tierMap['var_dia_pct']}" class="num ${colorCls(row.var_dia_pct)}">${row.var_dia_pct!=null?sign(row.var_dia_pct)+fmt(row.var_dia_pct,2)+'%':'—'}</td>
+      <td data-tier="${tierMap['quantidade']}" class="num">${fmtInt(row.quantidade)}</td>
+      <td data-tier="${tierMap['liq_diaria_mm']}" class="num">${liqHtml}</td>
+      <td data-tier="${tierMap['trailing_pe']}" class="num">${fmt(row.trailing_pe,1)}</td>
+      <td data-tier="${tierMap['forward_pe']}" class="num">${fmt(row.forward_pe,1)}</td>
+      <td data-tier="${tierMap['peg_ratio']}" class="num">${fmt(row.peg_ratio,2)}</td>
+      <td data-tier="${tierMap['enterprise_to_ebitda']}" class="num">${fmt(row.enterprise_to_ebitda,1)}</td>
+      <td data-tier="${tierMap['return_on_equity']}" class="num ${colorCls(row.return_on_equity)}">${row.return_on_equity!=null?fmt(row.return_on_equity,1)+'%':'—'}</td>
+      <td data-tier="${tierMap['beta']}" class="num">${fmt(row.beta,2)}</td>
+      <td data-tier="${tierMap['price_to_book']}" class="num">${fmt(row.price_to_book,1)}</td>
+      <td data-tier="${tierMap['dividend_yield']}" class="num">${row.dividend_yield!=null?fmt(row.dividend_yield,2)+'%':'—'}</td>
+      <td data-tier="${tierMap['market_cap_bi']}" class="num">${row.market_cap_bi!=null?'R$'+fmt(row.market_cap_bi,1)+'B':'—'}</td>
+      <td data-tier="${tierMap['lucro_mi_26']}" class="num">${row.lucro_mi_26!=null?fmtInt(row.lucro_mi_26):'—'}</td>
+      <td data-tier="${tierMap['preco_alvo']}" class="num">${fmtBRL(row.preco_alvo)}</td>
+      <td data-tier="${tierMap['upside_pct']}" class="num ${upsideCls(row.upside_pct)}">${row.upside_pct!=null?sign(row.upside_pct)+fmt(row.upside_pct,2)+'%':'—'}</td>
       <td>${window.USER_ROLE === 'admin' ? '<button class="btn-edit" title="Editar">✎</button>' : ''}</td>
     `;
     const editBtn = tr.querySelector('.btn-edit');
