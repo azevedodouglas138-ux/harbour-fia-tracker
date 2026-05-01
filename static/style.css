@@ -2082,10 +2082,11 @@ table.cvm-table .cvm-warn { color: var(--cvm-warn); }
 .chart-card {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-top: 2px solid var(--orange);
   padding: var(--gap-md);
   display: flex;
   flex-direction: column;
-  gap: var(--gap-sm);
+  gap: 10px;
   min-width: 0;
 }
 
