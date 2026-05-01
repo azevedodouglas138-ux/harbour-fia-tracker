@@ -27,6 +27,17 @@
   --stats-h:   32px;
   --fn-h:      30px;
   --scroll-track: #1a1a1a;
+
+  /* ═══ Sistema responsivo (spec 2026-05-01) ═══ */
+  --bp-sm:  720px;
+  --bp-md:  1100px;
+  --bp-lg:  1440px;
+  --bp-xl:  1920px;
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 12px;
+  --gap-lg: 16px;
+  --gap-xl: 24px;
 }
 
 html[data-theme="light"] {
