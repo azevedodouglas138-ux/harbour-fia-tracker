@@ -1932,10 +1932,6 @@ body.theme-light #tab-cvm-oficial {
   .cvm-charts-grid { grid-template-columns: 1fr; }
 }
 .cvm-chart-card { padding: 10px; }
-.cvm-chart-wrap {
-  position: relative;
-  height: 320px;
-}
 
 /* Cadastro */
 .cvm-cadastro {
