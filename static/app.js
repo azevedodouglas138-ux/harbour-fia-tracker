@@ -167,12 +167,6 @@ function renderTable() {
   const tbody = document.getElementById('portfolio-body');
   tbody.innerHTML = '';
 
-  // Mapping data-col → data-tier lido do header (single source of truth)
-  const tierMap = {};
-  document.querySelectorAll('#portfolio-table thead th[data-col]').forEach(th => {
-    tierMap[th.dataset.col] = th.dataset.tier;
-  });
-
   rows.forEach(row => {
     const tr = document.createElement('tr');
     tr.dataset.ticker = row.ticker;
@@ -197,27 +191,27 @@ function renderTable() {
     }
 
     tr.innerHTML = `
-      <td data-tier="${tierMap['ticker']}" class="ticker-cell sticky-col"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
-      <td data-tier="${tierMap['categoria']}">${row.categoria||'—'}</td>
-      <td data-tier="${tierMap['sector']}">${row.sector||'—'}</td>
-      <td data-tier="${tierMap['pct_total']}" class="num">${row.pct_total!=null?fmt(row.pct_total,2)+'%':'—'}</td>
-      <td data-tier="${tierMap['valor_liquido']}" class="num">${fmtBRL(row.valor_liquido)}</td>
-      <td data-tier="${tierMap['preco']}" class="num">${fmtBRL(row.preco)}</td>
-      <td data-tier="${tierMap['var_dia_pct']}" class="num ${colorCls(row.var_dia_pct)}">${row.var_dia_pct!=null?sign(row.var_dia_pct)+fmt(row.var_dia_pct,2)+'%':'—'}</td>
-      <td data-tier="${tierMap['quantidade']}" class="num">${fmtInt(row.quantidade)}</td>
-      <td data-tier="${tierMap['liq_diaria_mm']}" class="num">${liqHtml}</td>
-      <td data-tier="${tierMap['trailing_pe']}" class="num">${fmt(row.trailing_pe,1)}</td>
-      <td data-tier="${tierMap['forward_pe']}" class="num">${fmt(row.forward_pe,1)}</td>
-      <td data-tier="${tierMap['peg_ratio']}" class="num">${fmt(row.peg_ratio,2)}</td>
-      <td data-tier="${tierMap['enterprise_to_ebitda']}" class="num">${fmt(row.enterprise_to_ebitda,1)}</td>
-      <td data-tier="${tierMap['return_on_equity']}" class="num ${colorCls(row.return_on_equity)}">${row.return_on_equity!=null?fmt(row.return_on_equity,1)+'%':'—'}</td>
-      <td data-tier="${tierMap['beta']}" class="num">${fmt(row.beta,2)}</td>
-      <td data-tier="${tierMap['price_to_book']}" class="num">${fmt(row.price_to_book,1)}</td>
-      <td data-tier="${tierMap['dividend_yield']}" class="num">${row.dividend_yield!=null?fmt(row.dividend_yield,2)+'%':'—'}</td>
-      <td data-tier="${tierMap['market_cap_bi']}" class="num">${row.market_cap_bi!=null?'R$'+fmt(row.market_cap_bi,1)+'B':'—'}</td>
-      <td data-tier="${tierMap['lucro_mi_26']}" class="num">${row.lucro_mi_26!=null?fmtInt(row.lucro_mi_26):'—'}</td>
-      <td data-tier="${tierMap['preco_alvo']}" class="num">${fmtBRL(row.preco_alvo)}</td>
-      <td data-tier="${tierMap['upside_pct']}" class="num ${upsideCls(row.upside_pct)}">${row.upside_pct!=null?sign(row.upside_pct)+fmt(row.upside_pct,2)+'%':'—'}</td>
+      <td class="ticker-cell"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
+      <td>${row.categoria||'—'}</td>
+      <td>${row.sector||'—'}</td>
+      <td class="num">${row.pct_total!=null?fmt(row.pct_total,2)+'%':'—'}</td>
+      <td class="num">${fmtBRL(row.valor_liquido)}</td>
+      <td class="num">${fmtBRL(row.preco)}</td>
+      <td class="num ${colorCls(row.var_dia_pct)}">${row.var_dia_pct!=null?sign(row.var_dia_pct)+fmt(row.var_dia_pct,2)+'%':'—'}</td>
+      <td class="num">${fmtInt(row.quantidade)}</td>
+      <td class="num">${liqHtml}</td>
+      <td class="num">${fmt(row.trailing_pe,1)}</td>
+      <td class="num">${fmt(row.forward_pe,1)}</td>
+      <td class="num">${fmt(row.peg_ratio,2)}</td>
+      <td class="num">${fmt(row.enterprise_to_ebitda,1)}</td>
+      <td class="num ${colorCls(row.return_on_equity)}">${row.return_on_equity!=null?fmt(row.return_on_equity,1)+'%':'—'}</td>
+      <td class="num">${fmt(row.beta,2)}</td>
+      <td class="num">${fmt(row.price_to_book,1)}</td>
+      <td class="num">${row.dividend_yield!=null?fmt(row.dividend_yield,2)+'%':'—'}</td>
+      <td class="num">${row.market_cap_bi!=null?'R$'+fmt(row.market_cap_bi,1)+'B':'—'}</td>
+      <td class="num">${row.lucro_mi_26!=null?fmtInt(row.lucro_mi_26):'—'}</td>
+      <td class="num">${fmtBRL(row.preco_alvo)}</td>
+      <td class="num ${upsideCls(row.upside_pct)}">${row.upside_pct!=null?sign(row.upside_pct)+fmt(row.upside_pct,2)+'%':'—'}</td>
       <td>${window.USER_ROLE === 'admin' ? '<button class="btn-edit" title="Editar">✎</button>' : ''}</td>
     `;
     const editBtn = tr.querySelector('.btn-edit');
@@ -815,7 +809,7 @@ async function loadHistoryChart(days) {
     summary.classList.remove('hidden');
 
     // ── Build gradient fill ──
-    loading.classList.add('hidden'); canvas.parentElement.style.display = '';
+    loading.classList.add('hidden'); canvas.style.display = '';
     const ctx = canvas.getContext('2d');
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 300);
     grad.addColorStop(0,   'rgba(255,140,0,0.18)');
@@ -956,7 +950,7 @@ async function loadHistoryChart(days) {
     requestAnimationFrame(() => historyChart?.resize());
   } catch (e) {
     loading.textContent = 'ERRO: ' + e.message;
-    loading.classList.remove('hidden'); canvas.parentElement.style.display = 'none';
+    loading.classList.remove('hidden'); canvas.style.display = 'none';
   }
 }
 
@@ -1167,7 +1161,7 @@ function renderDDVol(series) {
   const ddCanvas  = document.getElementById('dd-chart');
   const ddLoading = document.getElementById('dd-loading');
   ddLoading.classList.add('hidden');
-  ddCanvas.parentElement.style.display = '';
+  ddCanvas.style.display = '';
 
   const ddCtx  = ddCanvas.getContext('2d');
   const ddGrad = ddCtx.createLinearGradient(0, 0, 0, ddCanvas.clientHeight || 200);
@@ -1210,7 +1204,7 @@ function renderDDVol(series) {
   const volCanvas  = document.getElementById('vol-chart');
   const volLoading = document.getElementById('vol-loading');
   volLoading.classList.add('hidden');
-  volCanvas.parentElement.style.display = '';
+  volCanvas.style.display = '';
 
   const volCtx  = volCanvas.getContext('2d');
   const volGrad = volCtx.createLinearGradient(0, 0, 0, volCanvas.clientHeight || 200);
@@ -1751,7 +1745,7 @@ async function loadAttribution(period) {
   if (!loading) return;
   loading.classList.remove('hidden');
   loading.textContent = 'CARREGANDO ATRIBUIÇÃO...';
-  if (canvas) canvas.parentElement.style.display = 'none';
+  if (canvas) canvas.style.display = 'none';
   if (summary) summary.classList.add('hidden');
   if (tableWrap) tableWrap.classList.add('hidden');
 
@@ -1769,7 +1763,7 @@ async function loadAttribution(period) {
     const colors = values.map(v => v > 0 ? 'rgba(0,204,68,0.75)' : v < 0 ? 'rgba(255,51,51,0.75)' : 'rgba(136,136,136,0.5)');
     const borders = values.map(v => v > 0 ? '#00cc44' : v < 0 ? '#ff3333' : '#888');
 
-    canvas.parentElement.style.display = '';
+    canvas.style.display = '';
     if (attribChart) attribChart.destroy();
     attribChart = new Chart(canvas.getContext('2d'), {
       type: 'bar',
@@ -4640,30 +4634,4 @@ const CvmOficial = (() => {
 function loadCvmOficialTab() {
   CvmOficial.init();
 }
-
-/* ═══ Botão "+ COLUNAS" — força mostrar todas as 21 colunas ═══ */
-(function setupForceAllCols() {
-  const KEY = 'carteira-force-all-cols';
-  const btn = document.getElementById('btn-toggle-all-cols');
-  if (!btn) return;
-
-  const apply = (on) => {
-    if (on) {
-      document.body.dataset.forceAllCols = 'true';
-      localStorage.setItem(KEY, 'true');
-      btn.classList.add('active');
-      btn.textContent = '− COLUNAS';
-    } else {
-      delete document.body.dataset.forceAllCols;
-      localStorage.removeItem(KEY);
-      btn.classList.remove('active');
-      btn.textContent = '+ COLUNAS';
-    }
-  };
-
-  apply(localStorage.getItem(KEY) === 'true');
-  btn.addEventListener('click', () => {
-    apply(localStorage.getItem(KEY) !== 'true');
-  });
-})();
 

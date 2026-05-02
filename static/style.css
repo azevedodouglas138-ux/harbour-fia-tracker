@@ -27,17 +27,6 @@
   --stats-h:   32px;
   --fn-h:      30px;
   --scroll-track: #1a1a1a;
-
-  /* ═══ Sistema responsivo (spec 2026-05-01) ═══ */
-  --bp-sm:  720px;
-  --bp-md:  1100px;
-  --bp-lg:  1440px;
-  --bp-xl:  1920px;
-  --gap-xs: 4px;
-  --gap-sm: 8px;
-  --gap-md: 12px;
-  --gap-lg: 16px;
-  --gap-xl: 24px;
 }
 
 html[data-theme="light"] {
@@ -535,6 +524,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   padding: 12px; display: flex; flex-direction: column; gap: 10px;
 }
 .chart-card.wide { grid-column: 1 / -1; }
+.chart-card:not(.wide) canvas { max-height: 280px; min-height: 220px; }
 
 .chart-card-header {
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
@@ -1127,6 +1117,14 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .attrib-table td.num { text-align: right; }
 
 /* ══════════════ RISCO (207) ═════════════════════════════════════ */
+.risk-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 10px 0;
+}
+.risk-row:last-child { padding-bottom: 10px; }
+@media (max-width: 900px) { .risk-row { grid-template-columns: 1fr; } }
 
 #risk-dist-chart {
   height: 200px;
@@ -1571,6 +1569,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .charts-grid    { max-width: 1900px; gap: 16px; }
   .charts-toolbar { max-width: 1900px; }
   .cfg-grid       { max-width: 1500px; }
+  .chart-card:not(.wide) canvas { max-height: 320px; }
 }
 
 /* ── LAPTOP / Desktop pequeno (901px-1280px) ────────────────────── */
@@ -1695,6 +1694,9 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   /* Risk row sempre 1 col (já existia regra para 900, garantindo aqui também) */
   .risk-var-grid { gap: 6px; }
   .risk-metric-block { min-width: 0; flex: 1 1 calc(50% - 6px); }
+
+  /* Charts smaller canvas */
+  .chart-card:not(.wide) canvas { max-height: 240px; min-height: 180px; }
 }
 
 /* ── MOBILE landscape pequeno (≤600px) ──────────────────────────── */
@@ -1751,6 +1753,8 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   body.qa-panel-open { padding-right: 0 !important; }
   .qa-panel-resize { display: none; }
 
+  /* Charts canvas menores */
+  .chart-card:not(.wide) canvas { max-height: 200px; min-height: 160px; }
   .chart-card { padding: 8px; gap: 6px; }
   .chart-title { font-size: 9px; letter-spacing: 0.4px; }
 
@@ -1932,6 +1936,10 @@ body.theme-light #tab-cvm-oficial {
   .cvm-charts-grid { grid-template-columns: 1fr; }
 }
 .cvm-chart-card { padding: 10px; }
+.cvm-chart-wrap {
+  position: relative;
+  height: 320px;
+}
 
 /* Cadastro */
 .cvm-cadastro {
@@ -2038,120 +2046,3 @@ table.cvm-table .cvm-warn { color: var(--cvm-warn); }
 .cvm-footer-note a { color: var(--cvm-warn); text-decoration: none; }
 .cvm-footer-note a:hover { text-decoration: underline; }
 
-/* ═══════════════════════════════════════════════════════════════
-   SISTEMA RESPONSIVO — primitivos (spec 2026-05-01)
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Container raiz: max-width 1920px centralizado, padding fluido. */
-.app-container,
-.tab-content {
-  max-width: var(--bp-xl);
-  margin: 0 auto;
-  padding-inline: clamp(12px, 2vw, 32px);
-}
-/* Topbar (.bbg-topbar) e fnbar (.bbg-fnbar) ficam intencionalmente fora deste
-   container — vão até as bordas da tela, como o Bloomberg de verdade. */
-
-/* Grid fluido para dashboards de cards. */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--card-min, 360px), 1fr));
-  gap: var(--gap-md);
-}
-
-/* Card visual padrão. */
-.chart-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--orange);
-  padding: var(--gap-md);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-/* Modificadores de tamanho intrínseco. */
-.chart-card--md { --card-min: 480px; }
-.chart-card--lg {
-  --card-min: 640px;
-  grid-column: span 2;
-}
-/* Em telas onde só cabe 1 coluna no grid, o span 2 é absorvido naturalmente
-   pelo auto-fit (vira 1 coluna). Nenhuma regra adicional necessária. */
-
-/* Wrapper único de tabelas. ÚNICO local com scroll horizontal no projeto. */
-.table-wrap {
-  overflow-x: auto;
-  overflow-y: visible;
-}
-.table-wrap > table {
-  min-width: max-content;
-}
-.table-wrap .sticky-col {
-  position: sticky;
-  left: 0;
-  background: var(--surface);
-  z-index: 1;
-}
-
-/* Wrapper de canvas Chart.js — aspect-ratio fixo + min/max-height. */
-.chart-canvas-wrap {
-  position: relative;
-  width: 100%;
-  min-height: var(--chart-min, 200px);
-  max-height: var(--chart-max, 420px);
-}
-.chart-canvas-wrap--line { aspect-ratio: 16 / 9; }
-.chart-canvas-wrap--bar  { aspect-ratio: 4 / 3;  --chart-max: 380px; }
-.chart-canvas-wrap--pie  { aspect-ratio: 1 / 1;  --chart-min: 200px; --chart-max: 320px; }
-.chart-canvas-wrap--heat { aspect-ratio: 1 / 1;  --chart-min: 280px; --chart-max: 480px; }
-.chart-canvas-wrap--dist { aspect-ratio: 16 / 9; --chart-min: 220px; --chart-max: 360px; }
-.chart-canvas-wrap > canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   TABELA CARTEIRA — sistema de tiers (spec 2026-05-01)
-   ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 1099px) {
-  .carteira-table [data-tier="2"],
-  .carteira-table [data-tier="3"],
-  .carteira-table [data-tier="4"] { display: none; }
-}
-@media (min-width: 1100px) and (max-width: 1439px) {
-  .carteira-table [data-tier="3"],
-  .carteira-table [data-tier="4"] { display: none; }
-}
-@media (min-width: 1440px) and (max-width: 1919px) {
-  .carteira-table [data-tier="4"] { display: none; }
-}
-
-/* Override pelo botão "+ COLUNAS" */
-body[data-force-all-cols="true"] .carteira-table [data-tier] {
-  display: revert;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   TABELA CARTEIRA — sticky col + botão + COLUNAS (spec 2026-05-01)
-   ═══════════════════════════════════════════════════════════════ */
-.carteira-toolbar {
-  display: flex;
-  gap: var(--gap-sm);
-  margin-bottom: var(--gap-sm);
-}
-#btn-toggle-all-cols.active {
-  border-color: var(--orange);
-  color: var(--orange);
-}
-
-/* Sticky-col na carteira: garantir z-index acima das outras células e bg sólido */
-.carteira-table th.sticky-col,
-.carteira-table td.sticky-col {
-  background: var(--surface);
-  position: sticky;
-  left: 0;
-  z-index: 2;
-}
-.carteira-table thead th.sticky-col { z-index: 3; }

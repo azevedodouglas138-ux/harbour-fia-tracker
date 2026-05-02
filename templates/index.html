@@ -180,34 +180,31 @@
     </div>
   </div>
   {% endif %}
-  <div class="carteira-toolbar">
-    <button type="button" class="bbg-btn" id="btn-toggle-all-cols">+ COLUNAS</button>
-  </div>
-  <div class="table-wrapper table-wrap carteira-table-wrap">
-    <table id="portfolio-table" class="carteira-table">
+  <div class="table-wrapper">
+    <table id="portfolio-table">
       <thead>
         <tr>
-          <th data-col="ticker" data-tier="1" class="sticky-col">ATIVO</th>
-          <th data-col="categoria" data-tier="3">CATEG.</th>
-          <th data-col="sector" data-tier="2">SETOR</th>
-          <th data-col="pct_total" data-tier="1" class="num">% TOTAL</th>
-          <th data-col="valor_liquido" data-tier="1" class="num">VALOR LÍQ.</th>
-          <th data-col="preco" data-tier="1" class="num">PREÇO</th>
-          <th data-col="var_dia_pct" data-tier="1" class="num">VAR. DIA</th>
-          <th data-col="quantidade" data-tier="1" class="num">QTDE</th>
-          <th data-col="liq_diaria_mm" data-tier="1" class="num">LIQ. DIÁRIA <span class="col-info" data-tip="Score de -30 a +30 que estima em quantos dias o fundo consegue liquidar a posição. Cálculo: dias = valor da posição ÷ (volume financeiro médio 3m × 20% de participação). Score = 10 − 10×log₂(dias). Quanto maior o score, mais rápida a saída. Valores automáticos (auto) usam dados do yfinance; é possível sobrescrever manualmente.">ⓘ</span></th>
-          <th data-col="trailing_pe" data-tier="3" class="num">P/L TRAIL.</th>
-          <th data-col="forward_pe" data-tier="3" class="num">P/L FWD.</th>
-          <th data-col="peg_ratio" data-tier="4" class="num">PEG</th>
-          <th data-col="enterprise_to_ebitda" data-tier="4" class="num">EV/EBITDA</th>
-          <th data-col="return_on_equity" data-tier="2" class="num">ROE %</th>
-          <th data-col="beta" data-tier="3" class="num">BETA</th>
-          <th data-col="price_to_book" data-tier="4" class="num">P/VPA</th>
-          <th data-col="dividend_yield" data-tier="2" class="num">DIV. YIELD</th>
-          <th data-col="market_cap_bi" data-tier="2" class="num">MKT CAP</th>
-          <th data-col="lucro_mi_26" data-tier="3" class="num">LUCRO MI 26</th>
-          <th data-col="preco_alvo" data-tier="1" class="num">P. ALVO</th>
-          <th data-col="upside_pct" data-tier="1" class="num">UPSIDE</th>
+          <th data-col="ticker">ATIVO</th>
+          <th data-col="categoria">CATEG.</th>
+          <th data-col="sector">SETOR</th>
+          <th data-col="pct_total" class="num">% TOTAL</th>
+          <th data-col="valor_liquido" class="num">VALOR LÍQ.</th>
+          <th data-col="preco" class="num">PREÇO</th>
+          <th data-col="var_dia_pct" class="num">VAR. DIA</th>
+          <th data-col="quantidade" class="num">QTDE</th>
+          <th data-col="liq_diaria_mm" class="num">LIQ. DIÁRIA <span class="col-info" data-tip="Score de -30 a +30 que estima em quantos dias o fundo consegue liquidar a posição. Cálculo: dias = valor da posição ÷ (volume financeiro médio 3m × 20% de participação). Score = 10 − 10×log₂(dias). Quanto maior o score, mais rápida a saída. Valores automáticos (auto) usam dados do yfinance; é possível sobrescrever manualmente.">ⓘ</span></th>
+          <th data-col="trailing_pe" class="num">P/L TRAIL.</th>
+          <th data-col="forward_pe" class="num">P/L FWD.</th>
+          <th data-col="peg_ratio" class="num">PEG</th>
+          <th data-col="enterprise_to_ebitda" class="num">EV/EBITDA</th>
+          <th data-col="return_on_equity" class="num">ROE %</th>
+          <th data-col="beta" class="num">BETA</th>
+          <th data-col="price_to_book" class="num">P/VPA</th>
+          <th data-col="dividend_yield" class="num">DIV. YIELD</th>
+          <th data-col="market_cap_bi" class="num">MKT CAP</th>
+          <th data-col="lucro_mi_26" class="num">LUCRO MI 26</th>
+          <th data-col="preco_alvo" class="num">P. ALVO</th>
+          <th data-col="upside_pct" class="num">UPSIDE</th>
           <th class="actions-col"></th>
         </tr>
       </thead>
@@ -243,7 +240,7 @@
   <div class="charts-toolbar">
     <button class="bbg-btn" id="btn-export-pdf">&#8595; PDF</button>
   </div>
-  <div class="dashboard-grid charts-grid">
+  <div class="charts-grid">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">RENTABILIDADE ACUMULADA — HARBOUR IAT FIF AÇÕES RL</span>
@@ -283,9 +280,7 @@
         <button class="bench-btn" data-bench="nasdaq">NASDAQ $</button>
       </div>
       <div class="chart-loading" id="history-loading">CARREGANDO HISTÓRICO DE COTAS...</div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--line">
-        <canvas id="history-chart"></canvas>
-      </div>
+      <canvas id="history-chart" height="75"></canvas>
       <div id="perf-summary" class="perf-summary hidden"></div>
     </div>
     <!-- Índices de Rentabilidade -->
@@ -302,18 +297,14 @@
       <div class="chart-card-header">
         <span class="chart-title">CONCENTRAÇÃO POR ATIVO</span>
       </div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--pie">
-        <canvas id="sector-chart"></canvas>
-      </div>
+      <canvas id="sector-chart"></canvas>
       <div id="sector-legend" class="sector-legend"></div>
     </div>
     <div class="chart-card">
       <div class="chart-card-header">
         <span class="chart-title">UPSIDE POR ATIVO (%)</span>
       </div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--bar">
-        <canvas id="upside-chart"></canvas>
-      </div>
+      <canvas id="upside-chart"></canvas>
     </div>
 
     <!-- Drawdown -->
@@ -323,9 +314,7 @@
         <span id="dd-current" class="chart-badge"></span>
       </div>
       <div class="chart-loading" id="dd-loading">CARREGANDO...</div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--line" style="display:none">
-        <canvas id="dd-chart"></canvas>
-      </div>
+      <canvas id="dd-chart" style="display:none"></canvas>
     </div>
 
     <!-- Volatilidade Rolante -->
@@ -335,14 +324,12 @@
         <span id="vol-current" class="chart-badge"></span>
       </div>
       <div class="chart-loading" id="vol-loading">CARREGANDO...</div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--line" style="display:none">
-        <canvas id="vol-chart"></canvas>
-      </div>
+      <canvas id="vol-chart" style="display:none"></canvas>
     </div>
   </div>
 
   <!-- Atribuição de Retorno -->
-  <div class="dashboard-grid charts-grid" style="padding-top:0">
+  <div class="charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">ATRIBUIÇÃO DE RETORNO — CONTRIBUIÇÃO POR ATIVO</span>
@@ -354,16 +341,14 @@
         </div>
       </div>
       <div class="chart-loading" id="attrib-loading">CARREGANDO ATRIBUIÇÃO...</div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--bar" style="display:none">
-        <canvas id="attrib-chart"></canvas>
-      </div>
+      <canvas id="attrib-chart" style="max-height:280px;display:none"></canvas>
       <div id="attrib-summary" class="attrib-summary hidden"></div>
       <div id="attrib-table-wrap" class="hidden"></div>
     </div>
   </div>
 
   <!-- Rentabilidade Histórica Mensal -->
-  <div class="dashboard-grid charts-grid" style="padding-top:0">
+  <div class="charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">RENTABILIDADE HISTÓRICA MENSAL — HARBOUR IAT vs IBOV</span>
@@ -374,7 +359,7 @@
   </div>
 
   <!-- Consistência -->
-  <div class="dashboard-grid charts-grid" style="padding-top:0">
+  <div class="charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
         <span class="chart-title">CONSISTÊNCIA — HARBOUR IAT FIF AÇÕES RL</span>
@@ -392,9 +377,9 @@
 {% if role == 'admin' or viewer_config.tab_config %}
 <div id="tab-config" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
-  <div class="dashboard-grid cfg-grid">
+  <div class="cfg-grid">
 
-    <div class="chart-card cfg-panel">
+    <div class="cfg-panel">
       <div class="cfg-panel-title">◆ COTA DO FUNDO</div>
       <div class="cfg-fields">
         <div class="cfg-field">
@@ -413,7 +398,7 @@
       </div>
     </div>
 
-    <div class="chart-card cfg-panel">
+    <div class="cfg-panel">
       <div class="cfg-panel-title">◆ CAIXA E AJUSTES (R$)</div>
       <div class="cfg-fields">
         <div class="cfg-field">
@@ -431,7 +416,7 @@
       </div>
     </div>
 
-    <div class="chart-card cfg-panel">
+    <div class="cfg-panel">
       <div class="cfg-panel-title">◆ TAXA DE PERFORMANCE</div>
       <div class="cfg-fields">
         <div class="cfg-field">
@@ -456,7 +441,7 @@
   </div>
 
   <!-- ◆ ACESSO VIEWER — painel admin -->
-  <div class="chart-card cfg-panel viewer-access-panel">
+  <div class="cfg-panel viewer-access-panel">
     <div class="cfg-panel-title">◆ ACESSO VIEWER</div>
     <div class="viewer-access-list">
       <div class="viewer-access-row">
@@ -594,7 +579,7 @@
   </div>
   {% endif %}
 
-  <div class="table-wrapper table-wrapper--history table-wrap">
+  <div class="table-wrapper table-wrapper--history">
     <table id="history-table">
       <thead>
         <tr>
@@ -620,9 +605,8 @@
 <div id="tab-risk" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
 
-  <div class="dashboard-grid risk-dashboard">
-
-    <!-- Compactos (KPIs principais) -->
+  <!-- ── Row 1: VaR + Stress Test ── -->
+  <div class="risk-row">
 
     <!-- VaR / CVaR -->
     <div class="chart-card risk-card" id="risk-var-card">
@@ -643,106 +627,8 @@
       </div>
     </div>
 
-    <!-- Sortino & Calmar -->
-    <div class="chart-card risk-card" id="risk-sortino-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">SORTINO & CALMAR RATIO</span><span class="col-info" data-tip-key="card_sortino_calmar">ⓘ</span>
-      </div>
-      <div id="risk-sortino-content">
-        <div class="risk-loading">CARREGANDO...</div>
-      </div>
-    </div>
-
-    <!-- Liquidez -->
-    <div class="chart-card risk-card" id="risk-liq-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">RISCO DE LIQUIDEZ</span><span class="col-info" data-tip-key="card_liquidity">ⓘ</span>
-      </div>
-      <div id="risk-liq-content">
-        <div class="risk-loading">CARREGANDO LIQUIDEZ...</div>
-      </div>
-    </div>
-
-    <!-- Concentração Setorial (HHI) -->
-    <div class="chart-card risk-card" id="risk-concentration-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">CONCENTRAÇÃO SETORIAL (HHI)</span><span class="col-info" data-tip-key="card_concentration">ⓘ</span>
-      </div>
-      <div id="risk-concentration-content">
-        <div class="risk-loading">CARREGANDO...</div>
-      </div>
-    </div>
-
-    <!-- Médios (gráficos com janelas) -->
-
-    <!-- Rolling Beta -->
-    <div class="chart-card chart-card--md risk-card" id="risk-beta-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">BETA ROLANTE 60D vs. IBOV</span><span class="col-info" data-tip-key="card_rolling_beta">ⓘ</span>
-        <div class="risk-badge-row" id="risk-beta-badges"></div>
-      </div>
-      <canvas id="risk-beta-chart" height="180"></canvas>
-    </div>
-
-    <!-- Tracking Error & Information Ratio -->
-    <div class="chart-card chart-card--md risk-card" id="risk-te-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">TRACKING ERROR & INFORMATION RATIO</span><span class="col-info" data-tip-key="card_tracking_error">ⓘ</span>
-        <div class="risk-controls">
-          <span class="risk-ctrl-label">JANELA:</span>
-          <button class="bbg-btn risk-btn active" data-te-window="252">252D</button>
-          <button class="bbg-btn risk-btn" data-te-window="126">126D</button>
-          <button class="bbg-btn risk-btn" data-te-window="63">63D</button>
-        </div>
-      </div>
-      <div id="risk-te-content">
-        <div class="risk-loading">CARREGANDO...</div>
-      </div>
-    </div>
-
-    <!-- Upside / Downside Capture -->
-    <div class="chart-card chart-card--md risk-card" id="risk-capture-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">UPSIDE / DOWNSIDE CAPTURE vs. IBOV</span><span class="col-info" data-tip-key="card_capture">ⓘ</span>
-        <div class="risk-controls">
-          <span class="risk-ctrl-label">JANELA:</span>
-          <button class="bbg-btn risk-btn active" data-cap-window="252">252D</button>
-          <button class="bbg-btn risk-btn" data-cap-window="126">126D</button>
-          <button class="bbg-btn risk-btn" data-cap-window="total">TOTAL</button>
-        </div>
-      </div>
-      <div id="risk-capture-content">
-        <div class="risk-loading">CARREGANDO...</div>
-      </div>
-    </div>
-
-    <!-- Rolling Sharpe / Sortino -->
-    <div class="chart-card chart-card--md risk-card" id="risk-rolling-ratios-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">ROLLING SHARPE / SORTINO</span><span class="col-info" data-tip-key="card_rolling_ratios">ⓘ</span>
-        <div class="risk-badge-row" id="risk-rolling-badges"></div>
-        <div class="risk-controls" style="margin-top:4px">
-          <button class="bbg-btn risk-btn active" data-roll-window="63">63D</button>
-          <button class="bbg-btn risk-btn" data-roll-window="126">126D</button>
-        </div>
-      </div>
-      <canvas id="risk-rolling-ratios-chart" height="180"></canvas>
-    </div>
-
-    <!-- Exposição Cambial (BDRs) -->
-    <div class="chart-card chart-card--md risk-card" id="risk-fx-card">
-      <div class="chart-card-header">
-        <span class="chart-card-title">EXPOSIÇÃO CAMBIAL (BDRs)</span><span class="col-info" data-tip-key="card_fx">ⓘ</span>
-      </div>
-      <div id="risk-fx-content">
-        <div class="risk-loading">CARREGANDO...</div>
-      </div>
-    </div>
-
-    <!-- Grandes (span 2 quando tem espaço) -->
-
     <!-- Stress Test -->
-    <div class="chart-card chart-card--lg risk-card" id="risk-stress-card">
+    <div class="chart-card risk-card" id="risk-stress-card">
       <div class="chart-card-header">
         <span class="chart-card-title">STRESS TEST — CENÁRIOS HISTÓRICOS</span><span class="col-info" data-tip-key="card_stress">ⓘ</span>
         <div class="risk-controls">
@@ -762,9 +648,13 @@
         <div class="risk-loading">CARREGANDO STRESS TEST...</div>
       </div>
     </div>
+  </div>
 
-    <!-- Matriz de Correlação -->
-    <div class="chart-card chart-card--lg risk-card" id="risk-corr-card">
+  <!-- ── Row 2: Correlação + Risk Attribution ── -->
+  <div class="risk-row">
+
+    <!-- Correlação -->
+    <div class="chart-card risk-card" id="risk-corr-card">
       <div class="chart-card-header">
         <span class="chart-card-title">MATRIZ DE CORRELAÇÃO</span><span class="col-info" data-tip-key="card_correlation">ⓘ</span>
         <div class="risk-controls">
@@ -778,7 +668,7 @@
     </div>
 
     <!-- Risk Attribution -->
-    <div class="chart-card chart-card--lg risk-card" id="risk-attr-card">
+    <div class="chart-card risk-card" id="risk-attr-card">
       <div class="chart-card-header">
         <span class="chart-card-title">RISK ATTRIBUTION — CONTRIBUIÇÃO AO RISCO</span><span class="col-info" data-tip-key="card_attribution">ⓘ</span>
         <div class="risk-controls">
@@ -790,9 +680,121 @@
         <div class="risk-loading">CARREGANDO ATTRIBUTION...</div>
       </div>
     </div>
+  </div>
 
-    <!-- Distribuição de Retornos -->
-    <div class="chart-card chart-card--lg risk-card" id="risk-dist-card">
+  <!-- ── Row 3: Rolling Beta + Liquidez ── -->
+  <div class="risk-row">
+
+    <!-- Rolling Beta -->
+    <div class="chart-card risk-card" id="risk-beta-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">BETA ROLANTE 60D vs. IBOV</span><span class="col-info" data-tip-key="card_rolling_beta">ⓘ</span>
+        <div class="risk-badge-row" id="risk-beta-badges"></div>
+      </div>
+      <canvas id="risk-beta-chart" height="180"></canvas>
+    </div>
+
+    <!-- Liquidez -->
+    <div class="chart-card risk-card" id="risk-liq-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">RISCO DE LIQUIDEZ</span><span class="col-info" data-tip-key="card_liquidity">ⓘ</span>
+      </div>
+      <div id="risk-liq-content">
+        <div class="risk-loading">CARREGANDO LIQUIDEZ...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 4: Tracking Error + Sortino/Calmar ── -->
+  <div class="risk-row">
+
+    <!-- Tracking Error & Information Ratio -->
+    <div class="chart-card risk-card" id="risk-te-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">TRACKING ERROR & INFORMATION RATIO</span><span class="col-info" data-tip-key="card_tracking_error">ⓘ</span>
+        <div class="risk-controls">
+          <span class="risk-ctrl-label">JANELA:</span>
+          <button class="bbg-btn risk-btn active" data-te-window="252">252D</button>
+          <button class="bbg-btn risk-btn" data-te-window="126">126D</button>
+          <button class="bbg-btn risk-btn" data-te-window="63">63D</button>
+        </div>
+      </div>
+      <div id="risk-te-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+
+    <!-- Sortino & Calmar -->
+    <div class="chart-card risk-card" id="risk-sortino-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">SORTINO & CALMAR RATIO</span><span class="col-info" data-tip-key="card_sortino_calmar">ⓘ</span>
+      </div>
+      <div id="risk-sortino-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 5: Upside/Downside Capture + Concentração Setorial ── -->
+  <div class="risk-row">
+
+    <!-- Upside / Downside Capture -->
+    <div class="chart-card risk-card" id="risk-capture-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">UPSIDE / DOWNSIDE CAPTURE vs. IBOV</span><span class="col-info" data-tip-key="card_capture">ⓘ</span>
+        <div class="risk-controls">
+          <span class="risk-ctrl-label">JANELA:</span>
+          <button class="bbg-btn risk-btn active" data-cap-window="252">252D</button>
+          <button class="bbg-btn risk-btn" data-cap-window="126">126D</button>
+          <button class="bbg-btn risk-btn" data-cap-window="total">TOTAL</button>
+        </div>
+      </div>
+      <div id="risk-capture-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+
+    <!-- Concentração Setorial (HHI) -->
+    <div class="chart-card risk-card" id="risk-concentration-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">CONCENTRAÇÃO SETORIAL (HHI)</span><span class="col-info" data-tip-key="card_concentration">ⓘ</span>
+      </div>
+      <div id="risk-concentration-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 6: Exposição Cambial + Rolling Sharpe/Sortino ── -->
+  <div class="risk-row">
+
+    <!-- Exposição Cambial (BDRs) -->
+    <div class="chart-card risk-card" id="risk-fx-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">EXPOSIÇÃO CAMBIAL (BDRs)</span><span class="col-info" data-tip-key="card_fx">ⓘ</span>
+      </div>
+      <div id="risk-fx-content">
+        <div class="risk-loading">CARREGANDO...</div>
+      </div>
+    </div>
+
+    <!-- Rolling Sharpe / Sortino -->
+    <div class="chart-card risk-card" id="risk-rolling-ratios-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">ROLLING SHARPE / SORTINO</span><span class="col-info" data-tip-key="card_rolling_ratios">ⓘ</span>
+        <div class="risk-badge-row" id="risk-rolling-badges"></div>
+        <div class="risk-controls" style="margin-top:4px">
+          <button class="bbg-btn risk-btn active" data-roll-window="63">63D</button>
+          <button class="bbg-btn risk-btn" data-roll-window="126">126D</button>
+        </div>
+      </div>
+      <canvas id="risk-rolling-ratios-chart" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Row 7: Distribuição de Retornos (full width) ── -->
+  <div class="risk-row">
+    <div class="chart-card risk-card" id="risk-dist-card" style="grid-column: 1 / -1">
       <div class="chart-card-header">
         <span class="chart-card-title">DISTRIBUIÇÃO DE RETORNOS DIÁRIOS</span><span class="col-info" data-tip-key="card_return_dist">ⓘ</span>
         <div class="risk-controls">
@@ -805,7 +807,6 @@
       <div id="risk-dist-stats" style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 12px 0;font-size:10px"></div>
       <canvas id="risk-dist-chart"></canvas>
     </div>
-
   </div>
 
 </div>
@@ -818,9 +819,9 @@
 <div id="tab-pretrade" class="tab-content{% if ns2.first %} active{% endif %}">
 {% set ns2.first = false %}
 
-  <div class="dashboard-grid">
+  <div class="risk-row">
     <!-- Basket de Operações -->
-    <div class="chart-card chart-card--lg risk-card">
+    <div class="chart-card risk-card" style="flex:1.3;min-width:0">
       <div class="chart-card-header" style="justify-content:space-between">
         <span class="chart-card-title">BASKET DE OPERAÇÕES</span>
         <div style="display:flex;gap:6px;align-items:center">
@@ -830,8 +831,8 @@
         </div>
       </div>
       <div style="padding:14px">
-        <div class="table-wrap">
-          <table id="pt-basket-table" class="pt-basket-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+        <div style="overflow-x:auto">
+          <table id="pt-basket-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
             <thead>
               <tr style="color:#888;border-bottom:1px solid #333">
                 <th style="text-align:left;padding:4px 6px;white-space:nowrap">ATIVO</th>
@@ -859,7 +860,7 @@
     </div>
 
     <!-- Impacto na Cota -->
-    <div class="chart-card chart-card--md risk-card" id="pretrade-cota-card">
+    <div class="chart-card risk-card" id="pretrade-cota-card" style="flex:1">
       <div class="chart-card-header">
         <span class="chart-card-title">IMPACTO NA COTA &amp; NAV</span>
       </div>
@@ -867,9 +868,11 @@
         <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Execute uma simulação para ver o impacto.</p>
       </div>
     </div>
+  </div>
 
+  <div class="risk-row">
     <!-- Compliance -->
-    <div class="chart-card chart-card--md risk-card" id="pretrade-compliance-card">
+    <div class="chart-card risk-card" id="pretrade-compliance-card" style="flex:1">
       <div class="chart-card-header">
         <span class="chart-card-title">COMPLIANCE — RESOLUÇÃO CVM 175</span>
       </div>
@@ -879,7 +882,7 @@
     </div>
 
     <!-- Carteira Antes vs Depois -->
-    <div class="chart-card chart-card--md risk-card" id="pretrade-portfolio-card">
+    <div class="chart-card risk-card" id="pretrade-portfolio-card" style="flex:1">
       <div class="chart-card-header">
         <span class="chart-card-title">CARTEIRA — ANTES vs DEPOIS</span>
       </div>
@@ -956,7 +959,7 @@
   <div id="events-error" class="risk-error hidden"></div>
 
   <div id="events-timeline-view" style="padding:12px 0"></div>
-  <div id="events-byasset-view" class="hidden dashboard-grid" style="--card-min:320px;padding:12px 0"></div>
+  <div id="events-byasset-view" class="hidden" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;padding:12px 0"></div>
 
 </div>
 {% endif %}
@@ -1015,12 +1018,11 @@
 
   <!-- Table view: Leaders + Laggards -->
   <div id="idx-table-view">
-    <div class="dashboard-grid idx-panels">
+    <div class="idx-panels">
 
       <!-- Leaders -->
-      <div class="chart-card idx-panel">
+      <div class="idx-panel">
         <div class="idx-panel-header positive">LEADERS</div>
-        <div class="table-wrap">
         <table class="idx-table">
           <thead>
             <tr>
@@ -1036,13 +1038,11 @@
             <tr><td colspan="6" class="empty-state">Selecione um índice e clique em CARREGAR</td></tr>
           </tbody>
         </table>
-        </div><!-- /.table-wrap -->
       </div>
 
       <!-- Laggards -->
-      <div class="chart-card idx-panel">
+      <div class="idx-panel">
         <div class="idx-panel-header negative">LAGGARDS</div>
-        <div class="table-wrap">
         <table class="idx-table">
           <thead>
             <tr>
@@ -1058,7 +1058,6 @@
             <tr><td colspan="6" class="empty-state">Selecione um índice e clique em CARREGAR</td></tr>
           </tbody>
         </table>
-        </div><!-- /.table-wrap -->
       </div>
 
     </div><!-- /.idx-panels -->
@@ -1069,7 +1068,7 @@
     <div style="padding:8px 0 4px;font-family:monospace;font-size:10px;color:#666">
       Tamanho = peso no índice &nbsp;|&nbsp; Cor = retorno no período
     </div>
-    <div class="chart-canvas-wrap chart-canvas-wrap--heat">
+    <div style="position:relative;height:480px">
       <canvas id="idx-treemap-canvas"></canvas>
     </div>
   </div>
@@ -1132,33 +1131,33 @@
     </div>
   </div>
 
-  <div class="dashboard-grid cvm-charts-grid">
-    <div class="chart-card chart-card--md cvm-chart-card">
+  <div class="cvm-charts-grid">
+    <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
         <span class="chart-card-title">EVOLUÇÃO DO PATRIMÔNIO LÍQUIDO</span>
       </div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--line"><canvas id="cvm-chart-pl"></canvas></div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-pl"></canvas></div>
     </div>
 
-    <div class="chart-card chart-card--md cvm-chart-card">
+    <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
         <span class="chart-card-title">COTA CVM vs COTA CALCULADA</span>
       </div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--line"><canvas id="cvm-chart-cota"></canvas></div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-cota"></canvas></div>
     </div>
 
-    <div class="chart-card chart-card--md cvm-chart-card">
+    <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
         <span class="chart-card-title">FLUXO DIÁRIO — CAPTAÇÃO vs RESGATE</span>
       </div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--bar"><canvas id="cvm-chart-fluxo"></canvas></div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-fluxo"></canvas></div>
     </div>
 
-    <div class="chart-card chart-card--md cvm-chart-card">
+    <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
         <span class="chart-card-title">Nº DE COTISTAS</span>
       </div>
-      <div class="chart-canvas-wrap chart-canvas-wrap--line"><canvas id="cvm-chart-cotst"></canvas></div>
+      <div class="cvm-chart-wrap"><canvas id="cvm-chart-cotst"></canvas></div>
     </div>
   </div>
 
