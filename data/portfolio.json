@@ -117,6 +117,15 @@
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 22.0
+    },
+    {
+      "ticker": "HAPV3",
+      "yahoo_ticker": "HAPV3.SA",
+      "categoria": "Acao",
+      "quantidade": 100.0,
+      "liq_diaria_mm": null,
+      "lucro_mi_26": null,
+      "preco_alvo": null
     }
   ]
 }
