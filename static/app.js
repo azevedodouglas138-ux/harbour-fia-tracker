@@ -786,6 +786,14 @@ async function loadHistoryChart(days) {
       ? +(Math.sqrt(dailyRets.reduce((s,r) => s + Math.pow(r - dailyRets.reduce((a,b)=>a+b,0)/dailyRets.length, 2), 0) / dailyRets.length) * Math.sqrt(252)).toFixed(2)
       : null;
 
+    // Retorno anualizado do fundo: (1 + retorno_total)^(1/anos) - 1
+    const periodYears = labels.length > 1
+      ? (new Date(labels[labels.length - 1]) - new Date(labels[0])) / (365.25 * 24 * 3600 * 1000)
+      : null;
+    const annualizedFund = (lastFund != null && periodYears != null && periodYears > 0)
+      ? +((Math.pow(1 + lastFund / 100, 1 / periodYears) - 1) * 100).toFixed(2)
+      : null;
+
     // ── Render summary bar ──
     const pc  = v => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v, 2) + '%';
     const cls = v => v == null ? 'neutral' : v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
@@ -797,6 +805,7 @@ async function loadHistoryChart(days) {
       const lastV = data ? data.filter(v => v != null).at(-1) : null;
       summaryItems.push([cfg.label, pc(lastV), cls(lastV)]);
     }
+    summaryItems.push(['RETORNO A.A.', pc(annualizedFund), cls(annualizedFund)]);
     if (alpha != null) summaryItems.push(['ALPHA vs IBOV', pc(alpha), cls(alpha)]);
     summaryItems.push(
       ['MAX DRAWDOWN', pc(+maxDD), 'negative'],
