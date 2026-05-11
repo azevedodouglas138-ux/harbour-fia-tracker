@@ -1,7 +1,7 @@
 {
   "cnpj": "29599391000194",
   "cota_inicio": "2022-04-18",
-  "last_refresh": "2026-05-08T15:09:05-03:00",
+  "last_refresh": "2026-05-11T13:33:42-03:00",
   "records": [
     {
       "dt_comptc": "2022-04-18",
@@ -9115,8 +9115,17 @@
       "dt_comptc": "2026-05-06",
       "vl_quota": 3.12874699,
       "vl_patrim_liq": 14623700.28,
-      "vl_total": 11036529.45,
+      "vl_total": 15460896.19,
       "captc_dia": 2000.0,
+      "resg_dia": 0.0,
+      "nr_cotst": 28
+    },
+    {
+      "dt_comptc": "2026-05-07",
+      "vl_quota": 3.04393018,
+      "vl_patrim_liq": 14227268.23,
+      "vl_total": 12691115.43,
+      "captc_dia": 0.0,
       "resg_dia": 0.0,
       "nr_cotst": 28
     }
