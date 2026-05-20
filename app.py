@@ -1140,17 +1140,18 @@ def api_update_position():
     payload = request.json
     ticker  = payload.get("ticker")
     if not ticker: return jsonify({"error": "ticker required"}), 400
-    portfolio = load_portfolio()
-    updated = False
-    for pos in portfolio["positions"]:
-        if pos["ticker"] == ticker:
-            for field in ["quantidade","liq_diaria_mm","lucro_mi_26","preco_alvo"]:
-                if field in payload:
-                    val = payload[field]
-                    pos[field] = float(val) if val not in (None,"") else None
-            updated = True; break
-    if not updated: return jsonify({"error": "ticker not found"}), 404
-    save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
+    with _portfolio_write_lock:
+        portfolio = load_portfolio()
+        updated = False
+        for pos in portfolio["positions"]:
+            if pos["ticker"] == ticker:
+                for field in ["quantidade","liq_diaria_mm","lucro_mi_26","preco_alvo"]:
+                    if field in payload:
+                        val = payload[field]
+                        pos[field] = float(val) if val not in (None,"") else None
+                updated = True; break
+        if not updated: return jsonify({"error": "ticker not found"}), 404
+        save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
     return jsonify({"ok": True})
 
 @app.route("/api/portfolio/add", methods=["POST"])
@@ -1164,28 +1165,30 @@ def api_add_position():
         price = yf.Ticker(yahoo_ticker).fast_info.last_price
         if price is None: return jsonify({"error": f"Ticker {yahoo_ticker} não encontrado"}), 400
     except Exception as e: return jsonify({"error": str(e)}), 400
-    portfolio = load_portfolio()
-    if any(p["ticker"] == ticker for p in portfolio["positions"]):
-        return jsonify({"error": "Ticker já existe na carteira"}), 409
-    def _f(k): v = payload.get(k); return float(v) if v not in (None,"") else None
-    portfolio["positions"].append({
-        "ticker": ticker, "yahoo_ticker": yahoo_ticker,
-        "categoria": payload.get("categoria","Acao"),
-        "quantidade": float(payload.get("quantidade",0)),
-        "liq_diaria_mm": _f("liq_diaria_mm"), "lucro_mi_26": _f("lucro_mi_26"),
-        "preco_alvo": _f("preco_alvo"),
-    })
-    save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
+    with _portfolio_write_lock:
+        portfolio = load_portfolio()
+        if any(p["ticker"] == ticker for p in portfolio["positions"]):
+            return jsonify({"error": "Ticker já existe na carteira"}), 409
+        def _f(k): v = payload.get(k); return float(v) if v not in (None,"") else None
+        portfolio["positions"].append({
+            "ticker": ticker, "yahoo_ticker": yahoo_ticker,
+            "categoria": payload.get("categoria","Acao"),
+            "quantidade": float(payload.get("quantidade",0)),
+            "liq_diaria_mm": _f("liq_diaria_mm"), "lucro_mi_26": _f("lucro_mi_26"),
+            "preco_alvo": _f("preco_alvo"),
+        })
+        save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
     return jsonify({"ok": True})
 
 @app.route("/api/portfolio/<ticker>", methods=["DELETE"])
 @require_admin
 def api_delete_position(ticker):
-    portfolio = load_portfolio()
-    before = len(portfolio["positions"])
-    portfolio["positions"] = [p for p in portfolio["positions"] if p["ticker"] != ticker.upper()]
-    if len(portfolio["positions"]) == before: return jsonify({"error": "ticker not found"}), 404
-    save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
+    with _portfolio_write_lock:
+        portfolio = load_portfolio()
+        before = len(portfolio["positions"])
+        portfolio["positions"] = [p for p in portfolio["positions"] if p["ticker"] != ticker.upper()]
+        if len(portfolio["positions"]) == before: return jsonify({"error": "ticker not found"}), 404
+        save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
     return jsonify({"ok": True})
 
 @app.route("/api/quota-history/auto-close", methods=["POST"])
@@ -2719,76 +2722,50 @@ def api_risk_return_distribution():
 
 # ─── PRÉ-TRADE ────────────────────────────────────────────────────────────────
 
-@app.route("/api/pretrade/simulate", methods=["POST"])
-@require_admin
-def api_pretrade_simulate():
-    import copy
-    payload = request.json or {}
+# Lock global para mutações da carteira (portfolio.json + fund_config.caixa).
+# Protege contra concorrência entre /api/pretrade/execute, /api/portfolio/update,
+# /api/portfolio/add e /api/portfolio/<ticker> DELETE.
+_portfolio_write_lock = threading.Lock()
 
-    # Aceita basket {operacoes: [...]} ou formato legado {ticker, quantidade, ...}
-    if "operacoes" in payload:
-        ops_input = payload["operacoes"]
-    else:
-        ops_input = [{
-            "ticker":        payload.get("ticker", "").strip(),
-            "quantidade":    payload.get("quantidade", 0),
-            "direcao":       payload.get("direcao", "compra"),
-            "preco":         payload.get("preco", 0),
-            "corretagem_rs": payload.get("corretagem_rs", 0),
-        }]
 
+def _validate_and_normalize_ops(ops_input):
+    """Normaliza tickers (.SA, upper-case) e valida preço/direção.
+    Retorna (ops_normalizadas, None) em caso de sucesso, ou (None, msg_erro) em erro."""
     if not ops_input:
-        return jsonify({"error": "Informe ao menos uma operação"}), 400
-
-    # Validar e normalizar tickers
+        return None, "Informe ao menos uma operação"
     for op in ops_input:
         t = str(op.get("ticker") or "").strip()
         if not t:
-            return jsonify({"error": "ticker é obrigatório em todas as operações"}), 400
+            return None, "ticker é obrigatório em todas as operações"
         if "." not in t:
             t += ".SA"
-        op["ticker"] = t.upper()
-        op["preco"]      = float(op.get("preco") or 0)
-        op["quantidade"] = float(op.get("quantidade") or 0)
-        op["direcao"]    = str(op.get("direcao") or "compra").lower()
+        op["ticker"]        = t.upper()
+        op["preco"]         = float(op.get("preco") or 0)
+        op["quantidade"]    = float(op.get("quantidade") or 0)
+        op["direcao"]       = str(op.get("direcao") or "compra").lower()
         op["corretagem_rs"] = float(op.get("corretagem_rs") or 0)
         if op["preco"] <= 0:
-            return jsonify({"error": f"Preço inválido para {op['ticker']}"}), 400
+            return None, f"Preço inválido para {op['ticker']}"
         if op["direcao"] not in ("compra", "venda", "zerar"):
-            return jsonify({"error": f"Direção inválida para {op['ticker']}"}), 400
+            return None, f"Direção inválida para {op['ticker']}"
+    return ops_input, None
 
-    portfolio    = load_portfolio()
-    fund_config  = get_effective_fund_config()
-    tickers_cart = [p["yahoo_ticker"] for p in portfolio["positions"]]
 
-    tickers_all = list(tickers_cart)
-    for op in ops_input:
-        if op["ticker"] not in tickers_all:
-            tickers_all.append(op["ticker"])
+def _apply_operations_to_portfolio(portfolio, fund_config, ops_input, fundamentals=None):
+    """Aplica operações (compra/venda/zerar) a um clone de portfolio + fund_config.
 
-    prices       = get_cached_prices(tickers_all)
-    fundamentals = get_cached_fundamentals(tickers_all)
+    Retorna (portfolio_novo, fund_config_novo, ops_processadas, custo_basket, prices_sim).
+    - Cria posição com defaults (categoria=Acao, demais None) para tickers novos.
+    - Remove posições com quantidade <= 0 ao final.
+    - prices_sim é construído apenas para uso da camada de simulação (build_portfolio_response).
+      Se fundamentals=None, o campo sector em ops_processadas cai para "Outros".
+    """
+    import copy
+    fundamentals = fundamentals or {}
 
-    # ── ESTADO ANTES ──
-    pdata_antes = build_portfolio_response(portfolio, prices, fundamentals)
-    total_antes = pdata_antes.get("total_value") or 0
-    quota_antes = calculate_quota(pdata_antes["rows"], fund_config, prices)
-    conc_antes  = _calcular_concentracao_pretrade(pdata_antes["rows"], total_antes)
-
-    # Grupo I antes (ações + BDRs — Res. CVM 175)
-    _GRUPO1_CATS = {"Acao", "BDR", "Acao BDR"}
-    nav_antes = quota_antes.get("nav_total") or total_antes
-    valor_g1_antes = sum(
-        (r.get("valor_liquido") or 0)
-        for r in pdata_antes["rows"]
-        if (r.get("categoria") or "Acao") in _GRUPO1_CATS
-    )
-    pct_g1_antes = (valor_g1_antes / nav_antes * 100) if nav_antes else 0
-
-    # ── CLONAR ──
     portfolio_sim   = copy.deepcopy(portfolio)
     fund_config_sim = copy.deepcopy(fund_config)
-    prices_sim      = copy.deepcopy(prices)
+    prices_sim      = {}
 
     ops_processadas = []
     custo_basket    = 0.0
@@ -2800,12 +2777,7 @@ def api_pretrade_simulate():
         preco      = op["preco"]
         corretagem = op["corretagem_rs"]
 
-        # Atualizar preço simulado
-        if ticker in prices_sim:
-            prices_sim[ticker] = dict(prices_sim[ticker])
-            prices_sim[ticker]["price"] = preco
-        else:
-            prices_sim[ticker] = {"price": preco, "change_pct": 0.0}
+        prices_sim[ticker] = {"price": preco, "change_pct": 0.0}
 
         pos_existente = next((p for p in portfolio["positions"] if p["yahoo_ticker"] == ticker), None)
         pos_sim       = next((p for p in portfolio_sim["positions"] if p["yahoo_ticker"] == ticker), None)
@@ -2838,13 +2810,13 @@ def api_pretrade_simulate():
         custo_basket += custo_op
         sector_ativo  = (fundamentals.get(ticker) or {}).get("sector") or "Outros"
         ops_processadas.append({
-            "ticker":       ticker.replace(".SA", ""),
-            "yahoo_ticker": ticker,
-            "is_novo":      pos_existente is None and direcao == "compra",
-            "sector":       sector_ativo,
-            "direcao":      direcao,
-            "quantidade":   quantidade,
-            "preco":        preco,
+            "ticker":         ticker.replace(".SA", ""),
+            "yahoo_ticker":   ticker,
+            "is_novo":        pos_existente is None and direcao == "compra",
+            "sector":         sector_ativo,
+            "direcao":        direcao,
+            "quantidade":     quantidade,
+            "preco":          preco,
             "valor_total_rs": round(valor_op, 2),
             "corretagem_rs":  corretagem,
             "custo_op_rs":    round(custo_op, 2),
@@ -2852,6 +2824,67 @@ def api_pretrade_simulate():
 
     # Remover posições zeradas
     portfolio_sim["positions"] = [p for p in portfolio_sim["positions"] if (p.get("quantidade") or 0) > 0]
+
+    return portfolio_sim, fund_config_sim, ops_processadas, custo_basket, prices_sim
+
+
+@app.route("/api/pretrade/simulate", methods=["POST"])
+@require_admin
+def api_pretrade_simulate():
+    payload = request.json or {}
+
+    # Aceita basket {operacoes: [...]} ou formato legado {ticker, quantidade, ...}
+    if "operacoes" in payload:
+        ops_input = payload["operacoes"]
+    else:
+        ops_input = [{
+            "ticker":        payload.get("ticker", "").strip(),
+            "quantidade":    payload.get("quantidade", 0),
+            "direcao":       payload.get("direcao", "compra"),
+            "preco":         payload.get("preco", 0),
+            "corretagem_rs": payload.get("corretagem_rs", 0),
+        }]
+
+    ops_input, err = _validate_and_normalize_ops(ops_input)
+    if err:
+        return jsonify({"error": err}), 400
+
+    portfolio    = load_portfolio()
+    fund_config  = get_effective_fund_config()
+    tickers_cart = [p["yahoo_ticker"] for p in portfolio["positions"]]
+
+    tickers_all = list(tickers_cart)
+    for op in ops_input:
+        if op["ticker"] not in tickers_all:
+            tickers_all.append(op["ticker"])
+
+    prices       = get_cached_prices(tickers_all)
+    fundamentals = get_cached_fundamentals(tickers_all)
+
+    # ── ESTADO ANTES ──
+    pdata_antes = build_portfolio_response(portfolio, prices, fundamentals)
+    total_antes = pdata_antes.get("total_value") or 0
+    quota_antes = calculate_quota(pdata_antes["rows"], fund_config, prices)
+    conc_antes  = _calcular_concentracao_pretrade(pdata_antes["rows"], total_antes)
+
+    # Grupo I antes (ações + BDRs — Res. CVM 175)
+    _GRUPO1_CATS = {"Acao", "BDR", "Acao BDR"}
+    nav_antes = quota_antes.get("nav_total") or total_antes
+    valor_g1_antes = sum(
+        (r.get("valor_liquido") or 0)
+        for r in pdata_antes["rows"]
+        if (r.get("categoria") or "Acao") in _GRUPO1_CATS
+    )
+    pct_g1_antes = (valor_g1_antes / nav_antes * 100) if nav_antes else 0
+
+    # ── APLICAR (em clone) ──
+    portfolio_sim, fund_config_sim, ops_processadas, custo_basket, prices_overrides = (
+        _apply_operations_to_portfolio(portfolio, fund_config, ops_input, fundamentals)
+    )
+    # Mesclar preços de mercado com os preços simulados das operações
+    import copy
+    prices_sim = copy.deepcopy(prices)
+    prices_sim.update(prices_overrides)
 
     # ── ESTADO DEPOIS ──
     pdata_depois = build_portfolio_response(portfolio_sim, prices_sim, fundamentals)
@@ -3481,6 +3514,80 @@ def api_pretrade_history_save():
     save_pretrade_history(history)
 
     return jsonify({"id": record["id"], "timestamp": record["timestamp"]}), 201
+
+
+@app.route("/api/pretrade/execute", methods=["POST"])
+@require_admin
+def api_pretrade_execute():
+    """Aplica as operações da simulação na carteira real (portfolio.json + fund_config.caixa).
+
+    Payload: {
+      operacoes: [...]          # mesma estrutura do /simulate
+      pretrade_history_id?: str # opcional — marca registro como executado
+      compliance_override?: bool# opcional — apenas para auditoria
+    }
+    """
+    payload = request.json or {}
+    ops_input = payload.get("operacoes") or []
+    pretrade_history_id = payload.get("pretrade_history_id")
+    compliance_override = bool(payload.get("compliance_override", False))
+
+    ops_input, err = _validate_and_normalize_ops(ops_input)
+    if err:
+        return jsonify({"error": err}), 400
+
+    executed_at = datetime.now().isoformat(timespec="seconds")
+
+    with _portfolio_write_lock:
+        portfolio    = load_portfolio()
+        fund_config  = load_fund_config()
+        tickers_all  = list({p["yahoo_ticker"] for p in portfolio["positions"]} | {op["ticker"] for op in ops_input})
+        fundamentals = get_cached_fundamentals(tickers_all)
+
+        # 1. Aplicar in-memory
+        portfolio_novo, fund_config_novo, ops_processadas, custo_basket, _ = (
+            _apply_operations_to_portfolio(portfolio, fund_config, ops_input, fundamentals)
+        )
+
+        # 2. Marcar registro no histórico (se id veio) — ANTES de salvar a carteira,
+        # para que em caso de falha do save_portfolio possamos reverter o executed_at.
+        history = None
+        record  = None
+        if pretrade_history_id:
+            history = load_pretrade_history()
+            record  = next((r for r in history if r.get("id") == pretrade_history_id), None)
+            if record is None:
+                return jsonify({"error": "Registro de histórico não encontrado"}), 404
+            if record.get("executed_at"):
+                return jsonify({
+                    "error":       "Operação já executada",
+                    "executed_at": record["executed_at"],
+                }), 409
+            record["executed_at"]          = executed_at
+            record["compliance_override"]  = compliance_override
+            save_pretrade_history(history)
+
+        # 3. Persistir carteira e fund_config. Se falhar, reverter executed_at.
+        try:
+            save_portfolio(portfolio_novo)
+            save_fund_config(fund_config_novo)
+        except Exception as e:
+            if record is not None and history is not None:
+                record.pop("executed_at", None)
+                record.pop("compliance_override", None)
+                save_pretrade_history(history)
+            return jsonify({"error": f"Falha ao salvar carteira: {e}"}), 500
+
+        invalidate_price_cache()
+        invalidate_history_cache()
+
+    return jsonify({
+        "ok":                  True,
+        "executed_at":         executed_at,
+        "operacoes_aplicadas": len(ops_processadas),
+        "custo_basket_rs":     round(custo_basket, 2),
+        "caixa_apos":          round(fund_config_novo.get("caixa") or 0, 2),
+    }), 200
 
 
 @app.route("/api/pretrade/history/<record_id>", methods=["DELETE"])

@@ -900,8 +900,35 @@
       <button id="btn-pt-save" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 18px;background:#00cc88;border-color:#00cc88;color:#000">
         SALVAR SIMULAÇÃO
       </button>
+      <button id="btn-pt-execute" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 18px;background:#f5a623;border-color:#f5a623;color:#000"
+              title="Aplica as operações na carteira real (portfolio.json)">
+        ▶ EXECUTAR
+      </button>
     </div>
     <div id="pt-save-feedback" style="display:none;font-family:monospace;font-size:11px;text-align:right;margin-top:4px"></div>
+  </div>
+
+  <!-- Modal de confirmação da Execução (pós-trade) -->
+  <div id="pretrade-execute-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9000;align-items:center;justify-content:center">
+    <div style="background:#0a0a0a;border:1px solid #333;border-radius:4px;padding:18px 22px;min-width:520px;max-width:680px;max-height:80vh;overflow-y:auto;font-family:monospace">
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222;padding-bottom:8px;margin-bottom:12px">
+        <span style="font-size:13px;color:#f5a623;font-weight:bold;letter-spacing:0.06em">CONFIRMAR EXECUÇÃO — PÓS-TRADE</span>
+        <button id="pt-exec-close" class="bbg-btn" style="font-size:13px;color:#888;border:none;background:transparent;padding:0 4px;cursor:pointer">×</button>
+      </div>
+      <p style="color:#ccc;font-size:11px;margin:0 0 10px 0;line-height:1.5">
+        Esta ação vai aplicar <span id="pt-exec-num-ops" style="color:#f5a623;font-weight:bold">0</span> operação(ões) à carteira do fundo
+        (<code style="color:#888">portfolio.json</code>) e atualizar o caixa. <b>Não é reversível pela UI.</b>
+      </p>
+      <div id="pt-exec-summary" style="background:#000;border:1px solid #1a1a1a;border-radius:3px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#ccc;max-height:200px;overflow-y:auto"></div>
+      <div id="pt-exec-warnings" style="display:none;background:#2a1010;border:1px solid #cc3333;border-radius:3px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#ff8888"></div>
+      <div id="pt-exec-feedback" style="display:none;font-size:11px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button id="pt-exec-cancel" class="bbg-btn" style="font-size:11px;padding:5px 16px;color:#888;border-color:#333">Cancelar</button>
+        <button id="pt-exec-confirm" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 18px;background:#cc3333;border-color:#cc3333;color:#fff">
+          Confirmar e Aplicar
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Painel de Parâmetros de Compliance (colapsável) -->

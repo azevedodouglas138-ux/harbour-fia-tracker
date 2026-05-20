@@ -2948,6 +2948,7 @@ let _pretradeListenersSet = false;
 let _ptRowId = 0;
 let _ptPortfolioOptions = [];   // [{value, label}] populado na primeira abertura
 let _pretradeLastResult = null; // último resultado de simulação (para salvar)
+let _pretradeLastSavedId = null; // id do registro salvo (para vincular ao execute)
 let _ptHistoryOpen = false;
 let _ptParamsOpen  = false;
 
@@ -2971,6 +2972,10 @@ function loadPretradeTab() {
   document.getElementById('btn-pt-params').addEventListener('click', _ptToggleParams);
   document.getElementById('btn-pt-historico').addEventListener('click', _ptToggleHistory);
   document.getElementById('btn-pt-save').addEventListener('click', _ptSaveSimulation);
+  document.getElementById('btn-pt-execute').addEventListener('click', _ptExecuteOpenModal);
+  document.getElementById('pt-exec-close').addEventListener('click', _ptExecuteCloseModal);
+  document.getElementById('pt-exec-cancel').addEventListener('click', _ptExecuteCloseModal);
+  document.getElementById('pt-exec-confirm').addEventListener('click', _ptExecuteConfirm);
   document.getElementById('btn-pt-limpar').addEventListener('click', () => {
     document.getElementById('pt-basket-body').innerHTML = '';
     document.getElementById('pt-basket-summary').textContent = '';
@@ -2981,6 +2986,9 @@ function loadPretradeTab() {
       '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>';
     document.getElementById('pretrade-portfolio-content').innerHTML =
       '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>';
+    document.getElementById('pretrade-save-bar').style.display = 'none';
+    _pretradeLastResult  = null;
+    _pretradeLastSavedId = null;
     _ptAddRow();
   });
 }
@@ -3125,8 +3133,11 @@ async function _pretradeSubmit() {
       return;
     }
     _pretradeLastResult = data;
+    _pretradeLastSavedId = null;  // nova simulação, ainda não salva
     _pretradeRender(data);
     document.getElementById('pretrade-save-bar').style.display = '';
+    const execBtn = document.getElementById('btn-pt-execute');
+    if (execBtn) { execBtn.disabled = false; execBtn.textContent = '▶ EXECUTAR'; }
     document.getElementById('pt-save-feedback').style.display = 'none';
     document.getElementById('pt-save-label').value = '';
   } catch(e) {
@@ -3474,6 +3485,7 @@ async function _ptSaveSimulation() {
       feedEl.textContent = data.error || 'Erro ao salvar.';
       feedEl.style.color = '#cc3333';
     } else {
+      _pretradeLastSavedId = data.id;
       feedEl.textContent = `Simulação salva. ID: ${data.id.slice(0,8)}`;
       feedEl.style.color = '#00cc88';
       // Atualiza painel de histórico se estiver aberto
@@ -3486,6 +3498,154 @@ async function _ptSaveSimulation() {
   feedEl.style.display = '';
   btn.disabled = false;
   btn.textContent = 'SALVAR SIMULAÇÃO';
+}
+
+// ── EXECUÇÃO (PÓS-TRADE) — aplica simulação na carteira real ─────────────────
+
+function _ptExecuteOpenModal() {
+  if (!_pretradeLastResult) return;
+  const d   = _pretradeLastResult;
+  const ops = d.operacoes || [];
+
+  // Resumo das operações
+  const fmt  = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: dec, maximumFractionDigits: dec});
+  const fmtR = v => v == null ? '—' : 'R$ ' + fmt(v, 2);
+  const dirColor = {compra: '#f5a623', venda: '#00cc88', zerar: '#cc3333'};
+  const dirLabel = {compra: 'COMPRA', venda: 'VENDA', zerar: 'ZERAR'};
+  const summary = ops.map(op =>
+    `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a1a1a">
+      <span>
+        <b style="color:${dirColor[op.direcao]||'#aaa'}">${dirLabel[op.direcao]||op.direcao}</b>
+        &nbsp;<span style="color:#f5a623">${op.ticker}</span>${op.is_novo ? ' <span style="color:#f5a623;font-size:9px">[NOVO]</span>' : ''}
+      </span>
+      <span style="color:#888">
+        ${op.direcao !== 'zerar' ? fmt(op.quantidade,0) + ' × ' + fmtR(op.preco) + ' = ' : ''}
+        <b style="color:#ccc">${fmtR(op.valor_total_rs)}</b>
+      </span>
+    </div>`
+  ).join('');
+  document.getElementById('pt-exec-num-ops').textContent = ops.length;
+  document.getElementById('pt-exec-summary').innerHTML = summary;
+
+  // Avisos
+  const warnings = [];
+  const violacoes = (d.compliance || []).filter(c => c.status === 'violacao');
+  if (violacoes.length) {
+    warnings.push(
+      `<b>⚠ VIOLAÇÃO de compliance:</b><ul style="margin:4px 0 0 18px;padding:0">` +
+      violacoes.map(c => `<li>${c.regra}</li>`).join('') + `</ul>`
+    );
+  }
+  const novos = ops.filter(o => o.is_novo);
+  if (novos.length) {
+    warnings.push(
+      `<b>Ticker(s) novo(s) na carteira:</b> ${novos.map(o=>o.ticker).join(', ')}.` +
+      ` Categoria será criada como "Acao"; revise na aba TABELA depois (BDR/FII, liquidez, preço-alvo).`
+    );
+  }
+  const caixaDepois = (d.depois || {}).caixa;
+  if (caixaDepois != null && caixaDepois < 0) {
+    warnings.push(`<b>Caixa ficará negativo:</b> ${fmtR(caixaDepois)}. Confirme se há recurso disponível.`);
+  }
+  const warnEl = document.getElementById('pt-exec-warnings');
+  if (warnings.length) {
+    warnEl.innerHTML = warnings.join('<hr style="border:none;border-top:1px solid #cc3333;margin:6px 0">');
+    warnEl.style.display = '';
+  } else {
+    warnEl.style.display = 'none';
+    warnEl.innerHTML = '';
+  }
+
+  // Reset feedback e confirma
+  const feedEl = document.getElementById('pt-exec-feedback');
+  feedEl.style.display = 'none';
+  feedEl.textContent = '';
+  const confirmBtn = document.getElementById('pt-exec-confirm');
+  confirmBtn.disabled = false;
+  confirmBtn.textContent = 'Confirmar e Aplicar';
+
+  document.getElementById('pretrade-execute-modal').style.display = 'flex';
+}
+
+function _ptExecuteCloseModal() {
+  document.getElementById('pretrade-execute-modal').style.display = 'none';
+}
+
+async function _ptExecuteConfirm() {
+  if (!_pretradeLastResult) return;
+  const ops = _pretradeLastResult.operacoes || [];
+  if (!ops.length) return;
+
+  const confirmBtn = document.getElementById('pt-exec-confirm');
+  const feedEl     = document.getElementById('pt-exec-feedback');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'APLICANDO...';
+  feedEl.style.display = 'none';
+
+  const hadViolation = (_pretradeLastResult.compliance || []).some(c => c.status === 'violacao');
+  // operacoes enviadas têm que estar no formato bruto (ticker, direcao, quantidade, preco, corretagem_rs)
+  // O backend já aceita o ticker SEM .SA se for válido (normaliza), mas vamos enviar yahoo_ticker para evitar ambiguidade.
+  const operacoesPayload = ops.map(o => ({
+    ticker:        o.yahoo_ticker || o.ticker,
+    direcao:       o.direcao,
+    quantidade:    o.quantidade,
+    preco:         o.preco,
+    corretagem_rs: o.corretagem_rs || 0,
+  }));
+
+  try {
+    const res = await fetch('/api/pretrade/execute', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        operacoes:           operacoesPayload,
+        pretrade_history_id: _pretradeLastSavedId,  // opcional — pode ser null
+        compliance_override: hadViolation,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      feedEl.style.color = '#cc3333';
+      feedEl.textContent = `Erro: ${data.error || 'falha desconhecida'}`;
+      feedEl.style.display = '';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirmar e Aplicar';
+      return;
+    }
+    feedEl.style.color = '#00cc88';
+    feedEl.textContent = `✓ Carteira atualizada. ${data.operacoes_aplicadas} operação(ões) aplicada(s). Caixa: R$ ${Number(data.caixa_apos).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    feedEl.style.display = '';
+
+    // Feedback na barra principal também
+    const mainFeed = document.getElementById('pt-save-feedback');
+    mainFeed.textContent = `✓ Executado em ${new Date(data.executed_at).toLocaleString('pt-BR')}`;
+    mainFeed.style.color = '#00cc88';
+    mainFeed.style.display = '';
+
+    // Desabilitar botão EXECUTAR para evitar reaplicação
+    const execBtn = document.getElementById('btn-pt-execute');
+    if (execBtn) {
+      execBtn.disabled = true;
+      execBtn.textContent = '✓ EXECUTADO';
+    }
+
+    // Atualizar histórico se aberto
+    if (_ptHistoryOpen) _ptLoadHistory();
+
+    // Recarregar carteira na aba TABELA
+    if (typeof fetchPortfolio === 'function') {
+      try { await fetchPortfolio(); } catch(e) {}
+    }
+
+    // Fechar modal após 1.5s
+    setTimeout(_ptExecuteCloseModal, 1500);
+  } catch(e) {
+    feedEl.style.color = '#cc3333';
+    feedEl.textContent = 'Erro de comunicação com o servidor.';
+    feedEl.style.display = '';
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Confirmar e Aplicar';
+  }
 }
 
 async function _ptLoadHistory() {
@@ -3581,6 +3741,17 @@ async function _ptLoadHistory() {
           ? `<span style="color:${Number(varCota)>=0?'#00cc88':'#cc3333'}">${Number(varCota)>=0?'+':''}${fmt(varCota,4)}%</span>`
           : '';
 
+        // Badge de execução (pós-trade)
+        const execAt = rec.executed_at || null;
+        let execBadge = '';
+        if (execAt) {
+          const dtE = new Date(execAt);
+          const dtEStr = dtE.toLocaleDateString('pt-BR') + ' ' + dtE.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+          execBadge = `<span title="Operações já aplicadas em portfolio.json" style="font-family:monospace;font-size:10px;font-weight:bold;color:#00cc88;border:1px solid #00cc88;padding:1px 6px;border-radius:2px">✓ EXECUTADO ${dtEStr}</span>`;
+        } else {
+          execBadge = `<span title="Salvo no histórico, ainda não aplicado na carteira" style="font-family:monospace;font-size:10px;font-weight:bold;color:#888;border:1px dashed #555;padding:1px 6px;border-radius:2px">PENDENTE</span>`;
+        }
+
         html += `
               <div class="pretrade-history-item" data-id="${recId}">
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -3589,6 +3760,7 @@ async function _ptLoadHistory() {
                   <span style="font-family:monospace;font-size:11px;color:#777;white-space:nowrap">${nOps} op(s)</span>
                   ${varCotaStr ? `<span style="font-family:monospace;font-size:11px">Δ cota: ${varCotaStr}</span>` : ''}
                   <span style="font-family:monospace;font-size:10px;font-weight:bold;color:${badgeColor};border:1px solid ${badgeColor};padding:1px 6px;border-radius:2px">${badgeLabel}</span>
+                  ${execBadge}
                   ${label}
                   <div style="margin-left:auto;display:flex;gap:6px">
                     <a href="/api/pretrade/history/${recId}/pdf" target="_blank"
