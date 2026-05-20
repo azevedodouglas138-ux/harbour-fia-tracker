@@ -79,12 +79,38 @@ def _github_push(relative_path, content_str, commit_msg):
     except Exception as e:
         print(f"[github_push] error: {e}")
 
+import queue
+_github_push_queue = queue.Queue()
+
+def _github_push_worker():
+    """Worker único que processa pushes em ordem FIFO.
+    Garante que o último save_X vence no GitHub (evita race condition
+    quando GETs/PUTs paralelos sobrescreveriam o estado mais recente
+    com conteúdo capturado em um snapshot anterior)."""
+    while True:
+        try:
+            item = _github_push_queue.get()
+            if item is None:
+                break
+            relative_path, content_str, commit_msg = item
+            try:
+                _github_push(relative_path, content_str, commit_msg)
+            except Exception as e:
+                print(f"[github_push_worker] error pushing {relative_path}: {e}")
+            finally:
+                _github_push_queue.task_done()
+        except Exception as e:
+            print(f"[github_push_worker] loop error: {e}")
+
+# Worker único, daemon — serializa todos os pushes ao GitHub
+threading.Thread(target=_github_push_worker, daemon=True, name="github-push-worker").start()
+
 def github_push_async(relative_path, content_str, commit_msg):
-    """Fire-and-forget GitHub file push (non-blocking)."""
-    t = threading.Thread(target=_github_push,
-                         args=(relative_path, content_str, commit_msg),
-                         daemon=True)
-    t.start()
+    """Enfileira push para GitHub. Worker único processa em ordem FIFO.
+    O conteúdo é capturado no momento da chamada — quando o worker
+    processar, será aplicado ao GitHub. Pushes ao mesmo arquivo são
+    serializados; o último enfileirado vence."""
+    _github_push_queue.put((relative_path, content_str, commit_msg))
 PORTFOLIO_FILE         = os.path.join(DATA_DIR, "portfolio.json")
 CACHE_FILE             = os.path.join(DATA_DIR, "cache.json")
 FUND_CONFIG_FILE       = os.path.join(DATA_DIR, "fund_config.json")
