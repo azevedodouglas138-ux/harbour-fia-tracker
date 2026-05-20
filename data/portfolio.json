@@ -14,7 +14,7 @@
       "ticker": "MUTC34",
       "yahoo_ticker": "MUTC34.SA",
       "categoria": "BDR",
-      "quantidade": 7750.0,
+      "quantidade": 8000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 1000.0
@@ -32,7 +32,7 @@
       "ticker": "BMEB4",
       "yahoo_ticker": "BMEB4.SA",
       "categoria": "Acao",
-      "quantidade": 28000.0,
+      "quantidade": 27500.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 150.0
@@ -50,7 +50,7 @@
       "ticker": "VTRU3",
       "yahoo_ticker": "VTRU3.SA",
       "categoria": "Acao",
-      "quantidade": 70000.0,
+      "quantidade": 65000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 25.0
