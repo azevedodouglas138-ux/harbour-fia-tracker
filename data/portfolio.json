@@ -5,7 +5,7 @@
       "ticker": "PRIO3",
       "yahoo_ticker": "PRIO3.SA",
       "categoria": "Acao",
-      "quantidade": 20000.0,
+      "quantidade": 10000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": 6500.0,
       "preco_alvo": 100.0
@@ -23,7 +23,7 @@
       "ticker": "MDNE3",
       "yahoo_ticker": "MDNE3.SA",
       "categoria": "Acao",
-      "quantidade": 85000.0,
+      "quantidade": 95000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 50.0
@@ -83,15 +83,6 @@
       "preco_alvo": 9.0
     },
     {
-      "ticker": "INBR32",
-      "yahoo_ticker": "INBR32.SA",
-      "categoria": "BDR",
-      "quantidade": 100.0,
-      "liq_diaria_mm": null,
-      "lucro_mi_26": null,
-      "preco_alvo": 65.0
-    },
-    {
       "ticker": "A1MD34",
       "yahoo_ticker": "A1MD34.SA",
       "categoria": "BDR",
@@ -113,7 +104,7 @@
       "ticker": "ROXO34",
       "yahoo_ticker": "ROXO34.SA",
       "categoria": "BDR",
-      "quantidade": 100.0,
+      "quantidade": 35100.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 22.0
