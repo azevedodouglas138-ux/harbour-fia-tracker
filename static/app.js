@@ -3752,9 +3752,13 @@ async function _ptLoadHistory() {
           execBadge = `<span title="Salvo no histórico, ainda não aplicado na carteira" style="font-family:monospace;font-size:10px;font-weight:bold;color:#888;border:1px dashed #555;padding:1px 6px;border-radius:2px">PENDENTE</span>`;
         }
 
+        // Conteúdo do expand (detalhes) — gerado on-demand
+        const detailsHtml = _ptRenderHistoryDetails(rec);
+
         html += `
               <div class="pretrade-history-item" data-id="${recId}">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div class="pt-hist-row-header" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;user-select:none">
+                  <span class="pt-hist-chevron" style="font-family:monospace;font-size:10px;color:#888;width:10px">▶</span>
                   <span style="font-family:monospace;font-size:11px;color:#888;white-space:nowrap">${dtStr}</span>
                   <span style="font-family:monospace;font-size:11px;color:#555;white-space:nowrap">ID:${recIdShort}</span>
                   <span style="font-family:monospace;font-size:11px;color:#777;white-space:nowrap">${nOps} op(s)</span>
@@ -3762,13 +3766,16 @@ async function _ptLoadHistory() {
                   <span style="font-family:monospace;font-size:10px;font-weight:bold;color:${badgeColor};border:1px solid ${badgeColor};padding:1px 6px;border-radius:2px">${badgeLabel}</span>
                   ${execBadge}
                   ${label}
-                  <div style="margin-left:auto;display:flex;gap:6px">
+                  <div style="margin-left:auto;display:flex;gap:6px" onclick="event.stopPropagation()">
                     <a href="/api/pretrade/history/${recId}/pdf" target="_blank"
                        style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #555;color:#ccc;text-decoration:none;cursor:pointer;border-radius:2px"
                        title="Baixar PDF de auditoria">PDF</a>
                     <button class="pt-hist-del bbg-btn" data-id="${recId}"
                             style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1" title="Excluir">×</button>
                   </div>
+                </div>
+                <div class="pt-hist-details" style="display:none;padding:10px 4px 6px 22px;border-top:1px solid #1a1a1a;margin-top:6px">
+                  ${detailsHtml}
                 </div>
               </div>`;
       });
@@ -3790,9 +3797,147 @@ async function _ptLoadHistory() {
         if (r.ok) _ptLoadHistory();
       });
     });
+
+    // Listeners de expand/collapse no cabeçalho de cada registro
+    listEl.querySelectorAll('.pt-hist-row-header').forEach(hdr => {
+      hdr.addEventListener('click', () => {
+        const item    = hdr.closest('.pretrade-history-item');
+        const details = item.querySelector('.pt-hist-details');
+        const chev    = hdr.querySelector('.pt-hist-chevron');
+        const isOpen  = details.style.display !== 'none';
+        details.style.display = isOpen ? 'none' : 'block';
+        if (chev) chev.textContent = isOpen ? '▶' : '▼';
+      });
+    });
   } catch(e) {
     listEl.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar histórico.</p>';
   }
+}
+
+// ── Renderiza detalhes inline de um registro do histórico ────────────────────
+function _ptRenderHistoryDetails(rec) {
+  const fmt  = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+  const fmtC = (v, dec=8) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+  const fmtR = v => v == null ? '—' : 'R$ ' + fmt(v, 2);
+  const cls  = v => Number(v) < 0 ? 'color:#cc3333' : (Number(v) > 0 ? 'color:#00cc88' : 'color:#888');
+  const dirLabel = {compra:'COMPRA', venda:'VENDA', zerar:'ZERAR'};
+  const dirColor = {compra:'#f5a623', venda:'#00cc88', zerar:'#cc3333'};
+  const statusColor = s => s==='ok'?'#00cc88':s==='alerta'?'#f5a623':'#cc3333';
+  const statusLabel = s => s==='ok'?'OK':s==='alerta'?'ALERTA':'VIOLAÇÃO';
+
+  const antes  = rec.antes  || {};
+  const dep    = rec.depois || {};
+  const imp    = rec.impactos || {};
+  const ops    = rec.operacoes || [];
+  const basket = rec.basket || {};
+  const comp   = rec.compliance || [];
+
+  // ── Bloco 1: operações ──
+  let opsRows = ops.map(op => `
+    <tr style="border-bottom:1px solid #1a1a1a">
+      <td style="padding:4px 8px"><span style="color:${dirColor[op.direcao]||'#aaa'};font-weight:bold">${dirLabel[op.direcao]||op.direcao}</span></td>
+      <td style="padding:4px 8px;color:#f5a623">${op.ticker}${op.is_novo?' <span style="font-size:9px;color:#f5a623">[NOVO]</span>':''}</td>
+      <td style="padding:4px 8px;color:#666">${op.sector||'—'}</td>
+      <td style="padding:4px 8px;text-align:right">${fmt(op.quantidade,0)}</td>
+      <td style="padding:4px 8px;text-align:right">${fmtR(op.preco)}</td>
+      <td style="padding:4px 8px;text-align:right;color:#ccc">${fmtR(op.valor_total_rs)}</td>
+      <td style="padding:4px 8px;text-align:right;color:#666">${op.corretagem_rs?fmtR(op.corretagem_rs):'—'}</td>
+    </tr>`).join('');
+  const opsBlock = `
+    <div style="margin-bottom:10px">
+      <div style="font-family:monospace;font-size:10px;color:#888;letter-spacing:0.04em;margin-bottom:4px">BASKET DE OPERAÇÕES</div>
+      <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+        <thead>
+          <tr style="color:#888;border-bottom:1px solid #333">
+            <th style="text-align:left;padding:4px 8px">DIR.</th>
+            <th style="text-align:left;padding:4px 8px">ATIVO</th>
+            <th style="text-align:left;padding:4px 8px">SETOR</th>
+            <th style="text-align:right;padding:4px 8px">QTDE</th>
+            <th style="text-align:right;padding:4px 8px">PREÇO</th>
+            <th style="text-align:right;padding:4px 8px">VALOR TOTAL</th>
+            <th style="text-align:right;padding:4px 8px">CORRET.</th>
+          </tr>
+        </thead>
+        <tbody>${opsRows}</tbody>
+        <tfoot>
+          <tr><td colspan="7" style="padding:5px 8px;text-align:right;color:#888;border-top:1px solid #333">
+            Custo líquido total: <b style="color:${(basket.custo_total_rs||0)>=0?'#cc3333':'#00cc88'}">${fmtR(basket.custo_total_rs)}</b>
+          </td></tr>
+        </tfoot>
+      </table>
+    </div>`;
+
+  // ── Bloco 2: impacto no fundo ──
+  const metrics = [
+    {nome:'Cota Estimada',         a:fmtC(antes.cota_estimada),                   d:fmtC(dep.cota_estimada),                   delta:(imp.variacao_cota_pct!=null?fmt(imp.variacao_cota_pct,4)+'%':'—'),   sign:imp.variacao_cota_pct},
+    {nome:'NAV Total',             a:fmtR(antes.nav_total),                       d:fmtR(dep.nav_total),                       delta:fmtR(imp.variacao_nav_rs),                                          sign:imp.variacao_nav_rs},
+    {nome:'Caixa Resultante',      a:fmtR(antes.caixa),                           d:fmtR(dep.caixa),                           delta:fmtR((dep.caixa||0)-(antes.caixa||0)),                              sign:(dep.caixa||0)-(antes.caixa||0), deRed:(dep.caixa!=null&&dep.caixa<0)},
+    {nome:'Grupo I (Ações/BDRs)',  a:fmt(antes.pct_grupo1)+'%',                   d:fmt(dep.pct_grupo1)+'%',                   delta:fmt((dep.pct_grupo1||0)-(antes.pct_grupo1||0))+' pp',               sign:(dep.pct_grupo1||0)-(antes.pct_grupo1||0), deRed:(dep.pct_grupo1!=null&&dep.pct_grupo1<67)},
+    {nome:'Beta Pond.',            a:fmt(antes.weighted_beta,4),                  d:fmt(dep.weighted_beta,4),                  delta:fmt(imp.variacao_beta,4),                                            sign:imp.variacao_beta},
+    {nome:'Upside Pond.',          a:fmt(antes.weighted_upside)+'%',              d:fmt(dep.weighted_upside)+'%',              delta:fmt(imp.variacao_upside_pp)+' pp',                                  sign:imp.variacao_upside_pp},
+    {nome:'HHI Concentração',      a:String(antes.hhi??'—'),                      d:String(dep.hhi??'—'),                      delta:String(imp.variacao_hhi??'—'),                                       sign:-imp.variacao_hhi},
+  ];
+  const impRows = metrics.map(m => `
+    <tr style="border-bottom:1px solid #1a1a1a">
+      <td style="padding:4px 8px;color:#aaa">${m.nome}</td>
+      <td style="padding:4px 8px;text-align:right;color:#888">${m.a}</td>
+      <td style="padding:4px 8px;text-align:right;${m.deRed?'color:#cc3333;font-weight:bold':'color:#fff'}">${m.d}</td>
+      <td style="padding:4px 8px;text-align:right;${cls(m.sign)}">${m.delta}</td>
+    </tr>`).join('');
+  const impBlock = `
+    <div style="margin-bottom:10px">
+      <div style="font-family:monospace;font-size:10px;color:#888;letter-spacing:0.04em;margin-bottom:4px">IMPACTO NO FUNDO</div>
+      <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+        <thead>
+          <tr style="color:#888;border-bottom:1px solid #333">
+            <th style="text-align:left;padding:4px 8px">MÉTRICA</th>
+            <th style="text-align:right;padding:4px 8px">ANTES</th>
+            <th style="text-align:right;padding:4px 8px">DEPOIS</th>
+            <th style="text-align:right;padding:4px 8px">Δ</th>
+          </tr>
+        </thead>
+        <tbody>${impRows}</tbody>
+      </table>
+    </div>`;
+
+  // ── Bloco 3: compliance ──
+  let compRows = comp.map(c => {
+    const sc = statusColor(c.status);
+    const ehCaixa = (c.tipo||'') === 'caixa';
+    const ehMin   = (c.tipo||'') === 'minimo';
+    const limTxt  = ehCaixa ? '—' : (ehMin ? 'mín '+fmt(c.limite_pct)+'%' : 'máx '+fmt(c.limite_pct)+'%');
+    const aTxt    = ehCaixa ? fmtR(c.valor_antes_pct)  : fmt(c.valor_antes_pct)+'%';
+    const dTxt    = ehCaixa ? fmtR(c.valor_depois_pct) : fmt(c.valor_depois_pct)+'%';
+    return `
+      <tr style="border-bottom:1px solid #1a1a1a">
+        <td style="padding:4px 8px;color:#aaa">${c.regra}</td>
+        <td style="padding:4px 8px;color:#666;text-align:right">${limTxt}</td>
+        <td style="padding:4px 8px;text-align:right;color:#888">${aTxt}</td>
+        <td style="padding:4px 8px;text-align:right;color:${sc}">${dTxt}</td>
+        <td style="padding:4px 8px;text-align:center">
+          <span style="font-size:10px;font-weight:bold;color:${sc};border:1px solid ${sc};padding:1px 6px;border-radius:2px">${statusLabel(c.status)}</span>
+        </td>
+      </tr>`;
+  }).join('');
+  if (!compRows) compRows = '<tr><td colspan="5" style="padding:8px;color:#555;text-align:center">— sem regras avaliadas —</td></tr>';
+  const compBlock = `
+    <div>
+      <div style="font-family:monospace;font-size:10px;color:#888;letter-spacing:0.04em;margin-bottom:4px">COMPLIANCE</div>
+      <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+        <thead>
+          <tr style="color:#888;border-bottom:1px solid #333">
+            <th style="text-align:left;padding:4px 8px">REGRA</th>
+            <th style="text-align:right;padding:4px 8px">LIMITE</th>
+            <th style="text-align:right;padding:4px 8px">ANTES</th>
+            <th style="text-align:right;padding:4px 8px">DEPOIS</th>
+            <th style="text-align:center;padding:4px 8px">STATUS</th>
+          </tr>
+        </thead>
+        <tbody>${compRows}</tbody>
+      </table>
+    </div>`;
+
+  return opsBlock + impBlock + compBlock;
 }
 
 // ═══════════════════════════════════════════════════════════════════
