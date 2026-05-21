@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "data": "2026-05-21",
+    "nav": 15316595.0,
+    "prazo_medio_zerar": 2.33,
+    "pct_alta_liquidez": 86.61,
+    "pct_baixa_liquidez": 0.0,
+    "indice_liquidez_5d": {
+      "neutro": 10000.0,
+      "stress": 8661.0,
+      "crise": 64.5284
+    },
+    "compliance_status": "ok"
+  }
+]
