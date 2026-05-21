@@ -115,15 +115,47 @@ def github_push_async(relative_path, content_str, commit_msg):
     (cache, viewer_config) onde perder em shutdown não é catastrófico."""
     _github_push_queue.put((relative_path, content_str, commit_msg, None))
 
+
+def _github_push_direct(relative_path, content_str, commit_msg):
+    """Push síncrono ao GitHub na mesma thread. Retorna {"ok": bool, "error"?: str}.
+    Não depende de worker thread externa — funciona sempre que houver creds."""
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+        return {"ok": True, "note": "no github credentials"}
+    try:
+        import requests as req
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{relative_path}"
+        r = req.get(api_url, headers=headers, timeout=10)
+        sha = r.json().get("sha") if r.ok else None
+        payload = {
+            "message": commit_msg,
+            "content": base64.b64encode(content_str.encode("utf-8")).decode(),
+            "branch":  GITHUB_BRANCH,
+        }
+        if sha:
+            payload["sha"] = sha
+        resp = req.put(api_url, json=payload, headers=headers, timeout=15)
+        if resp.ok:
+            return {"ok": True}
+        return {"ok": False, "error": f"GitHub PUT {resp.status_code}: {resp.text[:200]}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 def github_push_sync(relative_path, content_str, commit_msg, timeout=20):
-    """Enfileira push e BLOQUEIA até o GitHub confirmar (ou timeout).
-    Use para writes críticos (quota_history, portfolio, fund_config,
-    pretrade_history) — garante que o usuário só vê 'salvo' depois que
-    o GitHub realmente recebeu, evitando perda em restart de container."""
-    done = threading.Event()
-    _github_push_queue.put((relative_path, content_str, commit_msg, done))
-    if not done.wait(timeout=timeout):
-        print(f"[github_push_sync] TIMEOUT após {timeout}s para {relative_path}")
+    """Push síncrono ao GitHub. BLOQUEIA na thread do request handler até
+    o GitHub confirmar. Raise RuntimeError em falha — caller deve tratar
+    (rollback do arquivo local + propagar erro 500 ao usuário).
+
+    Não usa worker thread / queue (que se mostrou não-confiável em algumas
+    configurações de gunicorn). O parâmetro timeout é ignorado nesta
+    implementação (requests já tem timeout de 10+15s embutido)."""
+    result = _github_push_direct(relative_path, content_str, commit_msg)
+    if not result.get("ok"):
+        raise RuntimeError(f"GitHub push falhou para {relative_path}: {result.get('error')}")
 
 def _drain_push_queue(timeout=25):
     """Drena a fila de pushes pendentes — chamado em SIGTERM/atexit.
@@ -192,12 +224,35 @@ def load_portfolio():
     with open(PORTFOLIO_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def _save_with_github(local_path, github_path, content, commit_msg):
+    """Salva arquivo local + push síncrono ao GitHub.
+    Se o push falhar, faz rollback do arquivo local e raise RuntimeError.
+    Garante consistência: ou ambos sucedem ou ambos ficam no estado anterior."""
+    # Backup local atual
+    backup = None
+    if os.path.exists(local_path):
+        with open(local_path, "rb") as f:
+            backup = f.read()
+    # Escrever novo conteúdo localmente
+    with open(local_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    # Push GitHub; rollback local em falha
+    try:
+        github_push_sync(github_path, content, commit_msg)
+    except Exception as e:
+        if backup is not None:
+            try:
+                with open(local_path, "wb") as f:
+                    f.write(backup)
+            except Exception as rollback_err:
+                print(f"[save_with_github] FALHA NO ROLLBACK de {local_path}: {rollback_err}")
+        raise
+
+
 def save_portfolio(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
-    with open(PORTFOLIO_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
-    # SYNC: bloqueia até GitHub confirmar (evita perda em restart de container)
-    github_push_sync("data/portfolio.json", content, "chore: update portfolio.json via UI")
+    _save_with_github(PORTFOLIO_FILE, "data/portfolio.json", content,
+                      "chore: update portfolio.json via UI")
 
 def load_cache():
     if not os.path.exists(CACHE_FILE):
@@ -233,10 +288,8 @@ def load_fund_config():
 
 def save_fund_config(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
-    with open(FUND_CONFIG_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
-    # SYNC: bloqueia até GitHub confirmar
-    github_push_sync("data/fund_config.json", content, "chore: update fund_config.json via UI")
+    _save_with_github(FUND_CONFIG_FILE, "data/fund_config.json", content,
+                      "chore: update fund_config.json via UI")
 
 def load_quota_history():
     if not os.path.exists(QUOTA_HISTORY_FILE):
@@ -246,10 +299,8 @@ def load_quota_history():
 
 def save_quota_history(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
-    with open(QUOTA_HISTORY_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
-    # SYNC: bloqueia até GitHub confirmar
-    github_push_sync("data/quota_history.json", content, "chore: update quota_history.json via auto-close")
+    _save_with_github(QUOTA_HISTORY_FILE, "data/quota_history.json", content,
+                      "chore: update quota_history.json via auto-close")
 
 def load_pretrade_history():
     if not os.path.exists(PRETRADE_HISTORY_FILE):
@@ -259,10 +310,8 @@ def load_pretrade_history():
 
 def save_pretrade_history(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
-    with open(PRETRADE_HISTORY_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
-    # SYNC: bloqueia até GitHub confirmar
-    github_push_sync("data/pretrade_history.json", content, "chore: update pretrade_history.json via UI")
+    _save_with_github(PRETRADE_HISTORY_FILE, "data/pretrade_history.json", content,
+                      "chore: update pretrade_history.json via UI")
 
 def load_portfolio_history():
     if not os.path.exists(PORTFOLIO_HISTORY_FILE):
@@ -4758,11 +4807,8 @@ def load_liquidity_history():
 
 def save_liquidity_history(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
-    with open(LIQUIDITY_HISTORY_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
-    # SYNC: histórico é crítico para auditoria
-    github_push_sync("data/liquidity_history.json", content,
-                     "chore: update liquidity_history.json via auto-close")
+    _save_with_github(LIQUIDITY_HISTORY_FILE, "data/liquidity_history.json", content,
+                      "chore: update liquidity_history.json via auto-close")
 
 
 def _generate_liquidity_pdf(snapshot, market, compliance):
