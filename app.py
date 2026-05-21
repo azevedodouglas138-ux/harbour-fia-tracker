@@ -512,7 +512,6 @@ def is_market_open():
 
 def calculate_quota(rows, fund_config, prices):
     quota_fech = fund_config.get("quota_fechamento") or 0
-    num_cotas  = fund_config.get("num_cotas")
     caixa      = fund_config.get("caixa") or 0
     proventos  = fund_config.get("proventos_a_receber") or 0
     custos     = fund_config.get("custos_provisionados") or 0
@@ -529,7 +528,7 @@ def calculate_quota(rows, fund_config, prices):
 
     # Fechamento oficial já registrado hoje: exibe apenas o fechamento, sem variação intraday
     if today_is_official:
-        result = {
+        return {
             "quota_fechamento":         quota_fech,
             "data_fechamento":          data_fech,
             "cota_estimada":            quota_fech if quota_fech else None,
@@ -543,11 +542,8 @@ def calculate_quota(rows, fund_config, prices):
             "nav_total":                round(nav_total, 2),
             "mercado_fechado":          True,
             "caixa": caixa, "proventos_a_receber": proventos,
-            "custos_provisionados": custos, "num_cotas": num_cotas,
+            "custos_provisionados": custos,
         }
-        if num_cotas:
-            result["variacao_total_rs"] = 0.0
-        return result
     # Se mercado fechado mas fechamento de hoje ainda não registrado, continua calculando
     # com os preços finais do pregão (mesmo comportamento do horário de mercado aberto).
 
@@ -565,7 +561,7 @@ def calculate_quota(rows, fund_config, prices):
 
     cota_est = quota_fech * (1 + retorno_carteira) if quota_fech else None
 
-    result = {
+    return {
         "quota_fechamento":        quota_fech,
         "data_fechamento":         fund_config.get("data_fechamento", ""),
         "cota_estimada":           round(cota_est, 8) if cota_est else None,
@@ -579,11 +575,8 @@ def calculate_quota(rows, fund_config, prices):
         "nav_total":               round(nav_total, 2),
         "mercado_fechado":         mercado_fechado,
         "caixa": caixa, "proventos_a_receber": proventos,
-        "custos_provisionados": custos, "num_cotas": num_cotas,
+        "custos_provisionados": custos,
     }
-    if num_cotas and cota_est:
-        result["variacao_total_rs"] = round((cota_est - quota_fech) * num_cotas, 2)
-    return result
 
 # ---------------------------------------------------------------------------
 # Portfolio response builder
@@ -854,16 +847,41 @@ def api_history():
     portfolio = load_portfolio()
     return jsonify(get_cached_history(portfolio["positions"], days))
 
+def _latest_nr_cotistas():
+    """Lê o último número de cotistas (nr_cotst) do informe diário CVM.
+    Retorna int ou None se cvm_daily.json não existir / estiver vazio."""
+    try:
+        path = os.path.join(DATA_DIR, "cvm_daily.json")
+        if not os.path.exists(path):
+            return None
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        records = data.get("records") or []
+        if not records:
+            return None
+        records_sorted = sorted(records, key=lambda r: r.get("dt_comptc", ""))
+        return records_sorted[-1].get("nr_cotst")
+    except Exception:
+        return None
+
+
 @app.route("/api/fund-config", methods=["GET"])
-def api_get_fund_config(): return jsonify(load_fund_config())
+def api_get_fund_config():
+    # quota_fechamento + data_fechamento sempre derivados do último quota_history
+    config = get_effective_fund_config()
+    # num_cotistas sempre derivado do último informe CVM oficial
+    config["num_cotistas"] = _latest_nr_cotistas()
+    return jsonify(config)
 
 @app.route("/api/fund-config", methods=["POST"])
 @require_admin
 def api_update_fund_config():
     payload = request.json
     config  = load_fund_config()
-    _string_keys = {"data_fechamento", "descricao_fundo"}
-    for key in ["quota_fechamento","data_fechamento","num_cotas","caixa",
+    _string_keys = {"descricao_fundo"}
+    # quota_fechamento, data_fechamento e num_cotas são read-only no formulário
+    # (derivados das fontes oficiais) — qualquer valor enviado é silenciosamente ignorado.
+    for key in ["caixa",
                 "proventos_a_receber","custos_provisionados","performance_fee_rate",
                 "performance_fee_acumulada_rs","descricao_fundo",
                 "limite_concentracao_ativo_pct","limite_concentracao_setor_pct",

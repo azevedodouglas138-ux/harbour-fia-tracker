@@ -384,16 +384,21 @@
       <div class="cfg-fields">
         <div class="cfg-field">
           <label>COTA DE FECHAMENTO</label>
-          <input type="number" id="cfg-quota" step="0.00000001" placeholder="2.71660881" {% if role != 'admin' %}readonly{% endif %} />
+          <input type="number" id="cfg-quota" step="0.00000001" placeholder="—" readonly
+                 style="background:#0a0a0a;color:#aaa;cursor:not-allowed" />
+          <span class="cfg-hint">Último valor do Histórico de Cotas</span>
         </div>
         <div class="cfg-field">
           <label>DATA DE FECHAMENTO</label>
-          <input type="date" id="cfg-data" {% if role != 'admin' %}readonly{% endif %} />
+          <input type="date" id="cfg-data" readonly
+                 style="background:#0a0a0a;color:#aaa;cursor:not-allowed" />
+          <span class="cfg-hint">Data do último registro</span>
         </div>
         <div class="cfg-field">
-          <label>Nº DE COTAS (COTISTAS)</label>
-          <input type="number" id="cfg-num-cotas" step="1" placeholder="ex: 4580000" {% if role != 'admin' %}readonly{% endif %} />
-          <span class="cfg-hint">Necessário para calcular variação total R$</span>
+          <label>Nº DE COTISTAS</label>
+          <input type="number" id="cfg-num-cotistas" step="1" placeholder="—" readonly
+                 style="background:#0a0a0a;color:#aaa;cursor:not-allowed" />
+          <span class="cfg-hint">Última posição do informe CVM Oficial</span>
         </div>
       </div>
     </div>

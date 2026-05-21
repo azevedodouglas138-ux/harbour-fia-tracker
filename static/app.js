@@ -1499,9 +1499,11 @@ document.getElementById('btn-export-pdf')?.addEventListener('click', async () =>
 async function loadConfig() {
   const res    = await fetch('/api/fund-config');
   const config = await res.json();
-  document.getElementById('cfg-quota').value       = config.quota_fechamento ?? '';
-  document.getElementById('cfg-data').value        = config.data_fechamento  ?? '';
-  document.getElementById('cfg-num-cotas').value   = config.num_cotas        ?? '';
+  // Campos read-only: derivados de fontes oficiais (quota_history + CVM)
+  document.getElementById('cfg-quota').value         = config.quota_fechamento ?? '';
+  document.getElementById('cfg-data').value          = config.data_fechamento  ?? '';
+  document.getElementById('cfg-num-cotistas').value  = config.num_cotistas     ?? '';
+  // Campos editáveis
   document.getElementById('cfg-caixa').value       = config.caixa            ?? '';
   document.getElementById('cfg-proventos').value   = config.proventos_a_receber ?? '';
   document.getElementById('cfg-custos').value      = config.custos_provisionados ?? '';
@@ -1512,10 +1514,9 @@ async function loadConfig() {
 }
 
 document.getElementById('cfg-save')?.addEventListener('click', async () => {
+  // quota_fechamento, data_fechamento e num_cotistas NÃO entram no payload —
+  // são read-only e derivados das fontes oficiais (quota_history / CVM).
   const payload = {
-    quota_fechamento:          document.getElementById('cfg-quota').value,
-    data_fechamento:           document.getElementById('cfg-data').value,
-    num_cotas:                 document.getElementById('cfg-num-cotas').value,
     caixa:                     document.getElementById('cfg-caixa').value,
     proventos_a_receber:       document.getElementById('cfg-proventos').value,
     custos_provisionados:      document.getElementById('cfg-custos').value,
