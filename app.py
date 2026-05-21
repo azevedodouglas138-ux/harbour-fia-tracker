@@ -597,9 +597,15 @@ def get_cached_stock_history(yahoo_ticker, range_key):
 # Market hours check (BRT = UTC-3, sem horário de verão desde 2019)
 # ---------------------------------------------------------------------------
 
+def _brt_now():
+    """Retorna datetime atual em BRT (UTC-3, sem horário de verão).
+    Use sempre que gravar timestamp visível ao usuário (histórico, audit,
+    arquivos). O servidor em produção (Render) roda em UTC."""
+    return datetime.utcnow() - timedelta(hours=3)
+
 def is_market_open():
     """B3: seg-sex, 10:00–17:30 BRT."""
-    brt = datetime.utcnow() - timedelta(hours=3)
+    brt = _brt_now()
     if brt.weekday() >= 5:          # sábado=5, domingo=6
         return False
     t = brt.hour * 60 + brt.minute  # minutos desde meia-noite
@@ -766,7 +772,7 @@ def build_portfolio_response(portfolio, prices, fundamentals):
         "fund_name": portfolio["fund_name"], "total_value": round(total_value, 2),
         "weighted_upside": weighted_upside, "weighted_beta": weighted_beta,
         "weighted_stats": weighted_stats,
-        "last_price_update": datetime.now().isoformat(), "rows": rows,
+        "last_price_update": _brt_now().isoformat(), "rows": rows,
     }
 
 def _build_portfolio_snapshot(data, quota, source="auto"):
@@ -933,7 +939,7 @@ def api_prices():
     funds     = get_cached_fundamentals(tickers)
     # Expose only the fields used in real-time refresh
     fund_slim = {t: {k: funds[t].get(k) for k in ("trailing_pe","forward_pe","peg_ratio")} for t in tickers}
-    return jsonify({"prices": prices, "fundamentals": fund_slim, "timestamp": datetime.now().isoformat()})
+    return jsonify({"prices": prices, "fundamentals": fund_slim, "timestamp": _brt_now().isoformat()})
 
 @app.route("/api/fundamentals")
 def api_fundamentals():
@@ -1011,7 +1017,7 @@ def api_export_csv():
     w.writerow(EXPORT_HEADERS)
     for r in data["rows"]: w.writerow(row_to_export(r))
     output.seek(0)
-    filename = f"harbour_fia_{datetime.now().strftime('%Y%m%d')}.csv"
+    filename = f"harbour_fia_{_brt_now().strftime('%Y%m%d')}.csv"
     return Response("\ufeff" + output.getvalue(), mimetype="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
 
@@ -1031,7 +1037,7 @@ def api_export_excel():
         ws.column_dimensions[ws.cell(1,i).column_letter].width = w_
     ws.row_dimensions[1].height = 22
     buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-    filename = f"harbour_fia_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    filename = f"harbour_fia_{_brt_now().strftime('%Y%m%d')}.xlsx"
     return send_file(buf, as_attachment=True, download_name=filename,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
@@ -1275,7 +1281,7 @@ def api_export_pptx():
     buf = io.BytesIO()
     prs.save(buf)
     buf.seek(0)
-    filename = f"harbour_fia_{datetime.now().strftime('%Y%m%d')}.pptx"
+    filename = f"harbour_fia_{_brt_now().strftime('%Y%m%d')}.pptx"
     return send_file(buf, as_attachment=True, download_name=filename,
                      mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation")
 
@@ -1350,7 +1356,7 @@ def api_auto_close():
         if token != secret:
             return jsonify({"error": "unauthorized"}), 401
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = _brt_now().strftime("%Y-%m-%d")
 
     portfolio = load_portfolio()
     tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
@@ -3207,7 +3213,7 @@ def _evento_descricao(tipo, confirmado):
 def fetch_events(tickers):
     import pandas as pd
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    hoje = datetime.now().date()
+    hoje = _brt_now().date()
 
     def _fetch_one(yticker):
         eventos = []
@@ -3307,7 +3313,7 @@ def api_events():
         save_cache(cache)
 
     eventos_por_ticker = get_cached_events(tickers)
-    hoje = datetime.now().date()
+    hoje = _brt_now().date()
 
     todos_eventos = []
     for yahoo_ticker, eventos in eventos_por_ticker.items():
@@ -3342,7 +3348,7 @@ def api_events():
     return jsonify({
         "eventos":    todos_eventos,
         "por_ativo":  por_ativo,
-        "gerado_em":  datetime.now().isoformat(),
+        "gerado_em":  _brt_now().isoformat(),
     })
 
 
@@ -3652,7 +3658,7 @@ def api_pretrade_history_save():
 
     record = {
         "id":        str(uuid.uuid4()),
-        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "timestamp": _brt_now().isoformat(timespec="seconds"),
         "label":     (payload.get("label") or "").strip()[:120],
         "operacoes": payload.get("operacoes", []),
         "basket":    payload.get("basket", {}),
@@ -3692,7 +3698,7 @@ def api_pretrade_execute():
     if err:
         return jsonify({"error": err}), 400
 
-    executed_at = datetime.now().isoformat(timespec="seconds")
+    executed_at = _brt_now().isoformat(timespec="seconds")
 
     with _portfolio_write_lock:
         portfolio    = load_portfolio()
@@ -4880,7 +4886,7 @@ def _generate_liquidity_pdf(snapshot, market, compliance):
     story = []
 
     # ── Cabeçalho ──
-    now_str  = datetime.now().strftime("%d/%m/%Y %H:%M")
+    now_str  = _brt_now().strftime("%d/%m/%Y %H:%M")
     scenario_label = snapshot.get("scenario_label", snapshot.get("scenario", "Neutro"))
     story.append(Paragraph("HARBOUR IAT FIF AÇÕES RL — RELATÓRIO DE LIQUIDEZ", st_title))
     story.append(Paragraph(
@@ -5023,7 +5029,7 @@ def api_liquidity_pdf():
     except Exception as e:
         return jsonify({"error": f"Erro ao gerar PDF: {str(e)}"}), 500
     from flask import make_response
-    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    ts = _brt_now().strftime("%Y%m%d_%H%M")
     filename = f"liquidez_{scenario}_{ts}.pdf"
     resp = make_response(pdf_bytes)
     resp.headers["Content-Type"]        = "application/pdf"
@@ -5034,7 +5040,7 @@ def api_liquidity_pdf():
 def _record_liquidity_snapshot(today_str=None):
     """Calcula e grava 1 entrada em liquidity_history.json para a data informada."""
     if today_str is None:
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_str = _brt_now().strftime("%Y-%m-%d")
     try:
         snap_n = _build_liquidity_snapshot(scenario="neutro")
         snap_s = _build_liquidity_snapshot(scenario="stress")
