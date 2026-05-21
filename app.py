@@ -79,7 +79,9 @@ def _github_push(relative_path, content_str, commit_msg):
     except Exception as e:
         print(f"[github_push] error: {e}")
 
+import atexit
 import queue
+import signal
 _github_push_queue = queue.Queue()
 
 def _github_push_worker():
@@ -91,13 +93,16 @@ def _github_push_worker():
         try:
             item = _github_push_queue.get()
             if item is None:
+                _github_push_queue.task_done()
                 break
-            relative_path, content_str, commit_msg = item
+            relative_path, content_str, commit_msg, done_event = item
             try:
                 _github_push(relative_path, content_str, commit_msg)
             except Exception as e:
                 print(f"[github_push_worker] error pushing {relative_path}: {e}")
             finally:
+                if done_event is not None:
+                    done_event.set()
                 _github_push_queue.task_done()
         except Exception as e:
             print(f"[github_push_worker] loop error: {e}")
@@ -106,11 +111,48 @@ def _github_push_worker():
 threading.Thread(target=_github_push_worker, daemon=True, name="github-push-worker").start()
 
 def github_push_async(relative_path, content_str, commit_msg):
-    """Enfileira push para GitHub. Worker único processa em ordem FIFO.
-    O conteúdo é capturado no momento da chamada — quando o worker
-    processar, será aplicado ao GitHub. Pushes ao mesmo arquivo são
-    serializados; o último enfileirado vence."""
-    _github_push_queue.put((relative_path, content_str, commit_msg))
+    """Enfileira push e retorna imediatamente. Use para writes não-críticos
+    (cache, viewer_config) onde perder em shutdown não é catastrófico."""
+    _github_push_queue.put((relative_path, content_str, commit_msg, None))
+
+def github_push_sync(relative_path, content_str, commit_msg, timeout=20):
+    """Enfileira push e BLOQUEIA até o GitHub confirmar (ou timeout).
+    Use para writes críticos (quota_history, portfolio, fund_config,
+    pretrade_history) — garante que o usuário só vê 'salvo' depois que
+    o GitHub realmente recebeu, evitando perda em restart de container."""
+    done = threading.Event()
+    _github_push_queue.put((relative_path, content_str, commit_msg, done))
+    if not done.wait(timeout=timeout):
+        print(f"[github_push_sync] TIMEOUT após {timeout}s para {relative_path}")
+
+def _drain_push_queue(timeout=25):
+    """Drena a fila de pushes pendentes — chamado em SIGTERM/atexit.
+    Render envia SIGTERM antes de matar o container; dá ~30s para
+    finalizar writes assíncronos que ainda não foram processados."""
+    try:
+        pending = _github_push_queue.qsize()
+        if pending == 0:
+            return
+        print(f"[github_push] graceful shutdown: drenando {pending} push(es) pendente(s)...")
+        # Espera todos os task_done() — bloqueia até a fila esvaziar
+        import time as _time
+        start = _time.time()
+        while not _github_push_queue.empty() and (_time.time() - start) < timeout:
+            _time.sleep(0.1)
+        if not _github_push_queue.empty():
+            print(f"[github_push] timeout drenando: {_github_push_queue.qsize()} ainda pendente(s)")
+        else:
+            print(f"[github_push] fila drenada em {_time.time()-start:.1f}s")
+    except Exception as e:
+        print(f"[github_push] drain error: {e}")
+
+atexit.register(_drain_push_queue)
+try:
+    signal.signal(signal.SIGTERM, lambda *a: (_drain_push_queue(), os._exit(0)))
+except (ValueError, AttributeError, OSError):
+    # signal handler só funciona na thread principal; em alguns runners (gunicorn worker)
+    # pode falhar. atexit acima ainda cobre o caso de exit normal.
+    pass
 PORTFOLIO_FILE         = os.path.join(DATA_DIR, "portfolio.json")
 CACHE_FILE             = os.path.join(DATA_DIR, "cache.json")
 FUND_CONFIG_FILE       = os.path.join(DATA_DIR, "fund_config.json")
@@ -154,7 +196,8 @@ def save_portfolio(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
     with open(PORTFOLIO_FILE, "w", encoding="utf-8") as f:
         f.write(content)
-    github_push_async("data/portfolio.json", content, "chore: update portfolio.json via UI")
+    # SYNC: bloqueia até GitHub confirmar (evita perda em restart de container)
+    github_push_sync("data/portfolio.json", content, "chore: update portfolio.json via UI")
 
 def load_cache():
     if not os.path.exists(CACHE_FILE):
@@ -188,7 +231,8 @@ def save_fund_config(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
     with open(FUND_CONFIG_FILE, "w", encoding="utf-8") as f:
         f.write(content)
-    github_push_async("data/fund_config.json", content, "chore: update fund_config.json via UI")
+    # SYNC: bloqueia até GitHub confirmar
+    github_push_sync("data/fund_config.json", content, "chore: update fund_config.json via UI")
 
 def load_quota_history():
     if not os.path.exists(QUOTA_HISTORY_FILE):
@@ -200,7 +244,8 @@ def save_quota_history(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
     with open(QUOTA_HISTORY_FILE, "w", encoding="utf-8") as f:
         f.write(content)
-    github_push_async("data/quota_history.json", content, "chore: update quota_history.json via auto-close")
+    # SYNC: bloqueia até GitHub confirmar
+    github_push_sync("data/quota_history.json", content, "chore: update quota_history.json via auto-close")
 
 def load_pretrade_history():
     if not os.path.exists(PRETRADE_HISTORY_FILE):
@@ -212,7 +257,8 @@ def save_pretrade_history(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
     with open(PRETRADE_HISTORY_FILE, "w", encoding="utf-8") as f:
         f.write(content)
-    github_push_async("data/pretrade_history.json", content, "chore: update pretrade_history.json via UI")
+    # SYNC: bloqueia até GitHub confirmar
+    github_push_sync("data/pretrade_history.json", content, "chore: update pretrade_history.json via UI")
 
 def load_portfolio_history():
     if not os.path.exists(PORTFOLIO_HISTORY_FILE):
