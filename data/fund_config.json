@@ -12,6 +12,9 @@
   "limite_concentracao_setor_pct": 40.0,
   "enable_concentracao_ativo": true,
   "enable_concentracao_setor": false,
+  "liquidez_min_5d_pct": 80.0,
+  "liquidez_max_baixa_pct": 10.0,
+  "liquidez_max_zerar_dias": 30,
   "cnpj": "29599391000194",
   "data_inicio_cota": "2022-04-18"
 }

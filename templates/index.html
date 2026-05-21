@@ -141,6 +141,10 @@
   {% endif %}
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-indices"><span class="fn-num">211)</span> ÍNDICES</button>
   {% set ns.first = false %}
+  {% if role == 'admin' or viewer_config.get('tab_liquidez', true) %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-liquidez"><span class="fn-num">212)</span> LIQUIDEZ</button>
+  {% set ns.first = false %}
+  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -437,6 +441,27 @@
       </div>
     </div>
 
+    <div class="cfg-panel">
+      <div class="cfg-panel-title">◆ LIMITES DE LIQUIDEZ (COMPLIANCE)</div>
+      <div class="cfg-fields">
+        <div class="cfg-field">
+          <label>MÍN. LIQUIDATÁVEL EM 5 DIAS (%)</label>
+          <input type="number" id="cfg-liq-min-5d" step="1" placeholder="80" {% if role != 'admin' %}readonly{% endif %} />
+          <span class="cfg-hint">% mínimo do PL liquidável em 5 dias úteis</span>
+        </div>
+        <div class="cfg-field">
+          <label>MÁX. EM BAIXA LIQUIDEZ (%)</label>
+          <input type="number" id="cfg-liq-max-baixa" step="1" placeholder="10" {% if role != 'admin' %}readonly{% endif %} />
+          <span class="cfg-hint">% máximo em ativos com prazo > 7 dias</span>
+        </div>
+        <div class="cfg-field">
+          <label>PRAZO MÉD. MÁX. P/ ZERAR (DIAS)</label>
+          <input type="number" id="cfg-liq-max-zerar" step="1" placeholder="30" {% if role != 'admin' %}readonly{% endif %} />
+          <span class="cfg-hint">Limite do prazo ponderado para zerar carteira</span>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   {% if role == 'admin' %}
@@ -491,6 +516,12 @@
           {% if viewer_config.get('tab_cvm_oficial', true) %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">LIQUIDEZ</span>
+        <button class="viewer-toggle {% if viewer_config.get('tab_liquidez', true) %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_liquidez">
+          {% if viewer_config.get('tab_liquidez', true) %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
     </div>
     <div class="cfg-footer" style="margin-top:12px">
       <button class="bbg-btn bbg-btn-primary" id="viewer-config-save">SALVAR ACESSO</button>
@@ -516,6 +547,7 @@
         <label>LIQ. DIÁRIA (MM)<input type="number" id="edit-liq" step="1" /><small id="edit-liq-hint" class="field-hint"></small></label>
         <label>LUCRO MI 26<input type="number" id="edit-lucro" step="1" min="0" /></label>
         <label>PREÇO ALVO (R$)<input type="number" id="edit-preco-alvo" step="0.01" min="0" /></label>
+        <label>PRAZO RESGATE (D+)<input type="number" id="edit-prazo-resgate" step="1" min="0" placeholder="default por categoria" /><small class="field-hint">Vazio = D+2 (ações), D+0 (FundoRF/Caixa), D+1 (FundoMM)</small></label>
       </div>
     </div>
     <div class="modal-footer">
@@ -1237,6 +1269,156 @@
 </div><!-- /#tab-cvm-oficial -->
 {% endif %}
 
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     212) LIQUIDEZ — Controle CVM/ANBIMA (FUNDO + MERCADO)
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.get('tab_liquidez', true) %}
+<div id="tab-liquidez" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <!-- Sub-tabs + filtros globais -->
+  <div class="fin-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="bbg-btn liq-subtab active" data-subtab="fundo" style="font-size:11px;padding:5px 18px;color:#00cc88;border-color:#00cc88">FUNDO</button>
+      <button class="bbg-btn liq-subtab" data-subtab="mercado" style="font-size:11px;padding:5px 18px;color:#888;border-color:#333">LIQUIDEZ MERCADO</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="risk-ctrl-label">CENÁRIO:</span>
+      <select id="liq-scenario" class="bbg-input" style="font-size:11px;padding:4px 10px;background:#0a0a0a;color:#ccc;border:1px solid #333">
+        <option value="neutro">Neutro</option>
+        <option value="stress">Stress</option>
+        <option value="crise">Crise</option>
+      </select>
+      <a id="liq-pdf-btn" class="bbg-btn" href="/api/liquidity/pdf" target="_blank"
+         style="font-size:11px;padding:5px 12px;color:#f5a623;border-color:#f5a623;text-decoration:none">
+        ⤓ PDF AUDITORIA
+      </a>
+    </div>
+  </div>
+
+  <!-- Aviso de qualidade do dado -->
+  <div id="liq-warning" class="risk-error hidden" style="margin-bottom:8px"></div>
+
+  <!-- ═══════════════ SUB-ABA FUNDO ═══════════════ -->
+  <div id="liq-sub-fundo" class="liq-subcontent">
+
+    <!-- Gráfico: Liquidez Fundo (cumulativo) -->
+    <div class="chart-card risk-card" style="margin-bottom:10px">
+      <div class="chart-card-header">
+        <span class="chart-card-title">LIQUIDEZ FUNDO</span>
+        <span style="font-family:monospace;font-size:10px;color:#555" id="liq-scenario-label">Cenário: Neutro</span>
+      </div>
+      <div style="padding:14px;height:340px;position:relative">
+        <canvas id="liq-fundo-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Tabela: Liquidez Ativos (heatmap por bucket) -->
+    <div class="chart-card risk-card" style="margin-bottom:10px">
+      <div class="chart-card-header" style="justify-content:space-between">
+        <span class="chart-card-title">LIQUIDEZ ATIVOS</span>
+        <input id="liq-ativos-search" type="text" placeholder="Buscar por ativo..." class="bbg-input"
+               style="font-size:11px;padding:4px 8px;width:200px;background:#0a0a0a;color:#ccc;border:1px solid #333">
+      </div>
+      <div style="overflow-x:auto;padding:8px 4px">
+        <table id="liq-ativos-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+          <thead>
+            <tr style="color:#888;border-bottom:1px solid #333">
+              <th style="text-align:left;padding:5px 8px">ATIVO</th>
+              <th style="text-align:center;padding:5px 8px">PRAZO RESG.</th>
+              <th style="text-align:right;padding:5px 8px">VALOR BRUTO</th>
+              <th style="text-align:right;padding:5px 8px">PROPORÇÃO</th>
+              <!-- buckets injetados via JS -->
+            </tr>
+          </thead>
+          <tbody id="liq-ativos-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Compliance CVM/ANBIMA -->
+    <div class="chart-card risk-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">COMPLIANCE CVM / ANBIMA</span>
+        <span id="liq-compliance-overall" style="font-family:monospace;font-size:11px;color:#888"></span>
+      </div>
+      <div id="liq-compliance-content" style="padding:14px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ SUB-ABA MERCADO ═══════════════ -->
+  <div id="liq-sub-mercado" class="liq-subcontent" style="display:none">
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+      <div class="chart-card risk-card" style="padding:12px">
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">VALOR EM CARTEIRA</div>
+        <div id="liq-kpi-valor" style="font-family:monospace;font-size:16px;color:#fff;font-weight:bold">—</div>
+      </div>
+      <div class="chart-card risk-card" style="padding:12px">
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">VOL. MÉDIO PONDERADO</div>
+        <div id="liq-kpi-vol" style="font-family:monospace;font-size:16px;color:#fff;font-weight:bold">—</div>
+      </div>
+      <div class="chart-card risk-card" style="padding:12px">
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">% ALTA LIQUIDEZ</div>
+        <div id="liq-kpi-alta" style="font-family:monospace;font-size:16px;color:#00cc88;font-weight:bold">—</div>
+      </div>
+      <div class="chart-card risk-card" style="padding:12px">
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">PRAZO MÉDIO PARA ZERAR</div>
+        <div id="liq-kpi-prazo" style="font-family:monospace;font-size:16px;color:#fff;font-weight:bold">—</div>
+      </div>
+    </div>
+
+    <!-- 2 charts lado a lado -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="chart-card risk-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">FAIXAS DE LIQUIDEZ</span>
+        </div>
+        <div style="padding:14px;height:280px;position:relative">
+          <canvas id="liq-faixas-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card risk-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">PRAZO MÉDIO PONDERADO (HISTÓRICO)</span>
+        </div>
+        <div style="padding:14px;height:280px;position:relative">
+          <canvas id="liq-prazo-historico-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Matriz por ativo -->
+    <div class="chart-card risk-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">MÉTRICAS LIQUIDEZ POR ATIVO</span>
+      </div>
+      <div style="overflow-x:auto;padding:8px 4px">
+        <table id="liq-matriz-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
+          <thead>
+            <tr style="color:#888;border-bottom:1px solid #333">
+              <th style="text-align:left;padding:5px 8px">ATIVO</th>
+              <th style="text-align:right;padding:5px 8px">VALOR CARTEIRA</th>
+              <th style="text-align:right;padding:5px 8px">VOL. MÉDIO</th>
+              <th style="text-align:right;padding:5px 8px">% VOL. DIÁRIO</th>
+              <th style="text-align:right;padding:5px 8px">DIAS P/ ZERAR</th>
+              <th style="text-align:center;padding:5px 8px">LIQUIDEZ</th>
+            </tr>
+          </thead>
+          <tbody id="liq-matriz-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /#tab-liquidez -->
+{% endif %}
 
 <div id="col-tooltip"></div>
 <script>

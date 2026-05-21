@@ -676,6 +676,7 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-events')       loadEventsTab();
     if (btn.dataset.tab === 'tab-indices')      initIndicesTab();
     if (btn.dataset.tab === 'tab-cvm-oficial')  loadCvmOficialTab();
+    if (btn.dataset.tab === 'tab-liquidez')     loadLiquidezTab();
   });
 });
 
@@ -1509,6 +1510,13 @@ async function loadConfig() {
   document.getElementById('cfg-custos').value      = config.custos_provisionados ?? '';
   document.getElementById('cfg-fee-rate').value    = config.performance_fee_rate ?? 20;
   document.getElementById('cfg-prov-acum').value   = config.performance_fee_acumulada_rs ?? '';
+  // Limites de liquidez (compliance)
+  const liqMin5d   = document.getElementById('cfg-liq-min-5d');
+  const liqMaxBxa  = document.getElementById('cfg-liq-max-baixa');
+  const liqMaxZerr = document.getElementById('cfg-liq-max-zerar');
+  if (liqMin5d)   liqMin5d.value   = config.liquidez_min_5d_pct   ?? 80;
+  if (liqMaxBxa)  liqMaxBxa.value  = config.liquidez_max_baixa_pct ?? 10;
+  if (liqMaxZerr) liqMaxZerr.value = config.liquidez_max_zerar_dias ?? 30;
   const descEl = document.getElementById('cfg-descricao-fundo');
   if (descEl) descEl.value = config.descricao_fundo ?? '';
 }
@@ -1523,6 +1531,9 @@ document.getElementById('cfg-save')?.addEventListener('click', async () => {
     performance_fee_rate:      document.getElementById('cfg-fee-rate').value,
     performance_fee_acumulada_rs: document.getElementById('cfg-prov-acum').value,
     descricao_fundo:           document.getElementById('cfg-descricao-fundo')?.value ?? '',
+    liquidez_min_5d_pct:       document.getElementById('cfg-liq-min-5d')?.value ?? '',
+    liquidez_max_baixa_pct:    document.getElementById('cfg-liq-max-baixa')?.value ?? '',
+    liquidez_max_zerar_dias:   document.getElementById('cfg-liq-max-zerar')?.value ?? '',
   };
   const res = await fetch('/api/fund-config', { method: 'POST',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1546,6 +1557,8 @@ function openEditModal(row) {
   document.getElementById('edit-liq').value         = row.liq_auto ? '' : (row.liq_diaria_mm ?? '');
   document.getElementById('edit-lucro').value       = row.lucro_mi_26 ?? '';
   document.getElementById('edit-preco-alvo').value  = row.preco_alvo ?? '';
+  const prEl = document.getElementById('edit-prazo-resgate');
+  if (prEl) prEl.value = row.prazo_resgate_d ?? '';
   const hint = document.getElementById('edit-liq-hint');
   if (row.avg_daily_vol_mm != null) {
     const autoStr = row.liq_auto ? ` • auto: ${row.liq_diaria_mm > 0 ? '+' : ''}${row.liq_diaria_mm}` : '';
@@ -1566,7 +1579,8 @@ document.getElementById('edit-modal-save').addEventListener('click', async () =>
       quantidade: document.getElementById('edit-quantidade').value,
       liq_diaria_mm: document.getElementById('edit-liq').value,
       lucro_mi_26: document.getElementById('edit-lucro').value,
-      preco_alvo: document.getElementById('edit-preco-alvo').value }) });
+      preco_alvo: document.getElementById('edit-preco-alvo').value,
+      prazo_resgate_d: document.getElementById('edit-prazo-resgate')?.value ?? '' }) });
   if (res.ok) { closeEditModal(); showLoading(); await fetchPortfolio(); }
   else alert('ERRO AO SALVAR.');
 });
@@ -4962,3 +4976,393 @@ function loadCvmOficialTab() {
   CvmOficial.init();
 }
 
+
+// ═══════════════════════════════════════════════════════════════════
+// 212) LIQUIDEZ — Controle CVM/ANBIMA
+// ═══════════════════════════════════════════════════════════════════
+
+const Liquidez = (() => {
+  let _initialized = false;
+  let _currentSubtab = 'fundo';
+  let _currentScenario = 'neutro';
+  let _snapshot = null;
+  let _market   = null;
+  let _compliance = null;
+  let _charts = {};
+
+  const fmt  = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+  const fmtR = v => v == null ? '—' : 'R$ ' + fmt(v, 2);
+  const fmtR0 = v => v == null ? '—' : 'R$ ' + fmt(v, 0);
+  const fmtInt = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits:0});
+
+  function init() {
+    _bindOnce();
+    _loadAll();
+  }
+
+  function _bindOnce() {
+    if (_initialized) return;
+    _initialized = true;
+
+    // Sub-tab switch
+    document.querySelectorAll('.liq-subtab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sub = btn.dataset.subtab;
+        _currentSubtab = sub;
+        document.querySelectorAll('.liq-subtab').forEach(b => {
+          const on = b.dataset.subtab === sub;
+          b.classList.toggle('active', on);
+          b.style.color = on ? '#00cc88' : '#888';
+          b.style.borderColor = on ? '#00cc88' : '#333';
+        });
+        document.getElementById('liq-sub-fundo').style.display = (sub === 'fundo')   ? '' : 'none';
+        document.getElementById('liq-sub-mercado').style.display = (sub === 'mercado') ? '' : 'none';
+        // Re-render do chart histórico ao mudar pra mercado (Chart.js precisa recalcular tamanho)
+        if (sub === 'mercado') {
+          requestAnimationFrame(() => { if (_market) _renderMercado(_market); });
+        } else {
+          requestAnimationFrame(() => { if (_snapshot) _renderFundoChart(_snapshot); });
+        }
+      });
+    });
+
+    // Scenario dropdown
+    document.getElementById('liq-scenario').addEventListener('change', e => {
+      _currentScenario = e.target.value;
+      _loadSnapshot();
+      document.getElementById('liq-scenario-label').textContent =
+        'Cenário: ' + e.target.options[e.target.selectedIndex].text;
+      _updatePdfLink();
+    });
+
+    // Search filter
+    document.getElementById('liq-ativos-search').addEventListener('input', e => {
+      const q = (e.target.value || '').toLowerCase().trim();
+      document.querySelectorAll('#liq-ativos-tbody tr').forEach(tr => {
+        const tk = (tr.dataset.ticker || '').toLowerCase();
+        tr.style.display = q === '' || tk.includes(q) ? '' : 'none';
+      });
+    });
+
+    _updatePdfLink();
+  }
+
+  function _updatePdfLink() {
+    const a = document.getElementById('liq-pdf-btn');
+    if (a) a.href = `/api/liquidity/pdf?scenario=${_currentScenario}`;
+  }
+
+  async function _loadAll() {
+    await Promise.all([_loadSnapshot(), _loadMarket(), _loadCompliance()]);
+  }
+
+  async function _loadSnapshot() {
+    try {
+      const res = await fetch(`/api/liquidity/snapshot?scenario=${_currentScenario}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      _snapshot = await res.json();
+      _renderFundo(_snapshot);
+    } catch(e) {
+      console.error('[liquidez] snapshot:', e);
+    }
+  }
+
+  async function _loadMarket() {
+    try {
+      const res = await fetch('/api/liquidity/market');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      _market = await res.json();
+      _renderMercado(_market);
+    } catch(e) {
+      console.error('[liquidez] market:', e);
+    }
+  }
+
+  async function _loadCompliance() {
+    try {
+      const res = await fetch('/api/liquidity/compliance');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      _compliance = await res.json();
+      _renderCompliance(_compliance);
+    } catch(e) {
+      console.error('[liquidez] compliance:', e);
+    }
+  }
+
+  function _renderFundo(d) {
+    // Aviso histórico insuficiente
+    const warnEl = document.getElementById('liq-warning');
+    if (d.n_records_resgate < 60) {
+      warnEl.textContent = `⚠ Histórico CVM curto (${d.n_records_resgate} registros) — projeção de resgate pode ser imprecisa.`;
+      warnEl.classList.remove('hidden');
+    } else {
+      warnEl.classList.add('hidden');
+    }
+    _renderFundoChart(d);
+    _renderAtivos(d);
+  }
+
+  function _renderFundoChart(d) {
+    const canvas = document.getElementById('liq-fundo-chart');
+    if (!canvas) return;
+    if (_charts.fundo) { _charts.fundo.destroy(); _charts.fundo = null; }
+
+    const ctx = canvas.getContext('2d');
+    // Capear índice liquidez em 100 pra exibição (valores >100 viram 100 com aviso no tooltip)
+    const indiceDisplay = d.indice_liquidez.map(v => Math.min(v, 100));
+
+    _charts.fundo = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: d.buckets.map(b => String(b)),
+        datasets: [
+          {
+            label: 'Liquidez ativos (%)',
+            data: d.liquidez_ativos,
+            borderColor: '#00cc88',
+            backgroundColor: 'rgba(0,204,136,0.15)',
+            fill: true,
+            tension: 0.2,
+            pointRadius: 3,
+            yAxisID: 'yPct',
+          },
+          {
+            label: 'Resgate projetado (%)',
+            data: d.resgate_projetado,
+            borderColor: '#f5a623',
+            backgroundColor: 'rgba(245,166,35,0.15)',
+            fill: true,
+            tension: 0.2,
+            pointRadius: 3,
+            yAxisID: 'yPct',
+          },
+          {
+            label: 'Índice liquidez (capped 100)',
+            data: indiceDisplay,
+            borderColor: '#3399ff',
+            backgroundColor: 'transparent',
+            tension: 0.2,
+            pointRadius: 3,
+            yAxisID: 'yIdx',
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#ccc', font: { family:'monospace', size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const label = ctx.dataset.label;
+                let val = ctx.parsed.y;
+                if (label.startsWith('Índice')) {
+                  const real = d.indice_liquidez[ctx.dataIndex];
+                  return `${label}: ${real > 100 ? '>100' : real.toFixed(2)}`;
+                }
+                return `${label}: ${val.toFixed(2)}%`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'Dias úteis', color: '#888', font:{family:'monospace',size:10} },
+            ticks: { color: '#888', font: { family:'monospace', size: 10 } },
+            grid:  { color: '#1a1a1a' },
+          },
+          yPct: {
+            type: 'linear', position: 'left',
+            title: { display: true, text: '% do PL', color: '#888', font:{family:'monospace',size:10} },
+            ticks: { color: '#888', font: { family:'monospace', size: 10 }, callback: v => v + '%' },
+            grid:  { color: '#1a1a1a' },
+            min: 0, max: 100,
+          },
+          yIdx: {
+            type: 'linear', position: 'right',
+            title: { display: true, text: 'Índice', color: '#888', font:{family:'monospace',size:10} },
+            ticks: { color: '#888', font: { family:'monospace', size: 10 } },
+            grid:  { display: false },
+            min: 0,
+          },
+        },
+      },
+    });
+  }
+
+  function _renderAtivos(d) {
+    const tbody = document.getElementById('liq-ativos-tbody');
+    const thead = document.querySelector('#liq-ativos-table thead tr');
+
+    // Adicionar headers de buckets (apenas uma vez)
+    if (thead.querySelectorAll('.liq-bucket-th').length === 0) {
+      d.buckets.forEach(b => {
+        const th = document.createElement('th');
+        th.className = 'liq-bucket-th';
+        th.style.cssText = 'text-align:right;padding:5px 6px;color:#888;font-size:10px';
+        th.textContent = b;
+        thead.appendChild(th);
+      });
+    }
+
+    // Linhas
+    const rows = (d.por_ativo || []).map(a => {
+      const cells = a.liq_ponderada_por_bucket.map(v => {
+        // Heatmap: intensidade verde proporcional ao valor (% da carteira por bucket)
+        const intensity = Math.min(1, v / Math.max(0.1, a.proporcao_pct));
+        const bg = v > 0
+          ? `background:rgba(0,204,136,${(0.05 + intensity * 0.45).toFixed(2)})`
+          : '';
+        return `<td style="text-align:right;padding:4px 6px;color:#ccc;font-size:10px;${bg}">${v > 0 ? fmt(v, 2) + '%' : '0,00%'}</td>`;
+      }).join('');
+      return `
+        <tr data-ticker="${a.ticker}" style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:4px 8px;color:#f5a623">${a.ticker}</td>
+          <td style="padding:4px 8px;text-align:center;color:#888">${a.prazo_resgate_d}d</td>
+          <td style="padding:4px 8px;text-align:right;color:#ccc">${fmtR0(a.valor_bruto)}</td>
+          <td style="padding:4px 8px;text-align:right;color:#aaa">${fmt(a.proporcao_pct)}%</td>
+          ${cells}
+        </tr>`;
+    }).join('');
+    tbody.innerHTML = rows || `<tr><td colspan="${4 + d.buckets.length}" style="padding:14px;color:#555;text-align:center">Sem ativos.</td></tr>`;
+  }
+
+  function _renderCompliance(d) {
+    const overall = d.pior_status;
+    const overallColor = overall === 'ok' ? '#00cc88' : overall === 'alerta' ? '#f5a623' : '#cc3333';
+    const overallLabel = overall === 'ok' ? '✓ TODOS OS LIMITES OK' : overall === 'alerta' ? '⚠ ALERTA' : '✖ VIOLAÇÃO';
+    document.getElementById('liq-compliance-overall').innerHTML =
+      `<span style="color:${overallColor};font-weight:bold">${overallLabel}</span>`;
+
+    const items = d.regras.map(r => {
+      const c = r.status === 'ok' ? '#00cc88' : r.status === 'alerta' ? '#f5a623' : '#cc3333';
+      const lbl = r.status === 'ok' ? 'OK' : r.status === 'alerta' ? 'ALERTA' : 'VIOLAÇÃO';
+      const valFmt = r.unidade === '%' ? `${fmt(r.valor_atual)}%`
+                   : r.unidade === 'dias' ? `${fmt(r.valor_atual)} d`
+                   : `${fmt(r.valor_atual, 2)}`;
+      const limFmt = r.unidade === '%' ? `${fmt(r.limite)}%`
+                   : r.unidade === 'dias' ? `${fmt(r.limite, 0)} d`
+                   : `${fmt(r.limite, 2)}`;
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a1a;font-family:monospace;font-size:11px">
+          <div style="flex:1">
+            <div style="color:#ccc">${r.nome}</div>
+            <div style="color:#555;font-size:10px;margin-top:2px">${r.descricao}</div>
+          </div>
+          <div style="text-align:right;margin-right:12px">
+            <div style="color:${c};font-weight:bold">${valFmt}</div>
+            <div style="color:#555;font-size:10px;margin-top:2px">limite: ${limFmt}</div>
+          </div>
+          <span style="font-size:10px;font-weight:bold;color:${c};border:1px solid ${c};padding:2px 8px;border-radius:2px;min-width:64px;text-align:center">${lbl}</span>
+        </div>`;
+    }).join('');
+    document.getElementById('liq-compliance-content').innerHTML = items || '<p style="color:#555">Sem regras.</p>';
+  }
+
+  function _renderMercado(d) {
+    const k = d.kpis;
+    document.getElementById('liq-kpi-valor').textContent  = fmtR0(k.valor_carteira);
+    document.getElementById('liq-kpi-vol').textContent    = fmtR0(k.vol_medio_ponderado) + ' / dia';
+    document.getElementById('liq-kpi-alta').textContent   = fmt(k.pct_alta_liquidez) + '%';
+    document.getElementById('liq-kpi-prazo').textContent  = fmt(k.prazo_medio_zerar) + ' dias';
+
+    _renderFaixasChart(d.faixas);
+    _renderPrazoHistorico(d.prazo_medio_historico);
+    _renderMatriz(d.por_ativo);
+  }
+
+  function _renderFaixasChart(faixas) {
+    const canvas = document.getElementById('liq-faixas-chart');
+    if (!canvas) return;
+    if (_charts.faixas) { _charts.faixas.destroy(); _charts.faixas = null; }
+    const ctx = canvas.getContext('2d');
+    _charts.faixas = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Alta (<3d)', 'Média (4-7d)', 'Baixa (8-30d)', 'Muito baixa (>30d)'],
+        datasets: [{
+          data: [faixas.alta||0, faixas.media||0, faixas.baixa||0, faixas.muito_baixa||0],
+          backgroundColor: ['#00cc88', '#3399ff', '#f5a623', '#cc3333'],
+          borderColor:     ['#00cc88', '#3399ff', '#f5a623', '#cc3333'],
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: c => `${fmt(c.parsed.x)}% da carteira` } },
+        },
+        scales: {
+          x: { ticks: { color: '#888', font: { family:'monospace', size: 10 }, callback: v => v + '%' },
+               grid: { color: '#1a1a1a' }, max: 100 },
+          y: { ticks: { color: '#ccc', font: { family:'monospace', size: 11 } },
+               grid: { display: false } },
+        },
+      },
+    });
+  }
+
+  function _renderPrazoHistorico(hist) {
+    const canvas = document.getElementById('liq-prazo-historico-chart');
+    if (!canvas) return;
+    if (_charts.prazoHist) { _charts.prazoHist.destroy(); _charts.prazoHist = null; }
+    const ctx = canvas.getContext('2d');
+    const labels = hist.map(h => h.data ? h.data.slice(5) : '');
+    const data   = hist.map(h => h.prazo);
+    _charts.prazoHist = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Prazo médio (dias)',
+          data,
+          borderColor: '#00cc88',
+          backgroundColor: 'rgba(0,204,136,0.15)',
+          fill: true, tension: 0.3, pointRadius: 2, borderWidth: 1.5,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#888', font: { family:'monospace', size: 10 } }, grid: { color: '#1a1a1a' } },
+          y: { ticks: { color: '#888', font: { family:'monospace', size: 10 }, callback: v => v + 'd' },
+               grid: { color: '#1a1a1a' }, beginAtZero: true },
+        },
+      },
+    });
+    if (!hist || hist.length === 0) {
+      ctx.fillStyle = '#555'; ctx.font = '11px monospace';
+      ctx.fillText('Sem histórico ainda — gravado a cada auto-close.', 20, 40);
+    }
+  }
+
+  function _renderMatriz(rows) {
+    const tbody = document.getElementById('liq-matriz-tbody');
+    if (!rows || !rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:14px;color:#555;text-align:center">Sem ativos.</td></tr>';
+      return;
+    }
+    const classColor = c => c === 'alta' ? '#00cc88' : c === 'media' ? '#3399ff' : c === 'baixa' ? '#f5a623' : c === 'muito_baixa' ? '#cc3333' : '#888';
+    const classLabel = c => c === 'alta' ? 'Alta liquidez' : c === 'media' ? 'Média liquidez' : c === 'baixa' ? 'Baixa liquidez' : c === 'muito_baixa' ? 'Muito baixa' : 'Sem dados';
+    tbody.innerHTML = rows.map(a => {
+      const cl = classColor(a.classificacao);
+      return `
+        <tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:5px 8px;color:#f5a623">${a.ticker}</td>
+          <td style="padding:5px 8px;text-align:right;color:#ccc">${fmtR0(a.valor_carteira)}</td>
+          <td style="padding:5px 8px;text-align:right;color:#aaa">${a.vol_medio_rs != null ? fmtR0(a.vol_medio_rs) + ' / dia' : '—'}</td>
+          <td style="padding:5px 8px;text-align:right;color:#aaa">${a.pct_vol_diario != null ? fmt(a.pct_vol_diario) + '%' : '—'}</td>
+          <td style="padding:5px 8px;text-align:right;color:#aaa">${fmt(a.dias_zerar, 1)}</td>
+          <td style="padding:5px 8px;text-align:center;color:${cl}">${classLabel(a.classificacao)}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  return { init };
+})();
+
+function loadLiquidezTab() {
+  Liquidez.init();
+}

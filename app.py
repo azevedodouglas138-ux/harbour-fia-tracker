@@ -220,6 +220,10 @@ def load_fund_config():
         "limite_concentracao_setor_pct": 40.0,
         "enable_concentracao_ativo": False,
         "enable_concentracao_setor": False,
+        # Compliance de liquidez (aba 212)
+        "liquidez_min_5d_pct":    80.0,
+        "liquidez_max_baixa_pct": 10.0,
+        "liquidez_max_zerar_dias": 30,
     }
     if not os.path.exists(FUND_CONFIG_FILE):
         return defaults
@@ -665,6 +669,7 @@ def build_portfolio_response(portfolio, prices, fundamentals):
             "categoria": pos.get("categoria", "Acao"), "quantidade": qtde,
             "liq_diaria_mm": liq_score, "liq_auto": liq_auto,
             "avg_daily_vol_mm": avg_daily_vol_mm,
+            "prazo_resgate_d": pos.get("prazo_resgate_d"),
             "lucro_mi_26":   pos.get("lucro_mi_26"),
             "preco_alvo": pa, "preco": price,
             "var_dia_pct": pd_.get("change_pct"),
@@ -931,7 +936,8 @@ def api_update_fund_config():
                 "proventos_a_receber","custos_provisionados","performance_fee_rate",
                 "performance_fee_acumulada_rs","descricao_fundo",
                 "limite_concentracao_ativo_pct","limite_concentracao_setor_pct",
-                "enable_concentracao_ativo","enable_concentracao_setor"]:
+                "enable_concentracao_ativo","enable_concentracao_setor",
+                "liquidez_min_5d_pct","liquidez_max_baixa_pct","liquidez_max_zerar_dias"]:
         if key not in payload: continue
         val = payload[key]
         if key in _string_keys:
@@ -1239,6 +1245,10 @@ def api_update_position():
                     if field in payload:
                         val = payload[field]
                         pos[field] = float(val) if val not in (None,"") else None
+                # prazo_resgate_d (int, opcional — null = usa default por categoria)
+                if "prazo_resgate_d" in payload:
+                    val = payload["prazo_resgate_d"]
+                    pos["prazo_resgate_d"] = int(val) if val not in (None, "") else None
                 updated = True; break
         if not updated: return jsonify({"error": "ticker not found"}), 404
         save_portfolio(portfolio); invalidate_price_cache(); invalidate_history_cache()
@@ -1321,7 +1331,14 @@ def api_auto_close():
     save_portfolio_history(ph)
     # ────────────────────────────────────────────────────────────────────────
 
-    return jsonify({"ok": True, "data": today, "cota_fechamento": round(cota_est, 8)})
+    # ── save liquidity snapshot ─────────────────────────────────────────────
+    liq_entry = _record_liquidity_snapshot(today_str=today)
+    # ────────────────────────────────────────────────────────────────────────
+
+    return jsonify({
+        "ok": True, "data": today, "cota_fechamento": round(cota_est, 8),
+        "liquidity": liq_entry,
+    })
 
 @app.route("/api/performance-chart")
 def api_performance_chart():
@@ -4339,6 +4356,669 @@ def api_cvm_fund_daily_backfill():
 @app.route("/api/cvm/fund-daily/status", methods=["GET"])
 def api_cvm_fund_daily_status():
     return jsonify(_cvm_daily.get_status())
+
+
+# ─── LIQUIDEZ ─────────────────────────────────────────────────────────────────
+
+LIQUIDITY_HISTORY_FILE = os.path.join(DATA_DIR, "liquidity_history.json")
+
+# Buckets de dias úteis (mesmos do sistema de referência do usuário)
+LIQUIDEZ_BUCKETS = [1, 2, 3, 4, 5, 10, 21, 30, 42, 63, 84, 105, 126, 180, 252, 360, 540]
+
+# Prazo de resgate default por categoria (D+x)
+PRAZO_RESGATE_POR_CATEGORIA = {
+    "Acao": 2, "BDR": 2, "Acao BDR": 2,
+    "FundoRF": 0, "FundoMM": 1, "Caixa": 0,
+}
+
+# Cenários: (volume_disponivel_pct, percentile_resgate)
+LIQUIDEZ_CENARIOS = {
+    "neutro": {"vol_mult": 1.00, "percentile": 50, "label": "Neutro"},
+    "stress": {"vol_mult": 0.50, "percentile": 75, "label": "Stress"},
+    "crise":  {"vol_mult": 0.30, "percentile": 95, "label": "Crise"},
+}
+
+# Faixas de classificação
+def _classify_liquidity(days):
+    if days is None: return "sem_dados"
+    if days < 3:  return "alta"
+    if days <= 7: return "media"
+    if days <= 30: return "baixa"
+    return "muito_baixa"
+
+
+def _prazo_resgate_position(pos):
+    """Retorna o prazo de resgate em dias úteis para a posição.
+    Usa override pos['prazo_resgate_d'] se setado, senão default por categoria."""
+    override = pos.get("prazo_resgate_d")
+    if override is not None:
+        try:
+            return int(override)
+        except (TypeError, ValueError):
+            pass
+    cat = pos.get("categoria") or "Acao"
+    return PRAZO_RESGATE_POR_CATEGORIA.get(cat, 2)
+
+
+def _calc_days_to_liquidate(valor, avg_vol_rs, prazo_resgate, volume_mult=0.20):
+    """Calcula dias necessários para liquidar a posição completa.
+    = max(prazo_settlement, valor / (volume_diário × participação_max))"""
+    if not valor or valor <= 0:
+        return prazo_resgate
+    if not avg_vol_rs or avg_vol_rs <= 0:
+        # Sem dado de volume → só o prazo de settlement (assume liquidez imediata em mercado)
+        return prazo_resgate
+    days_market = valor / (avg_vol_rs * volume_mult)
+    return max(prazo_resgate, days_market)
+
+
+def _percentile(sorted_vals, p):
+    """Percentil simples (linear interpolation). p em 0-100."""
+    if not sorted_vals:
+        return 0.0
+    if len(sorted_vals) == 1:
+        return sorted_vals[0]
+    k = (len(sorted_vals) - 1) * (p / 100.0)
+    f = int(k)
+    c = min(f + 1, len(sorted_vals) - 1)
+    if f == c:
+        return sorted_vals[f]
+    return sorted_vals[f] + (sorted_vals[c] - sorted_vals[f]) * (k - f)
+
+
+def _calc_redemption_curve(cvm_records, buckets, percentile=50):
+    """Para cada bucket B (dias), retorna o percentil das somas rolantes
+    de resg_pct sobre janelas de B dias úteis no histórico CVM.
+
+    resg_pct_d = resg_dia / vl_patrim_liq do dia.
+    Janela rolante de B dias úteis → soma → percentile_p sobre todas as janelas.
+    """
+    if not cvm_records:
+        return [0.0] * len(buckets), 0
+
+    # Ordenar por data e calcular resg_pct diário
+    records_sorted = sorted(cvm_records, key=lambda r: r.get("dt_comptc", ""))
+    resg_pct_series = []
+    for r in records_sorted:
+        pl = r.get("vl_patrim_liq") or 0
+        resg = r.get("resg_dia") or 0
+        if pl > 0:
+            resg_pct_series.append(resg / pl * 100.0)  # em %
+        else:
+            resg_pct_series.append(0.0)
+
+    n = len(resg_pct_series)
+    out = []
+    for B in buckets:
+        B = min(B, n)  # cap na qtde de records disponíveis
+        if B <= 0:
+            out.append(0.0)
+            continue
+        # Janelas rolantes de B dias úteis — soma de cada janela
+        windows = []
+        for i in range(n - B + 1):
+            windows.append(sum(resg_pct_series[i:i+B]))
+        if not windows:
+            out.append(0.0)
+            continue
+        windows.sort()
+        out.append(round(_percentile(windows, percentile), 4))
+
+    return out, n
+
+
+def _build_liquidity_snapshot(scenario="neutro"):
+    """Calcula o snapshot completo da liquidez do fundo no cenário pedido.
+    Retorna dict pronto para serializar como JSON."""
+    cen = LIQUIDEZ_CENARIOS.get(scenario, LIQUIDEZ_CENARIOS["neutro"])
+    volume_mult = 0.20 * cen["vol_mult"]
+
+    portfolio    = load_portfolio()
+    tickers      = [p["yahoo_ticker"] for p in portfolio["positions"]]
+    prices       = get_cached_prices(tickers)
+    fundamentals = get_cached_fundamentals(tickers)
+
+    # ── Por ativo ──
+    por_ativo = []
+    nav = 0.0
+    for pos in portfolio["positions"]:
+        yh    = pos["yahoo_ticker"]
+        price = (prices.get(yh) or {}).get("price")
+        qtde  = pos.get("quantidade") or 0
+        valor = round(price * qtde, 2) if price else 0.0
+        nav  += valor
+
+        avg_vol = (fundamentals.get(yh) or {}).get("average_volume")
+        avg_vol_rs = (avg_vol * price) if (avg_vol and price) else None
+
+        prazo_resgate = _prazo_resgate_position(pos)
+        days = _calc_days_to_liquidate(valor, avg_vol_rs, prazo_resgate, volume_mult)
+
+        # Liquidez por bucket: 100% se já liquidatável até esse bucket, senão 0%
+        # (modelo cumulativo simples — uma posição é liquidatável em "days" dias inteiros)
+        liq_por_bucket = [
+            (100.0 if (days <= B) else 0.0)
+            for B in LIQUIDEZ_BUCKETS
+        ]
+
+        por_ativo.append({
+            "ticker":          pos["ticker"],
+            "yahoo_ticker":    yh,
+            "categoria":       pos.get("categoria") or "Acao",
+            "prazo_resgate_d": prazo_resgate,
+            "valor_bruto":     valor,
+            "avg_vol_rs":      round(avg_vol_rs, 2) if avg_vol_rs else None,
+            "dias_zerar":      round(days, 2),
+            "liq_por_bucket":  liq_por_bucket,
+            "classificacao":   _classify_liquidity(days),
+        })
+
+    # Proporção e cumulativo por bucket
+    for a in por_ativo:
+        a["proporcao_pct"] = round(a["valor_bruto"] / nav * 100, 2) if nav > 0 else 0.0
+        # liquidez ponderada (proporção da carteira) por bucket
+        a["liq_ponderada_por_bucket"] = [
+            round(a["proporcao_pct"] * (frac / 100.0), 4)
+            for frac in a["liq_por_bucket"]
+        ]
+
+    # Liquidez ativos cumulativa (% do PL) por bucket
+    liquidez_ativos = [0.0] * len(LIQUIDEZ_BUCKETS)
+    for a in por_ativo:
+        for i, lp in enumerate(a["liq_ponderada_por_bucket"]):
+            liquidez_ativos[i] += lp
+    liquidez_ativos = [round(v, 2) for v in liquidez_ativos]
+
+    # ── Resgate projetado (do histórico CVM) ──
+    storage = _cvm_daily.load_storage()
+    cvm_records = storage.get("records") or []
+    resgate_projetado, n_records = _calc_redemption_curve(
+        cvm_records, LIQUIDEZ_BUCKETS, percentile=cen["percentile"]
+    )
+
+    # ── Índice liquidez = liquidez_ativos / max(resgate_projetado, 0.01) ──
+    indice_liquidez = []
+    for la, rp in zip(liquidez_ativos, resgate_projetado):
+        denom = max(rp, 0.01)
+        indice_liquidez.append(round(la / denom, 4))
+
+    return {
+        "scenario":          scenario,
+        "scenario_label":    cen["label"],
+        "scenario_vol_mult": cen["vol_mult"],
+        "scenario_percentile": cen["percentile"],
+        "buckets":           LIQUIDEZ_BUCKETS,
+        "liquidez_ativos":   liquidez_ativos,
+        "resgate_projetado": resgate_projetado,
+        "indice_liquidez":   indice_liquidez,
+        "por_ativo":         sorted(por_ativo, key=lambda a: a["valor_bruto"], reverse=True),
+        "nav":               round(nav, 2),
+        "n_records_resgate": n_records,
+    }
+
+
+@app.route("/api/liquidity/snapshot", methods=["GET"])
+@require_admin
+def api_liquidity_snapshot():
+    scenario = (request.args.get("scenario") or "neutro").lower()
+    if scenario not in LIQUIDEZ_CENARIOS:
+        return jsonify({"error": f"scenario inválido (use: {list(LIQUIDEZ_CENARIOS.keys())})"}), 400
+    snap = _build_liquidity_snapshot(scenario=scenario)
+    return jsonify(snap)
+
+
+def _build_liquidity_market(window_days=60):
+    """KPIs + faixas + matriz por ativo para a sub-aba MERCADO."""
+    snap = _build_liquidity_snapshot(scenario="neutro")
+    por_ativo = snap["por_ativo"]
+    nav = snap["nav"]
+
+    # Volume médio ponderado: sum(valor_i × avg_vol_i) / NAV
+    vol_total = 0.0
+    vol_ponderado_num = 0.0
+    for a in por_ativo:
+        vol = a.get("avg_vol_rs") or 0
+        if vol > 0:
+            vol_total += vol  # média simples também útil
+        vol_ponderado_num += (a["valor_bruto"] or 0) * vol
+    vol_medio_ponderado = (vol_ponderado_num / nav) if nav > 0 else 0.0
+
+    # Faixas de liquidez (% do PL por faixa)
+    faixas = {"alta": 0.0, "media": 0.0, "baixa": 0.0, "muito_baixa": 0.0, "sem_dados": 0.0}
+    for a in por_ativo:
+        faixas[a["classificacao"]] = faixas.get(a["classificacao"], 0.0) + (a["proporcao_pct"] or 0.0)
+    faixas = {k: round(v, 2) for k, v in faixas.items()}
+
+    pct_alta = faixas.get("alta", 0.0)
+
+    # Prazo médio ponderado = sum(valor × dias) / NAV
+    prazo_medio = sum((a["valor_bruto"] or 0) * (a["dias_zerar"] or 0) for a in por_ativo) / nav if nav > 0 else 0.0
+
+    # Matriz por ativo (sub-aba MERCADO)
+    matriz = []
+    for a in por_ativo:
+        vol = a.get("avg_vol_rs") or 0
+        pct_vol_diario = (a["valor_bruto"] / vol * 100) if (vol and vol > 0) else None
+        matriz.append({
+            "ticker":         a["ticker"],
+            "valor_carteira": a["valor_bruto"],
+            "vol_medio_rs":   vol if vol > 0 else None,
+            "pct_vol_diario": round(pct_vol_diario, 2) if pct_vol_diario is not None else None,
+            "dias_zerar":     a["dias_zerar"],
+            "classificacao":  a["classificacao"],
+        })
+
+    # Histórico do prazo médio ponderado (de liquidity_history.json)
+    prazo_historico = []
+    try:
+        if os.path.exists(LIQUIDITY_HISTORY_FILE):
+            with open(LIQUIDITY_HISTORY_FILE, "r", encoding="utf-8") as f:
+                hist = json.load(f)
+            prazo_historico = [
+                {"data": h.get("data"), "prazo": h.get("prazo_medio_zerar")}
+                for h in hist if h.get("data") and h.get("prazo_medio_zerar") is not None
+            ]
+            prazo_historico.sort(key=lambda x: x["data"])
+    except Exception as e:
+        print(f"[liquidity/market] erro lendo history: {e}")
+
+    return {
+        "window_days":          window_days,
+        "kpis": {
+            "valor_carteira":      round(nav, 2),
+            "vol_medio_ponderado": round(vol_medio_ponderado, 2),
+            "pct_alta_liquidez":   round(pct_alta, 2),
+            "prazo_medio_zerar":   round(prazo_medio, 2),
+        },
+        "faixas":               faixas,
+        "prazo_medio_historico": prazo_historico,
+        "por_ativo":            matriz,
+    }
+
+
+@app.route("/api/liquidity/market", methods=["GET"])
+@require_admin
+def api_liquidity_market():
+    try:
+        window_days = int(request.args.get("window_days") or 60)
+    except (TypeError, ValueError):
+        window_days = 60
+    return jsonify(_build_liquidity_market(window_days=window_days))
+
+
+def _build_liquidity_compliance():
+    """Avalia regras de compliance de liquidez baseadas no snapshot atual."""
+    fc = load_fund_config()
+    min_5d_pct       = float(fc.get("liquidez_min_5d_pct")       or 80.0)
+    max_baixa_pct    = float(fc.get("liquidez_max_baixa_pct")    or 10.0)
+    max_zerar_dias   = float(fc.get("liquidez_max_zerar_dias")   or 30.0)
+
+    snap_neutro = _build_liquidity_snapshot(scenario="neutro")
+    snap_stress = _build_liquidity_snapshot(scenario="stress")
+    market      = _build_liquidity_market()
+
+    # Posição de bucket 5 dias na lista
+    idx_5d = LIQUIDEZ_BUCKETS.index(5) if 5 in LIQUIDEZ_BUCKETS else 4
+    pct_5d_neutro = snap_neutro["liquidez_ativos"][idx_5d]
+    indice_5d_stress = snap_stress["indice_liquidez"][idx_5d]
+    pct_baixa_muito = (market["faixas"].get("baixa", 0) + market["faixas"].get("muito_baixa", 0))
+    prazo_medio = market["kpis"]["prazo_medio_zerar"]
+
+    def status_min(valor, lim):
+        if valor < lim * 0.85: return "violacao"
+        if valor < lim:        return "alerta"
+        return "ok"
+
+    def status_max(valor, lim):
+        if valor > lim:        return "violacao"
+        if valor > lim * 0.85: return "alerta"
+        return "ok"
+
+    regras = [
+        {
+            "nome":         f"Mín {min_5d_pct:.0f}% liquidatável em 5 dias úteis",
+            "descricao":    "Capacidade de honrar resgates em D+5 (boa prática ANBIMA).",
+            "tipo":         "minimo",
+            "limite":       min_5d_pct,
+            "valor_atual":  pct_5d_neutro,
+            "unidade":      "%",
+            "status":       status_min(pct_5d_neutro, min_5d_pct),
+        },
+        {
+            "nome":         f"Máx {max_baixa_pct:.0f}% em ativos com prazo > 7 dias",
+            "descricao":    "Concentração em ativos pouco líquidos (Baixa + Muito baixa).",
+            "tipo":         "maximo",
+            "limite":       max_baixa_pct,
+            "valor_atual":  round(pct_baixa_muito, 2),
+            "unidade":      "%",
+            "status":       status_max(pct_baixa_muito, max_baixa_pct),
+        },
+        {
+            "nome":         f"Prazo médio ponderado < {max_zerar_dias:.0f} dias",
+            "descricao":    "Tempo médio ponderado para zerar a carteira inteira.",
+            "tipo":         "maximo",
+            "limite":       max_zerar_dias,
+            "valor_atual":  prazo_medio,
+            "unidade":      "dias",
+            "status":       status_max(prazo_medio, max_zerar_dias),
+        },
+        {
+            "nome":         "Índice Liquidez D+5 em cenário Stress ≥ 1.0",
+            "descricao":    "Capacidade de honrar resgate sob stress moderado (50% volume, P75 resgate).",
+            "tipo":         "minimo",
+            "limite":       1.0,
+            "valor_atual":  indice_5d_stress,
+            "unidade":      "ratio",
+            "status":       status_min(indice_5d_stress, 1.0),
+        },
+    ]
+
+    pior_status = "ok"
+    for r in regras:
+        if r["status"] == "violacao":
+            pior_status = "violacao"
+        elif r["status"] == "alerta" and pior_status == "ok":
+            pior_status = "alerta"
+
+    return {
+        "regras":      regras,
+        "pior_status": pior_status,
+        "thresholds":  {
+            "liquidez_min_5d_pct":    min_5d_pct,
+            "liquidez_max_baixa_pct": max_baixa_pct,
+            "liquidez_max_zerar_dias": max_zerar_dias,
+        },
+    }
+
+
+@app.route("/api/liquidity/compliance", methods=["GET"])
+@require_admin
+def api_liquidity_compliance():
+    return jsonify(_build_liquidity_compliance())
+
+
+@app.route("/api/liquidity/history", methods=["GET"])
+@require_admin
+def api_liquidity_history():
+    if not os.path.exists(LIQUIDITY_HISTORY_FILE):
+        return jsonify([])
+    try:
+        with open(LIQUIDITY_HISTORY_FILE, "r", encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def load_liquidity_history():
+    if not os.path.exists(LIQUIDITY_HISTORY_FILE):
+        return []
+    with open(LIQUIDITY_HISTORY_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_liquidity_history(data):
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    with open(LIQUIDITY_HISTORY_FILE, "w", encoding="utf-8") as f:
+        f.write(content)
+    # SYNC: histórico é crítico para auditoria
+    github_push_sync("data/liquidity_history.json", content,
+                     "chore: update liquidity_history.json via auto-close")
+
+
+def _generate_liquidity_pdf(snapshot, market, compliance):
+    """Gera PDF de auditoria de liquidez. Retorna bytes."""
+    from io import BytesIO
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, PageBreak,
+    )
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=landscape(A4),
+        leftMargin=1.2*cm, rightMargin=1.2*cm,
+        topMargin=1.2*cm, bottomMargin=1.2*cm,
+    )
+
+    C_BG      = colors.HexColor("#0d0d1a")
+    C_HDR     = colors.HexColor("#1a1a2e")
+    C_HDR_TXT = colors.white
+    C_OK      = colors.HexColor("#00cc88")
+    C_ALERTA  = colors.HexColor("#f5a623")
+    C_VIOL    = colors.HexColor("#cc3333")
+    C_BODY    = colors.HexColor("#cccccc")
+    C_MUTED   = colors.HexColor("#888888")
+    C_LINE    = colors.HexColor("#333333")
+
+    def status_color(s):
+        return C_OK if s == "ok" else C_ALERTA if s == "alerta" else C_VIOL
+
+    mono = "Courier"
+    st_title = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=14, textColor=C_HDR_TXT, spaceAfter=4)
+    st_sub   = ParagraphStyle("sub",   fontName="Helvetica",      fontSize=9,  textColor=C_MUTED, spaceAfter=2)
+    st_sec   = ParagraphStyle("sec",   fontName="Helvetica-Bold", fontSize=10, textColor=C_HDR_TXT, spaceBefore=10, spaceAfter=4)
+    st_foot  = ParagraphStyle("foot",  fontName="Helvetica",      fontSize=7,  textColor=C_MUTED, alignment=1, spaceBefore=6)
+
+    def tbl_style(header_rows=1, extra=None):
+        base = [
+            ("BACKGROUND",  (0, 0), (-1, header_rows - 1), C_HDR),
+            ("TEXTCOLOR",   (0, 0), (-1, header_rows - 1), C_HDR_TXT),
+            ("FONTNAME",    (0, 0), (-1, header_rows - 1), "Helvetica-Bold"),
+            ("FONTSIZE",    (0, 0), (-1, -1), 7),
+            ("FONTNAME",    (0, header_rows), (-1, -1), mono),
+            ("TEXTCOLOR",   (0, header_rows), (-1, -1), C_BODY),
+            ("BACKGROUND",  (0, header_rows), (-1, -1), C_BG),
+            ("ROWBACKGROUNDS", (0, header_rows), (-1, -1), [C_BG, colors.HexColor("#0f0f22")]),
+            ("GRID",        (0, 0), (-1, -1), 0.3, C_LINE),
+            ("TOPPADDING",  (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]
+        if extra:
+            base.extend(extra)
+        return TableStyle(base)
+
+    def fmt(v, dec=2):
+        try:
+            return f"{float(v):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except Exception:
+            return str(v) if v is not None else "—"
+
+    def fmtR(v, dec=2):
+        return f"R$ {fmt(v, dec)}" if v is not None else "—"
+
+    story = []
+
+    # ── Cabeçalho ──
+    now_str  = datetime.now().strftime("%d/%m/%Y %H:%M")
+    scenario_label = snapshot.get("scenario_label", snapshot.get("scenario", "Neutro"))
+    story.append(Paragraph("HARBOUR IAT FIF AÇÕES RL — RELATÓRIO DE LIQUIDEZ", st_title))
+    story.append(Paragraph(
+        f"Emitido em: {now_str}  |  Cenário: {scenario_label}  |  NAV: {fmtR(snapshot.get('nav'))}  |  Histórico CVM: {snapshot.get('n_records_resgate', 0)} registros",
+        st_sub
+    ))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE, spaceAfter=6))
+
+    # ── Seção 1: KPIs ──
+    story.append(Paragraph("1. KPIs DE LIQUIDEZ", st_sec))
+    k = market["kpis"]
+    kpi_rows = [
+        ["MÉTRICA", "VALOR"],
+        ["Valor em carteira (NAV ativos)", fmtR(k["valor_carteira"])],
+        ["Volume médio ponderado", fmtR(k["vol_medio_ponderado"]) + " / dia"],
+        ["% em alta liquidez (<3d)", f"{fmt(k['pct_alta_liquidez'])}%"],
+        ["Prazo médio ponderado p/ zerar", f"{fmt(k['prazo_medio_zerar'], 2)} dias"],
+    ]
+    kpi_tbl = Table(kpi_rows, colWidths=[9*cm, 6*cm])
+    kpi_tbl.setStyle(tbl_style())
+    story.append(kpi_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Seção 2: Compliance ──
+    story.append(Paragraph("2. COMPLIANCE CVM / ANBIMA", st_sec))
+    comp_rows = [["REGRA", "ATUAL", "LIMITE", "STATUS"]]
+    comp_extra = []
+    for i, r in enumerate(compliance["regras"], start=1):
+        unidade = r.get("unidade", "")
+        atual = (f"{fmt(r['valor_atual'])}%" if unidade == "%"
+                 else f"{fmt(r['valor_atual'], 2)} d" if unidade == "dias"
+                 else f"{fmt(r['valor_atual'], 2)}")
+        limite = (f"{fmt(r['limite'])}%" if unidade == "%"
+                  else f"{fmt(r['limite'], 0)} d" if unidade == "dias"
+                  else f"{fmt(r['limite'], 2)}")
+        lbl = "OK" if r["status"] == "ok" else "ALERTA" if r["status"] == "alerta" else "VIOLAÇÃO"
+        comp_rows.append([r["nome"], atual, limite, lbl])
+        comp_extra.append(("TEXTCOLOR", (3, i), (3, i), status_color(r["status"])))
+    comp_tbl = Table(comp_rows, colWidths=[14*cm, 4*cm, 4*cm, 3.5*cm])
+    comp_tbl.setStyle(tbl_style(extra=comp_extra))
+    story.append(comp_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Seção 3: Faixas de liquidez ──
+    story.append(Paragraph("3. FAIXAS DE LIQUIDEZ (% DO PL)", st_sec))
+    f = market["faixas"]
+    faixas_rows = [
+        ["FAIXA", "PRAZO", "% DO PL"],
+        ["Alta liquidez",      "< 3 dias",   f"{fmt(f.get('alta', 0))}%"],
+        ["Média liquidez",     "4-7 dias",   f"{fmt(f.get('media', 0))}%"],
+        ["Baixa liquidez",     "8-30 dias",  f"{fmt(f.get('baixa', 0))}%"],
+        ["Muito baixa",        "> 30 dias",  f"{fmt(f.get('muito_baixa', 0))}%"],
+    ]
+    faixas_extra = [
+        ("TEXTCOLOR", (0, 1), (0, 1), C_OK),
+        ("TEXTCOLOR", (0, 2), (0, 2), colors.HexColor("#3399ff")),
+        ("TEXTCOLOR", (0, 3), (0, 3), C_ALERTA),
+        ("TEXTCOLOR", (0, 4), (0, 4), C_VIOL),
+    ]
+    faixas_tbl = Table(faixas_rows, colWidths=[6*cm, 4*cm, 4*cm])
+    faixas_tbl.setStyle(tbl_style(extra=faixas_extra))
+    story.append(faixas_tbl)
+    story.append(PageBreak())
+
+    # ── Seção 4: Tabela Liquidez Ativos (heatmap) ──
+    story.append(Paragraph("4. LIQUIDEZ ATIVOS — CUMULATIVO POR BUCKET (% DO PL)", st_sec))
+    buckets = snapshot["buckets"]
+    header = ["ATIVO", "PRAZO", "VALOR", "%"] + [str(b) for b in buckets]
+    ativos_rows = [header]
+    ativos_extra = []
+    for i, a in enumerate(snapshot["por_ativo"], start=1):
+        row = [
+            a["ticker"],
+            f"{a['prazo_resgate_d']}d",
+            fmtR(a["valor_bruto"], 0),
+            f"{fmt(a['proporcao_pct'])}%",
+        ]
+        for v in a["liq_ponderada_por_bucket"]:
+            row.append(f"{fmt(v, 2)}%" if v > 0 else "—")
+        ativos_rows.append(row)
+        # destaque verde nas células > 0
+        for j, v in enumerate(a["liq_ponderada_por_bucket"], start=4):
+            if v > 0:
+                intensity = min(1.0, v / max(0.1, a["proporcao_pct"]))
+                alpha = 0.1 + intensity * 0.4
+                # rgb interpolation: (0,204,136) com alpha em escala de verde
+                green_bg = colors.Color(0, 0.8, 0.53, alpha=alpha)
+                ativos_extra.append(("BACKGROUND", (j, i), (j, i), green_bg))
+
+    col_widths = [1.8*cm, 1.0*cm, 2.3*cm, 1.2*cm] + [0.95*cm] * len(buckets)
+    ativos_tbl = Table(ativos_rows, colWidths=col_widths, repeatRows=1)
+    ativos_tbl.setStyle(tbl_style(extra=ativos_extra))
+    story.append(ativos_tbl)
+    story.append(Spacer(1, 8))
+
+    # ── Seção 5: Resgate projetado vs liquidez por bucket ──
+    story.append(Paragraph("5. RESGATE PROJETADO vs LIQUIDEZ POR BUCKET", st_sec))
+    resg_rows = [["BUCKET (DIAS)", "LIQUIDEZ ATIVOS (% PL)", "RESGATE PROJETADO (% PL)", "ÍNDICE LIQUIDEZ"]]
+    resg_extra = []
+    for i, (b, la, rp, idx) in enumerate(zip(
+        buckets, snapshot["liquidez_ativos"], snapshot["resgate_projetado"], snapshot["indice_liquidez"]
+    ), start=1):
+        idx_str = ">100" if idx > 100 else fmt(idx, 2)
+        resg_rows.append([str(b), f"{fmt(la)}%", f"{fmt(rp, 4)}%", idx_str])
+        # cor do índice
+        if idx >= 1.0:
+            resg_extra.append(("TEXTCOLOR", (3, i), (3, i), C_OK))
+        elif idx >= 0.7:
+            resg_extra.append(("TEXTCOLOR", (3, i), (3, i), C_ALERTA))
+        else:
+            resg_extra.append(("TEXTCOLOR", (3, i), (3, i), C_VIOL))
+    resg_tbl = Table(resg_rows, colWidths=[3.5*cm, 5*cm, 6*cm, 4*cm])
+    resg_tbl.setStyle(tbl_style(extra=resg_extra))
+    story.append(resg_tbl)
+
+    # ── Rodapé com metodologia ──
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(
+        "Metodologia: dias para liquidar = max(prazo settlement, valor / (volume médio × participação máx 20% do ADV)). "
+        "Resgate projetado = percentil das somas rolantes de resg_dia/PL no histórico CVM. "
+        "Cenários: Neutro (vol 100%, P50), Stress (vol 50%, P75), Crise (vol 30%, P95).",
+        st_foot
+    ))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+@app.route("/api/liquidity/pdf", methods=["GET"])
+@require_admin
+def api_liquidity_pdf():
+    scenario = (request.args.get("scenario") or "neutro").lower()
+    if scenario not in LIQUIDEZ_CENARIOS:
+        return jsonify({"error": "scenario inválido"}), 400
+    try:
+        snap   = _build_liquidity_snapshot(scenario=scenario)
+        market = _build_liquidity_market()
+        compl  = _build_liquidity_compliance()
+        pdf_bytes = _generate_liquidity_pdf(snap, market, compl)
+    except Exception as e:
+        return jsonify({"error": f"Erro ao gerar PDF: {str(e)}"}), 500
+    from flask import make_response
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    filename = f"liquidez_{scenario}_{ts}.pdf"
+    resp = make_response(pdf_bytes)
+    resp.headers["Content-Type"]        = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return resp
+
+
+def _record_liquidity_snapshot(today_str=None):
+    """Calcula e grava 1 entrada em liquidity_history.json para a data informada."""
+    if today_str is None:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+    try:
+        snap_n = _build_liquidity_snapshot(scenario="neutro")
+        snap_s = _build_liquidity_snapshot(scenario="stress")
+        snap_c = _build_liquidity_snapshot(scenario="crise")
+        market = _build_liquidity_market()
+        compl  = _build_liquidity_compliance()
+
+        idx_5d = LIQUIDEZ_BUCKETS.index(5) if 5 in LIQUIDEZ_BUCKETS else 4
+        entry = {
+            "data":               today_str,
+            "nav":                snap_n["nav"],
+            "prazo_medio_zerar":  market["kpis"]["prazo_medio_zerar"],
+            "pct_alta_liquidez":  market["kpis"]["pct_alta_liquidez"],
+            "pct_baixa_liquidez": round(market["faixas"].get("baixa", 0) + market["faixas"].get("muito_baixa", 0), 2),
+            "indice_liquidez_5d": {
+                "neutro": snap_n["indice_liquidez"][idx_5d],
+                "stress": snap_s["indice_liquidez"][idx_5d],
+                "crise":  snap_c["indice_liquidez"][idx_5d],
+            },
+            "compliance_status":  compl["pior_status"],
+        }
+        hist = load_liquidity_history()
+        hist = [h for h in hist if h.get("data") != today_str]  # dedupe
+        hist.append(entry)
+        hist.sort(key=lambda x: x.get("data") or "")
+        save_liquidity_history(hist)
+        return entry
+    except Exception as e:
+        print(f"[record_liquidity_snapshot] erro: {e}")
+        return None
 
 
 if __name__ == "__main__":
