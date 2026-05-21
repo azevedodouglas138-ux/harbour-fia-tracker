@@ -3609,12 +3609,40 @@ async function _ptExecuteConfirm() {
   }));
 
   try {
+    // EXECUTAR implica SALVAR: se ainda não foi salvo no histórico, salvar primeiro
+    // para que o registro nasça já com executed_at corretamente vinculado.
+    let historyId = _pretradeLastSavedId;
+    if (!historyId) {
+      const labelEl = document.getElementById('pt-save-label');
+      const labelStr = (labelEl ? labelEl.value : '').trim();
+      const saveRes = await fetch('/api/pretrade/history/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          ..._pretradeLastResult,
+          label: labelStr,
+          parametros_compliance: _pretradeLastResult.parametros_compliance,
+        }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok || saveData.error) {
+        feedEl.style.color = '#cc3333';
+        feedEl.textContent = `Erro ao salvar no histórico: ${saveData.error || 'falha desconhecida'}`;
+        feedEl.style.display = '';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Confirmar e Aplicar';
+        return;
+      }
+      historyId = saveData.id;
+      _pretradeLastSavedId = historyId;
+    }
+
     const res = await fetch('/api/pretrade/execute', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         operacoes:           operacoesPayload,
-        pretrade_history_id: _pretradeLastSavedId,  // opcional — pode ser null
+        pretrade_history_id: historyId,
         compliance_override: hadViolation,
       }),
     });
