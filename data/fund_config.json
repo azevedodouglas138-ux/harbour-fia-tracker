@@ -2,7 +2,7 @@
   "quota_fechamento": null,
   "data_fechamento": "",
   "num_cotas": null,
-  "caixa": 20250.0,
+  "caixa": 30000.0,
   "proventos_a_receber": 309000.0,
   "custos_provisionados": 0.0,
   "performance_fee_rate": 20.0,
@@ -14,7 +14,7 @@
   "enable_concentracao_setor": false,
   "liquidez_min_5d_pct": 80.0,
   "liquidez_max_baixa_pct": 10.0,
-  "liquidez_max_zerar_dias": 30,
+  "liquidez_max_zerar_dias": 30.0,
   "cnpj": "29599391000194",
   "data_inicio_cota": "2022-04-18"
 }
