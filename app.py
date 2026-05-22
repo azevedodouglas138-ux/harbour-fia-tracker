@@ -1074,13 +1074,16 @@ def api_export_pptx():
     prs.slide_height = Cm(19.05)
     blank = prs.slide_layouts[6]
 
-    BG     = RGBColor(0x0D, 0x0D, 0x0D)
-    ORANGE = RGBColor(0xFF, 0x8C, 0x00)
+    # ── Paleta Harbour Capital (brand book 2024/01) ────────────────
+    # PPTX sempre usa identidade Harbour (independente do tema da tela),
+    # porque é material institucional que sai do app.
+    BG     = RGBColor(0x0A, 0x0F, 0x24)  # fundo principal (mais escuro que brand p/ contraste)
+    ORANGE = RGBColor(0x9A, 0xB7, 0xF9)  # cor de destaque/headbar (azul claro Harbour)
     WHITE  = RGBColor(0xFF, 0xFF, 0xFF)
-    MUTED  = RGBColor(0x88, 0x88, 0x88)
-    SURF   = RGBColor(0x1E, 0x1E, 0x1E)
-    GREEN_ = RGBColor(0x00, 0xCC, 0x44)
-    RED_   = RGBColor(0xFF, 0x33, 0x33)
+    MUTED  = RGBColor(0x82, 0x9F, 0xD9)  # texto secundário (azul médio claro)
+    SURF   = RGBColor(0x11, 0x19, 0x3E)  # superfície de cards/KPIs (brand oficial)
+    GREEN_ = RGBColor(0x16, 0xC4, 0x7F)  # variação positiva (teal harmoniza c/ azul)
+    RED_   = RGBColor(0xEF, 0x45, 0x65)  # variação negativa (coral)
     BLACK  = RGBColor(0x00, 0x00, 0x00)
 
     def _bg(slide):
@@ -1099,6 +1102,8 @@ def api_export_pptx():
         run = p.add_run(); run.text = str(text)
         run.font.size = Pt(size); run.font.bold = bold
         run.font.italic = italic; run.font.color.rgb = color
+        # Identidade Harbour: Inter no corpo; PowerPoint cai p/ Calibri se nao tiver
+        run.font.name = "Inter"
 
     def _img(slide, b64str, l, t, w, h):
         if not b64str: return
@@ -1139,7 +1144,7 @@ def api_export_pptx():
         _txt(s1, str(val), x+Cm(0.3), Cm(3.1), bw-Cm(0.6), Cm(1.0), size=11, color=WHITE, bold=True)
     if descricao:
         _txt(s1, descricao, Cm(0.6), Cm(5.0), prs.slide_width-Cm(1.2), Cm(12.0),
-             size=11, color=RGBColor(0xCC, 0xCC, 0xCC))
+             size=11, color=RGBColor(0xC6, 0xD6, 0xFC))
 
     # ── Slide 2: Performance ─────────────────────────────────────────
     s2 = prs.slides.add_slide(blank)
@@ -1174,13 +1179,13 @@ def api_export_pptx():
     for w in cws[:-1]: cx.append(cx[-1] + w)
     rh = Cm(0.88)
     hy = Cm(1.5)
-    _rect(s3, Cm(1.0), hy, sum(cws), rh, RGBColor(0x1E, 0x1E, 0x2E))
+    _rect(s3, Cm(1.0), hy, sum(cws), rh, RGBColor(0x27, 0x32, 0x73))  # header row: brand surface escuro
     for i, h in enumerate(hdrs):
         _txt(s3, h, cx[i], hy+Cm(0.05), cws[i], rh-Cm(0.1), size=9, bold=True, color=ORANGE, align=PP_ALIGN.CENTER)
     for ri, yr in enumerate(annual_years):
         y = hy + rh*(ri+1)
         _rect(s3, Cm(1.0), y, sum(cws), rh,
-              RGBColor(0x18,0x18,0x18) if ri%2==0 else RGBColor(0x14,0x14,0x14))
+              RGBColor(0x1A,0x23,0x4D) if ri%2==0 else RGBColor(0x11,0x19,0x3E))  # zebra stripes em tons brand
         row_vals = [
             (yr.get("year",""),       WHITE),
             (_fmt(yr.get("fund_year")), _pct_color(yr.get("fund_year"))),
@@ -1193,7 +1198,7 @@ def api_export_pptx():
     if annual_years:
         last = annual_years[-1]
         y = hy + rh*(len(annual_years)+1)
-        _rect(s3, Cm(1.0), y, sum(cws), rh, RGBColor(0x22,0x22,0x11))
+        _rect(s3, Cm(1.0), y, sum(cws), rh, RGBColor(0x27, 0x32, 0x73))  # linha ACUMULADO destacada
         acc_vals = [
             ("ACUMULADO",                     ORANGE),
             (_fmt(last.get("fund_accum")),    _pct_color(last.get("fund_accum"))),
