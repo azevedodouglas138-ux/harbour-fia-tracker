@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="4" fill="#11193e"/>
+  <text x="16" y="22" text-anchor="middle"
+        font-family="Inter, 'Segoe UI', Arial, sans-serif"
+        font-weight="700" font-size="13"
+        letter-spacing="-0.5"
+        fill="#9ab7f9">IAT</text>
+</svg>

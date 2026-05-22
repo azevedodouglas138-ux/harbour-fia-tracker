@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
-   HARBOUR IAT FIA — Bloomberg Terminal Theme
+   HARBOUR IAT FIA — Visual Themes
+   Default (:root) = Bloomberg Terminal
+   html[data-theme="harbour"] = Harbour Capital institucional
    ═══════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,32 +25,73 @@
   --cyan:        #00aacc;
   --yellow:      #ffcc00;
   --mono: 'Cascadia Code', 'Courier New', 'Consolas', monospace;
+  --heading-family: var(--mono);
   --topbar-h:  54px;
   --stats-h:   32px;
   --fn-h:      30px;
   --scroll-track: #1a1a1a;
 }
 
-html[data-theme="light"] {
-  --bg:          #ebe1c5;
-  --surface:     #f2e9ce;
-  --surface2:    #ddd2b0;
-  --surface3:    #ccc09a;
-  --border:      #b5a880;
-  --border2:     #9a8d65;
-  --orange:      #b35900;
-  --orange-dim:  rgba(179,89,0,0.12);
-  --orange-text: #994c00;
-  --text:        #1f1812;
-  --text-muted:  #6b5f48;
-  --text-dim:    #9b8f76;
-  --green:       #006622;
-  --green-dim:   rgba(0,102,34,0.10);
-  --red:         #a81616;
-  --red-dim:     rgba(168,22,22,0.10);
-  --cyan:        #005a80;
-  --yellow:      #8b6508;
-  --scroll-track: #d6c9a8;
+/* ── Harbour Capital theme (brand book 2024/01) ───────────────────
+   Paleta strict azul: #11193e, #273273, #4e64a6, #829fd9, #9ab7f9
+   Tipografia: Inter (corpo) + Poppins (títulos)
+   Verde/vermelho de variação % mantidos (inegociáveis em finanças)
+   Densidade idêntica ao Bloomberg — só muda a casca visual
+   ─────────────────────────────────────────────────────────────── */
+html[data-theme="harbour"] {
+  --bg:          #0a0f24;
+  --surface:     #11193e;
+  --surface2:    #1a234d;
+  --surface3:    #273273;
+  --border:      #2e3a7a;
+  --border2:     #4e64a6;
+  --orange:      #9ab7f9;
+  --orange-dim:  rgba(154,183,249,0.14);
+  --orange-text: #c6d6fc;
+  --text:        #ffffff;
+  --text-muted:  #829fd9;
+  --text-dim:    #4e64a6;
+  --green:       #16c47f;
+  --green-dim:   rgba(22,196,127,0.12);
+  --red:         #ef4565;
+  --red-dim:     rgba(239,69,101,0.12);
+  --cyan:        #9ab7f9;
+  --yellow:      #f6c453;
+  --scroll-track: #1a234d;
+  --mono: 'Inter', 'Inter Display', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --heading-family: 'Poppins', 'Inter', system-ui, sans-serif;
+}
+
+/* Alinhamento de números em tabelas e métricas (tabular-nums) */
+html[data-theme="harbour"] table,
+html[data-theme="harbour"] .bbg-cota-value,
+html[data-theme="harbour"] .bbg-cota-change,
+html[data-theme="harbour"] .bbg-stat-value,
+html[data-theme="harbour"] .stat-value,
+html[data-theme="harbour"] .risk-card-value,
+html[data-theme="harbour"] .risk-card-num,
+html[data-theme="harbour"] input[type="number"],
+html[data-theme="harbour"] input[type="text"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+}
+
+/* Poppins em títulos no tema Harbour */
+html[data-theme="harbour"] h1,
+html[data-theme="harbour"] h2,
+html[data-theme="harbour"] h3,
+html[data-theme="harbour"] .bbg-fund-ticker,
+html[data-theme="harbour"] .bbg-cota-label,
+html[data-theme="harbour"] .chart-card-title,
+html[data-theme="harbour"] .cfg-panel-title {
+  font-family: var(--heading-family);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+html[data-theme="harbour"] .bbg-fund-ticker {
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 html, body {
@@ -1853,13 +1896,6 @@ canvas   { max-width: 100%; }
   --cvm-panel: #0a0a0a;
   --cvm-dim: #666;
 }
-body[data-theme="light"] #tab-cvm-oficial,
-body.theme-light #tab-cvm-oficial {
-  --cvm-border: #e2e2e2;
-  --cvm-panel: #fafafa;
-  --cvm-dim: #999;
-}
-
 .cvm-topbar {
   display: flex;
   align-items: center;

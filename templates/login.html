@@ -4,6 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IAT TERMINAL</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" id="favicon-link" />
+  <script>
+    (function(){
+      try {
+        var t = localStorage.getItem('harbour-theme');
+        if (t !== 'dark' && t !== 'harbour') t = 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        if (t === 'harbour') {
+          var el = document.getElementById('favicon-link');
+          if (el) el.href = '/static/favicon-harbour.svg';
+        }
+      } catch(e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18,6 +35,21 @@
       --muted:   #555555;
       --red:     #ff3333;
       --mono: 'Cascadia Code', 'Courier New', 'Consolas', monospace;
+      --title-family: var(--mono);
+    }
+
+    html[data-theme="harbour"] {
+      --bg:      #0a0f24;
+      --surface: #11193e;
+      --border:  #2e3a7a;
+      --border2: #4e64a6;
+      --orange:  #9ab7f9;
+      --orange2: #c6d6fc;
+      --text:    #ffffff;
+      --muted:   #829fd9;
+      --red:     #ef4565;
+      --mono:    'Inter', 'Segoe UI', system-ui, sans-serif;
+      --title-family: 'Poppins', 'Inter', sans-serif;
     }
 
     html, body {
@@ -116,6 +148,7 @@
       letter-spacing: 0.12em;
       color: var(--orange);
       text-transform: uppercase;
+      font-family: var(--title-family);
     }
 
     /* Scanline effect */

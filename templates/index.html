@@ -4,15 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HARBOUR IAT FIA</title>
-  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" id="favicon-link" />
   <script>
     (function(){
       try {
-        var t = localStorage.getItem('harbour-theme') || 'dark';
+        var t = localStorage.getItem('harbour-theme');
+        if (t !== 'dark' && t !== 'harbour') t = 'dark';
         document.documentElement.setAttribute('data-theme', t);
+        if (t === 'harbour') {
+          var el = document.getElementById('favicon-link');
+          if (el) el.href = '/static/favicon-harbour.svg';
+        }
       } catch(e) {}
     })();
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css?v={{ asset_ver }}" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
@@ -40,9 +48,9 @@
   </div>
 
   <div class="bbg-topbar-actions">
-    <div class="bbg-theme-toggle" role="group" aria-label="Tema">
-      <button type="button" class="bbg-theme-btn" data-theme-set="light" title="Tema claro">&#9728; LIGHT</button>
-      <button type="button" class="bbg-theme-btn" data-theme-set="dark" title="Tema escuro">&#9790; DARK</button>
+    <div class="bbg-theme-toggle" role="group" aria-label="Tema visual">
+      <button type="button" class="bbg-theme-btn" data-theme-set="dark"    title="Tema Bloomberg Terminal">&#9790; BLOOMBERG</button>
+      <button type="button" class="bbg-theme-btn" data-theme-set="harbour" title="Tema Harbour Capital">&#9875; HARBOUR</button>
     </div>
     <button class="bbg-btn" id="btn-refresh">&#8635; REFRESH</button>
     {% if role == 'admin' %}
@@ -168,8 +176,8 @@
   <div id="portfolio-history-toolbar"
        style="display:flex;align-items:center;gap:8px;padding:6px 0 8px;flex-wrap:wrap">
     <div id="ph-modo-historico"
-         style="display:none;font-family:monospace;font-size:11px;color:#f5a623;
-                border:1px solid #f5a623;padding:2px 10px;border-radius:2px">
+         style="display:none;font-family:var(--mono);font-size:11px;color:var(--orange);
+                border:1px solid var(--orange);padding:2px 10px;border-radius:2px">
       MODO HIST&Oacute;RICO &mdash; <span id="ph-modo-date"></span>
     </div>
     <button id="btn-ph-voltar-vivo" class="bbg-btn"
@@ -377,19 +385,19 @@
         <div class="cfg-field">
           <label>COTA DE FECHAMENTO</label>
           <input type="number" id="cfg-quota" step="0.00000001" placeholder="—" readonly
-                 style="background:#0a0a0a;color:#aaa;cursor:not-allowed" />
+                 style="background:var(--bg);color:var(--text-muted);cursor:not-allowed" />
           <span class="cfg-hint">Último valor do Histórico de Cotas</span>
         </div>
         <div class="cfg-field">
           <label>DATA DE FECHAMENTO</label>
           <input type="date" id="cfg-data" readonly
-                 style="background:#0a0a0a;color:#aaa;cursor:not-allowed" />
+                 style="background:var(--bg);color:var(--text-muted);cursor:not-allowed" />
           <span class="cfg-hint">Data do último registro</span>
         </div>
         <div class="cfg-field">
           <label>Nº DE COTISTAS</label>
           <input type="number" id="cfg-num-cotistas" step="1" placeholder="—" readonly
-                 style="background:#0a0a0a;color:#aaa;cursor:not-allowed" />
+                 style="background:var(--bg);color:var(--text-muted);cursor:not-allowed" />
           <span class="cfg-hint">Última posição do informe CVM Oficial</span>
         </div>
       </div>
@@ -931,7 +939,7 @@
       <button id="btn-pt-save" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 18px;background:#00cc88;border-color:#00cc88;color:#000">
         SALVAR SIMULAÇÃO
       </button>
-      <button id="btn-pt-execute" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 18px;background:#f5a623;border-color:#f5a623;color:#000"
+      <button id="btn-pt-execute" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 18px;background:var(--orange);border-color:var(--orange);color:#000"
               title="Aplica as operações na carteira real (portfolio.json)">
         ▶ EXECUTAR
       </button>
@@ -941,13 +949,13 @@
 
   <!-- Modal de confirmação da Execução (pós-trade) -->
   <div id="pretrade-execute-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9000;align-items:center;justify-content:center">
-    <div style="background:#0a0a0a;border:1px solid #333;border-radius:4px;padding:18px 22px;min-width:520px;max-width:680px;max-height:80vh;overflow-y:auto;font-family:monospace">
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222;padding-bottom:8px;margin-bottom:12px">
-        <span style="font-size:13px;color:#f5a623;font-weight:bold;letter-spacing:0.06em">CONFIRMAR EXECUÇÃO — PÓS-TRADE</span>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:18px 22px;min-width:520px;max-width:680px;max-height:80vh;overflow-y:auto;font-family:var(--mono)">
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">
+        <span style="font-size:13px;color:var(--orange);font-weight:bold;letter-spacing:0.06em">CONFIRMAR EXECUÇÃO — PÓS-TRADE</span>
         <button id="pt-exec-close" class="bbg-btn" style="font-size:13px;color:#888;border:none;background:transparent;padding:0 4px;cursor:pointer">×</button>
       </div>
       <p style="color:#ccc;font-size:11px;margin:0 0 10px 0;line-height:1.5">
-        Esta ação vai aplicar <span id="pt-exec-num-ops" style="color:#f5a623;font-weight:bold">0</span> operação(ões) à carteira do fundo
+        Esta ação vai aplicar <span id="pt-exec-num-ops" style="color:var(--orange);font-weight:bold">0</span> operação(ões) à carteira do fundo
         (<code style="color:#888">portfolio.json</code>) e atualizar o caixa. <b>Não é reversível pela UI.</b>
       </p>
       <div id="pt-exec-summary" style="background:#000;border:1px solid #1a1a1a;border-radius:3px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#ccc;max-height:200px;overflow-y:auto"></div>
@@ -1005,7 +1013,7 @@
       <button class="fin-stmt-btn" data-events-mode="byasset">POR ATIVO</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="bbg-btn risk-btn active" data-event-filter="RESULTADO" style="color:#f5a623;border-color:#f5a623">RESULTADO</button>
+      <button class="bbg-btn risk-btn active" data-event-filter="RESULTADO" style="color:var(--orange);border-color:var(--orange)">RESULTADO</button>
       <button class="bbg-btn risk-btn active" data-event-filter="DIVIDENDO" style="color:#00cc88;border-color:#00cc88">DIVIDENDO</button>
       <button class="bbg-btn risk-btn active" data-event-filter="EX-DIV" style="color:#ffcc00;border-color:#ffcc00">EX-DIV</button>
       <button class="bbg-btn risk-btn active" data-event-filter="SPLIT" style="color:#00aacc;border-color:#00aacc">SPLIT</button>
@@ -1230,7 +1238,7 @@
     <div class="cvm-table-header">
       <span class="cvm-table-title">HISTÓRICO COMPLETO</span>
       <input type="text" id="cvm-filter-year" placeholder="filtro (ex: 2025-03)"
-             style="font-family:monospace;font-size:11px;padding:3px 8px;background:#111;color:#f5a623;border:1px solid #333;outline:none">
+             style="font-family:var(--mono);font-size:11px;padding:3px 8px;background:var(--surface);color:var(--orange);border:1px solid var(--border);outline:none">
       <span class="cvm-table-count" id="cvm-table-count">—</span>
     </div>
     <div class="cvm-table-scroll">
@@ -1279,13 +1287,13 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="risk-ctrl-label">CENÁRIO <span class="col-info" data-tip-key="liq_cenarios">ⓘ</span>:</span>
-      <select id="liq-scenario" class="bbg-input" style="font-size:11px;padding:4px 10px;background:#0a0a0a;color:#ccc;border:1px solid #333">
+      <select id="liq-scenario" class="bbg-input" style="font-size:11px;padding:4px 10px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border)">
         <option value="neutro">Neutro</option>
         <option value="stress">Stress</option>
         <option value="crise">Crise</option>
       </select>
       <a id="liq-pdf-btn" class="bbg-btn" href="/api/liquidity/pdf" target="_blank"
-         style="font-size:11px;padding:5px 12px;color:#f5a623;border-color:#f5a623;text-decoration:none">
+         style="font-size:11px;padding:5px 12px;color:var(--orange);border-color:var(--orange);text-decoration:none">
         ⤓ PDF AUDITORIA
       </a>
     </div>
@@ -1313,7 +1321,7 @@
       <div class="chart-card-header" style="justify-content:space-between">
         <span class="chart-card-title">LIQUIDEZ ATIVOS <span class="col-info" data-tip-key="liq_card_ativos">ⓘ</span></span>
         <input id="liq-ativos-search" type="text" placeholder="Buscar por ativo..." class="bbg-input"
-               style="font-size:11px;padding:4px 8px;width:200px;background:#0a0a0a;color:#ccc;border:1px solid #333">
+               style="font-size:11px;padding:4px 8px;width:200px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border)">
       </div>
       <div style="overflow-x:auto;padding:8px 4px">
         <table id="liq-ativos-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">
@@ -1450,7 +1458,7 @@
         <span class="chart-card-title">CARTEIRA EM <span id="ph-detail-date">—</span></span>
         <div style="display:flex;gap:6px">
           <a id="ph-detail-pdf-btn" class="bbg-btn" href="#" target="_blank"
-             style="font-size:11px;padding:3px 10px;color:#f5a623;border-color:#f5a623;text-decoration:none">⤓ PDF</a>
+             style="font-size:11px;padding:3px 10px;color:var(--orange);border-color:var(--orange);text-decoration:none">⤓ PDF</a>
           <button id="ph-detail-close" class="bbg-btn" style="font-size:11px;padding:3px 8px;color:#888">×</button>
         </div>
       </div>
@@ -1472,7 +1480,7 @@
           <input type="date" id="ph-cmp-to" class="bbg-input-date">
           <button id="ph-cmp-run" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 14px">COMPARAR</button>
           <a id="ph-cmp-pdf-btn" class="bbg-btn" href="#" target="_blank"
-             style="font-size:11px;padding:5px 12px;color:#f5a623;border-color:#f5a623;text-decoration:none;display:none">⤓ PDF</a>
+             style="font-size:11px;padding:5px 12px;color:var(--orange);border-color:var(--orange);text-decoration:none;display:none">⤓ PDF</a>
         </div>
       </div>
       <div id="ph-cmp-content" style="padding:14px">

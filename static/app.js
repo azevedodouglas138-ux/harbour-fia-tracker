@@ -55,11 +55,65 @@ const BENCH_BACKEND_KEY = {
 };
 let selectedBenchmarks = new Set(['ibov']);
 
-// Chart.js dark/Bloomberg defaults
-Chart.defaults.color       = '#888888';
-Chart.defaults.borderColor = '#2a2a2a';
-Chart.defaults.font.family = "'Cascadia Code','Courier New',monospace";
-Chart.defaults.font.size   = 10;
+// ── Theme-aware Chart.js helpers ─────────────────────────────────
+// Le as CSS variables do <html data-theme="..."> para que graficos respeitem
+// o tema ativo (Bloomberg dark vs Harbour Capital azul).
+function getThemeColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n, fb) => (cs.getPropertyValue(n).trim() || fb);
+  return {
+    accent:    v('--orange',      '#ff8c00'),
+    accentDim: v('--orange-dim',  'rgba(255,140,0,0.12)'),
+    green:     v('--green',       '#00cc44'),
+    red:       v('--red',         '#ff3333'),
+    cyan:      v('--cyan',        '#00aacc'),
+    text:      v('--text-muted',  '#888888'),
+    textDim:   v('--text-dim',    '#444444'),
+    border:    v('--border',      '#2a2a2a'),
+    surface:   v('--surface',     '#0d0d0d'),
+    bg:        v('--bg',          '#000000'),
+    font:      v('--mono', "'Cascadia Code','Courier New',monospace").replace(/^['"]|['"]$/g, ''),
+  };
+}
+
+function applyChartThemeDefaults() {
+  const c = getThemeColors();
+  Chart.defaults.color       = c.text;
+  Chart.defaults.borderColor = c.border;
+  Chart.defaults.font.family = c.font;
+  Chart.defaults.font.size   = 10;
+}
+
+// Atualiza eixos/gridlines/legenda de todos os charts existentes ao trocar tema.
+// Datasets mantem suas cores proprias (laranja=fundo, ciano=IBOV, etc.) —
+// so o "chrome" (eixos, grid, ticks, legenda) responde ao tema.
+function refreshAllChartsTheme() {
+  applyChartThemeDefaults();
+  const c = getThemeColors();
+  // Chart.js v4: Chart.instances é objeto id→instance
+  const insts = Chart.instances || {};
+  for (const id in insts) {
+    const chart = insts[id];
+    if (!chart || !chart.options) continue;
+    try {
+      const scales = chart.options.scales || {};
+      for (const k in scales) {
+        const s = scales[k];
+        if (!s) continue;
+        if (s.ticks) s.ticks.color = c.text;
+        if (s.grid)  s.grid.color  = c.border;
+        if (s.title) s.title.color = c.text;
+      }
+      const plugins = chart.options.plugins || {};
+      if (plugins.legend && plugins.legend.labels) {
+        plugins.legend.labels.color = c.text;
+      }
+      chart.update('none');
+    } catch (e) { /* ignore individual chart failures */ }
+  }
+}
+
+applyChartThemeDefaults();
 
 // ── Format helpers ───────────────────────────────────────────────
 const fmt    = (v, d=2, fb='—') => v == null || isNaN(v) ? fb : Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -643,7 +697,7 @@ document.getElementById('btn-refresh').addEventListener('click', async () => {
   btn.disabled = false;
 });
 
-// ── Theme toggle (Light / Dark) ──────────────────────────────────
+// ── Theme toggle ─────────────────────────────────────────────────
 (function initThemeToggle() {
   const root = document.documentElement;
   const buttons = document.querySelectorAll('.bbg-theme-btn');
@@ -657,6 +711,13 @@ document.getElementById('btn-refresh').addEventListener('click', async () => {
     root.setAttribute('data-theme', t);
     try { localStorage.setItem('harbour-theme', t); } catch (e) {}
     sync();
+    // Atualiza favicon para combinar com o tema
+    const favEl = document.getElementById('favicon-link');
+    if (favEl) favEl.href = (t === 'harbour') ? '/static/favicon-harbour.svg' : '/static/favicon.svg';
+    // Atualiza graficos existentes para respeitar o novo tema
+    try { refreshAllChartsTheme(); } catch (e) { console.warn('theme refresh:', e); }
+    // Hook para outros componentes que queiram reagir
+    document.dispatchEvent(new CustomEvent('theme:changed', { detail: { theme: t } }));
   }));
   sync();
 })();
@@ -4944,16 +5005,14 @@ const CvmOficial = (() => {
   const fmtInt = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR');
 
   function _pickChartColors() {
-    const body = document.body;
-    const isLight = body.classList.contains('theme-light') || body.dataset.theme === 'light';
     return {
       orange: '#f5a623',
       orangeFill: 'rgba(245, 166, 35, 0.15)',
       cyan: '#00d4ff',
       green: '#00cc88',
       red: '#ff4d4f',
-      text: isLight ? '#333' : '#aaa',
-      grid: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
+      text: '#aaa',
+      grid: 'rgba(255,255,255,0.05)',
     };
   }
 
