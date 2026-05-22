@@ -145,6 +145,10 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-liquidez"><span class="fn-num">212)</span> LIQUIDEZ</button>
   {% set ns.first = false %}
   {% endif %}
+  {% if role == 'admin' or viewer_config.get('tab_ph', true) %}
+  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-ph"><span class="fn-num">213)</span> HISTÓRICO CARTEIRA</button>
+  {% set ns.first = false %}
+  {% endif %}
 </div>
 
 <!-- Loading -->
@@ -176,10 +180,6 @@
       <button id="btn-ph-salvar" class="bbg-btn"
               style="font-size:11px;padding:3px 12px;color:#00cc88;border-color:#00cc88">
         &#8681; SALVAR SNAPSHOT
-      </button>
-      <button id="btn-ph-historico" class="bbg-btn"
-              style="font-size:11px;padding:3px 10px;color:#888">
-        HIST&Oacute;RICO
       </button>
     </div>
   </div>
@@ -219,18 +219,6 @@
     </table>
   </div>
   {% if role == 'admin' %}
-  <div id="portfolio-history-panel" style="display:none;margin-top:12px">
-    <div class="chart-card risk-card" style="margin:0">
-      <div class="chart-card-header" style="justify-content:space-between">
-        <span class="chart-card-title">HIST&Oacute;RICO DE SNAPSHOTS DA CARTEIRA</span>
-        <span id="ph-history-count"
-              style="font-family:monospace;font-size:11px;color:#555"></span>
-      </div>
-      <div id="portfolio-history-list" style="padding:12px;min-height:48px">
-        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>
-      </div>
-    </div>
-  </div>
   {% endif %}
 </div>
 {% endif %}
@@ -520,6 +508,12 @@
         <span class="viewer-access-label">LIQUIDEZ</span>
         <button class="viewer-toggle {% if viewer_config.get('tab_liquidez', true) %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_liquidez">
           {% if viewer_config.get('tab_liquidez', true) %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
+        </button>
+      </div>
+      <div class="viewer-access-row">
+        <span class="viewer-access-label">HISTÓRICO CARTEIRA</span>
+        <button class="viewer-toggle {% if viewer_config.get('tab_ph', true) %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_ph">
+          {% if viewer_config.get('tab_ph', true) %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
     </div>
@@ -1418,6 +1412,134 @@
   </div>
 
 </div><!-- /#tab-liquidez -->
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     213) HISTÓRICO DA CARTEIRA — Auditoria e análise temporal
+     ═══════════════════════════════════════════════════════════════════ -->
+{% if role == 'admin' or viewer_config.get('tab_ph', true) %}
+<div id="tab-ph" class="tab-content{% if ns2.first %} active{% endif %}">
+{% set ns2.first = false %}
+
+  <!-- Sub-tabs -->
+  <div class="fin-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="bbg-btn ph-subtab active" data-subtab="timeline" style="font-size:11px;padding:5px 18px;color:#00cc88;border-color:#00cc88">TIMELINE</button>
+      <button class="bbg-btn ph-subtab" data-subtab="comparar" style="font-size:11px;padding:5px 18px;color:#888;border-color:#333">COMPARAR</button>
+      <button class="bbg-btn ph-subtab" data-subtab="evolucao" style="font-size:11px;padding:5px 18px;color:#888;border-color:#333">EVOLUÇÃO</button>
+      <button class="bbg-btn ph-subtab" data-subtab="operacoes" style="font-size:11px;padding:5px 18px;color:#888;border-color:#333">OPERAÇÕES INFERIDAS</button>
+    </div>
+    <div style="font-family:monospace;font-size:11px;color:#888" id="ph-summary-counter"></div>
+  </div>
+
+  <!-- ═══════════════ TIMELINE ═══════════════ -->
+  <div id="ph-sub-timeline" class="ph-subcontent">
+    <div class="chart-card risk-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">LINHA DO TEMPO DE SNAPSHOTS <span class="col-info" data-tip-key="ph_card_timeline">ⓘ</span></span>
+        <span style="font-family:monospace;font-size:10px;color:#555" id="ph-timeline-range"></span>
+      </div>
+      <div id="ph-timeline-content" style="padding:14px;max-height:600px;overflow-y:auto">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>
+      </div>
+    </div>
+
+    <!-- Painel lateral aberto ao clicar em snapshot -->
+    <div id="ph-snapshot-detail" class="chart-card risk-card" style="margin-top:10px;display:none">
+      <div class="chart-card-header" style="justify-content:space-between">
+        <span class="chart-card-title">CARTEIRA EM <span id="ph-detail-date">—</span></span>
+        <div style="display:flex;gap:6px">
+          <a id="ph-detail-pdf-btn" class="bbg-btn" href="#" target="_blank"
+             style="font-size:11px;padding:3px 10px;color:#f5a623;border-color:#f5a623;text-decoration:none">⤓ PDF</a>
+          <button id="ph-detail-close" class="bbg-btn" style="font-size:11px;padding:3px 8px;color:#888">×</button>
+        </div>
+      </div>
+      <div id="ph-detail-content" style="padding:8px 4px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando carteira...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ COMPARAR ═══════════════ -->
+  <div id="ph-sub-comparar" class="ph-subcontent" style="display:none">
+    <div class="chart-card risk-card" style="margin-bottom:10px">
+      <div class="chart-card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span class="chart-card-title">DIFF ENTRE 2 DATAS <span class="col-info" data-tip-key="ph_card_comparar">ⓘ</span></span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="risk-ctrl-label">DE:</span>
+          <input type="date" id="ph-cmp-from" class="bbg-input-date">
+          <span class="risk-ctrl-label">ATÉ:</span>
+          <input type="date" id="ph-cmp-to" class="bbg-input-date">
+          <button id="ph-cmp-run" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 14px">COMPARAR</button>
+          <a id="ph-cmp-pdf-btn" class="bbg-btn" href="#" target="_blank"
+             style="font-size:11px;padding:5px 12px;color:#f5a623;border-color:#f5a623;text-decoration:none;display:none">⤓ PDF</a>
+        </div>
+      </div>
+      <div id="ph-cmp-content" style="padding:14px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Selecione duas datas e clique COMPARAR.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ EVOLUÇÃO ═══════════════ -->
+  <div id="ph-sub-evolucao" class="ph-subcontent" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="chart-card risk-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">NAV (R$) <span class="col-info" data-tip-key="ph_chart_nav">ⓘ</span></span>
+        </div>
+        <div style="padding:14px;height:240px;position:relative"><canvas id="ph-chart-nav"></canvas></div>
+      </div>
+      <div class="chart-card risk-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">Nº DE POSIÇÕES <span class="col-info" data-tip-key="ph_chart_npos">ⓘ</span></span>
+        </div>
+        <div style="padding:14px;height:240px;position:relative"><canvas id="ph-chart-npos"></canvas></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="chart-card risk-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">HHI CONCENTRAÇÃO <span class="col-info" data-tip-key="ph_chart_hhi">ⓘ</span></span>
+        </div>
+        <div style="padding:14px;height:240px;position:relative"><canvas id="ph-chart-hhi"></canvas></div>
+      </div>
+      <div class="chart-card risk-card">
+        <div class="chart-card-header">
+          <span class="chart-card-title">% GRUPO I (AÇÕES/BDRs) <span class="col-info" data-tip-key="ph_chart_grupo1">ⓘ</span></span>
+        </div>
+        <div style="padding:14px;height:240px;position:relative"><canvas id="ph-chart-grupo1"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card risk-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">ROTAÇÃO SETORIAL (% POR SETOR AO LONGO DO TEMPO) <span class="col-info" data-tip-key="ph_chart_setor">ⓘ</span></span>
+      </div>
+      <div style="padding:14px;height:340px;position:relative"><canvas id="ph-chart-setor"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ OPERAÇÕES INFERIDAS ═══════════════ -->
+  <div id="ph-sub-operacoes" class="ph-subcontent" style="display:none">
+    <div class="chart-card risk-card">
+      <div class="chart-card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span class="chart-card-title">OPERAÇÕES INFERIDAS DE SNAPSHOTS CONSECUTIVOS <span class="col-info" data-tip-key="ph_card_operacoes">ⓘ</span></span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="risk-ctrl-label">DE:</span>
+          <input type="date" id="ph-ops-from" class="bbg-input-date">
+          <span class="risk-ctrl-label">ATÉ:</span>
+          <input type="date" id="ph-ops-to" class="bbg-input-date">
+          <button id="ph-ops-run" class="bbg-btn bbg-btn-primary" style="font-size:11px;padding:5px 14px">CARREGAR</button>
+        </div>
+      </div>
+      <div id="ph-ops-summary" style="padding:8px 14px;font-family:monospace;font-size:11px;color:#888"></div>
+      <div id="ph-ops-content" style="padding:14px">
+        <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Selecione o intervalo e clique CARREGAR.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /#tab-ph -->
 {% endif %}
 
 <div id="col-tooltip"></div>

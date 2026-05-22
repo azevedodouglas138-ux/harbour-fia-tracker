@@ -4100,6 +4100,526 @@ def _generate_portfolio_snapshot_pdf(record):
 
 
 # ---------------------------------------------------------------------------
+# Portfolio History — Análise avançada (aba 213: HISTÓRICO DA CARTEIRA)
+# ---------------------------------------------------------------------------
+
+def _ph_extract_metrics(snap):
+    """Extrai métricas-chave do snapshot para time series e timeline."""
+    summary = snap.get("summary") or {}
+    rows    = snap.get("rows") or []
+    nav     = summary.get("total_value") or 0
+
+    # HHI por ativo (concentração)
+    if nav > 0:
+        hhi_ativo = round(sum(((r.get("valor_liquido") or 0) / nav) ** 2 for r in rows) * 10000)
+    else:
+        hhi_ativo = 0
+
+    # Pesos por setor
+    setores = {}
+    for r in rows:
+        sec = r.get("sector") or "Outros"
+        setores[sec] = setores.get(sec, 0.0) + (r.get("valor_liquido") or 0)
+    setor_pcts = {s: round(v / nav * 100, 2) for s, v in setores.items()} if nav > 0 else {}
+
+    # HHI por setor
+    if nav > 0:
+        hhi_setor = round(sum((v / nav) ** 2 for v in setores.values()) * 10000)
+    else:
+        hhi_setor = 0
+
+    # Grupo I (Ações + BDRs) — Res. CVM 175
+    _GRUPO1 = {"Acao", "BDR", "Acao BDR"}
+    valor_g1 = sum((r.get("valor_liquido") or 0) for r in rows
+                   if (r.get("categoria") or "Acao") in _GRUPO1)
+    pct_g1 = round(valor_g1 / nav * 100, 2) if nav > 0 else 0
+
+    return {
+        "nav":            nav,
+        "num_positions":  summary.get("num_positions") or len(rows),
+        "cota_estimada":  summary.get("cota_estimada"),
+        "weighted_beta":  summary.get("w_beta"),
+        "weighted_upside": summary.get("w_upside_pct"),
+        "hhi_ativo":      hhi_ativo,
+        "hhi_setor":      hhi_setor,
+        "pct_grupo1":     pct_g1,
+        "setor_pcts":     setor_pcts,
+    }
+
+
+@app.route("/api/portfolio-history/timeline", methods=["GET"])
+@require_admin
+def api_portfolio_history_timeline():
+    """Timeline com summary expandido por snapshot, ordenado por data desc."""
+    history = load_portfolio_history()
+    items = []
+    for snap in history:
+        m = _ph_extract_metrics(snap)
+        items.append({
+            "id":            snap.get("id"),
+            "date":          snap.get("date"),
+            "timestamp":     snap.get("timestamp"),
+            "source":        snap.get("source") or "auto",
+            "nav":           m["nav"],
+            "num_positions": m["num_positions"],
+            "cota_estimada": m["cota_estimada"],
+            "variacao_pct":  (snap.get("summary") or {}).get("variacao_pct"),
+            "pct_grupo1":    m["pct_grupo1"],
+            "hhi_ativo":     m["hhi_ativo"],
+        })
+    items.sort(key=lambda x: x.get("timestamp") or "", reverse=True)
+    return jsonify({
+        "snapshots":  items,
+        "first_date": items[-1]["date"] if items else None,
+        "last_date":  items[0]["date"]  if items else None,
+        "total":      len(items),
+    })
+
+
+def _ph_find_snap_by_date(history, date_str):
+    """Localiza o snapshot mais recente em ou antes da data dada (formato YYYY-MM-DD).
+    Se não houver nenhum, retorna None."""
+    candidates = [s for s in history if (s.get("date") or "") <= date_str]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda s: s.get("timestamp") or "")
+    return candidates[-1]
+
+
+def _diff_snapshots(snap_from, snap_to):
+    """Compara duas snapshots e retorna estrutura de diff."""
+    rows_from = {r["ticker"]: r for r in (snap_from.get("rows") or [])}
+    rows_to   = {r["ticker"]: r for r in (snap_to.get("rows") or [])}
+    all_tickers = sorted(set(rows_from) | set(rows_to))
+
+    nav_from = (snap_from.get("summary") or {}).get("total_value") or 0
+    nav_to   = (snap_to.get("summary") or {}).get("total_value")   or 0
+
+    posicoes = []
+    for tk in all_tickers:
+        rf = rows_from.get(tk) or {}
+        rt = rows_to.get(tk)   or {}
+        qf = rf.get("quantidade") or 0
+        qt = rt.get("quantidade") or 0
+        vf = rf.get("valor_liquido") or 0
+        vt = rt.get("valor_liquido") or 0
+        pf = rf.get("pct_total") or 0
+        pt = rt.get("pct_total") or 0
+        status = "manteve"
+        if qf == 0 and qt > 0:   status = "novo"
+        elif qf > 0 and qt == 0: status = "removido"
+        elif qt > qf:            status = "aumentou"
+        elif qt < qf:            status = "reduziu"
+        posicoes.append({
+            "ticker":          tk,
+            "categoria":       (rt.get("categoria") or rf.get("categoria") or "Acao"),
+            "sector":          (rt.get("sector") or rf.get("sector") or "Outros"),
+            "qtde_from":       qf, "qtde_to": qt, "delta_qtde": qt - qf,
+            "valor_from":      round(vf, 2), "valor_to": round(vt, 2),
+            "delta_valor":     round(vt - vf, 2),
+            "pct_from":        round(pf, 2), "pct_to": round(pt, 2),
+            "delta_pct_pp":    round(pt - pf, 2),
+            "preco_from":      rf.get("preco"),
+            "preco_to":        rt.get("preco"),
+            "status":          status,
+        })
+    posicoes.sort(key=lambda x: abs(x["delta_valor"] or 0), reverse=True)
+
+    m_from = _ph_extract_metrics(snap_from)
+    m_to   = _ph_extract_metrics(snap_to)
+
+    # Diff por setor (deltas em pp)
+    setores_diff = []
+    setores_all = sorted(set(m_from["setor_pcts"]) | set(m_to["setor_pcts"]))
+    for sec in setores_all:
+        pf = m_from["setor_pcts"].get(sec, 0)
+        pt = m_to["setor_pcts"].get(sec, 0)
+        setores_diff.append({
+            "sector":     sec,
+            "pct_from":   pf,
+            "pct_to":     pt,
+            "delta_pp":   round(pt - pf, 2),
+        })
+    setores_diff.sort(key=lambda x: abs(x["delta_pp"]), reverse=True)
+
+    return {
+        "snap_from": {
+            "id":        snap_from.get("id"),
+            "date":      snap_from.get("date"),
+            "timestamp": snap_from.get("timestamp"),
+            "source":    snap_from.get("source"),
+        },
+        "snap_to": {
+            "id":        snap_to.get("id"),
+            "date":      snap_to.get("date"),
+            "timestamp": snap_to.get("timestamp"),
+            "source":    snap_to.get("source"),
+        },
+        "summary_diff": {
+            "nav_from":        round(nav_from, 2),
+            "nav_to":          round(nav_to, 2),
+            "delta_nav":       round(nav_to - nav_from, 2),
+            "delta_nav_pct":   round((nav_to / nav_from - 1) * 100, 4) if nav_from > 0 else 0,
+            "n_pos_from":      m_from["num_positions"],
+            "n_pos_to":        m_to["num_positions"],
+            "delta_n_pos":     m_to["num_positions"] - m_from["num_positions"],
+            "pct_g1_from":     m_from["pct_grupo1"],
+            "pct_g1_to":       m_to["pct_grupo1"],
+            "hhi_ativo_from":  m_from["hhi_ativo"],
+            "hhi_ativo_to":    m_to["hhi_ativo"],
+            "delta_hhi_ativo": m_to["hhi_ativo"] - m_from["hhi_ativo"],
+            "hhi_setor_from":  m_from["hhi_setor"],
+            "hhi_setor_to":    m_to["hhi_setor"],
+            "delta_hhi_setor": m_to["hhi_setor"] - m_from["hhi_setor"],
+        },
+        "posicoes":     posicoes,
+        "setores_diff": setores_diff,
+        "n_novos":      sum(1 for p in posicoes if p["status"] == "novo"),
+        "n_removidos":  sum(1 for p in posicoes if p["status"] == "removido"),
+        "n_alterados":  sum(1 for p in posicoes if p["status"] in ("aumentou", "reduziu")),
+    }
+
+
+@app.route("/api/portfolio-history/diff", methods=["GET"])
+@require_admin
+def api_portfolio_history_diff():
+    """Diff entre dois snapshots por data. Params: from=YYYY-MM-DD, to=YYYY-MM-DD."""
+    d_from = (request.args.get("from") or "").strip()
+    d_to   = (request.args.get("to")   or "").strip()
+    if not d_from or not d_to:
+        return jsonify({"error": "params from e to obrigatórios (YYYY-MM-DD)"}), 400
+    history = load_portfolio_history()
+    if not history:
+        return jsonify({"error": "sem snapshots no histórico"}), 404
+    snap_from = _ph_find_snap_by_date(history, d_from)
+    snap_to   = _ph_find_snap_by_date(history, d_to)
+    if not snap_from or not snap_to:
+        return jsonify({"error": "snapshots não encontrados para uma das datas"}), 404
+    return jsonify(_diff_snapshots(snap_from, snap_to))
+
+
+@app.route("/api/portfolio-history/timeseries", methods=["GET"])
+@require_admin
+def api_portfolio_history_timeseries():
+    """Time series de métricas do portfolio_history.
+    Sempre retorna todas — frontend escolhe quais plotar."""
+    history = load_portfolio_history()
+    history_sorted = sorted(history, key=lambda s: s.get("timestamp") or "")
+
+    # Coletar todos os setores únicos
+    setores_all = set()
+    for snap in history_sorted:
+        m = _ph_extract_metrics(snap)
+        setores_all.update(m["setor_pcts"].keys())
+    setores_all = sorted(setores_all)
+
+    points = []
+    for snap in history_sorted:
+        m = _ph_extract_metrics(snap)
+        points.append({
+            "date":          snap.get("date"),
+            "timestamp":     snap.get("timestamp"),
+            "nav":           m["nav"],
+            "num_positions": m["num_positions"],
+            "hhi_ativo":     m["hhi_ativo"],
+            "hhi_setor":     m["hhi_setor"],
+            "weighted_beta": m["weighted_beta"],
+            "weighted_upside": m["weighted_upside"],
+            "pct_grupo1":    m["pct_grupo1"],
+            "setor_pcts":    {s: m["setor_pcts"].get(s, 0) for s in setores_all},
+        })
+    return jsonify({
+        "points":      points,
+        "all_sectors": setores_all,
+        "total":       len(points),
+    })
+
+
+def _infer_operations(snap_from, snap_to):
+    """Detecta variações de quantidade entre dois snapshots e infere operações."""
+    rows_from = {r["ticker"]: r for r in (snap_from.get("rows") or [])}
+    rows_to   = {r["ticker"]: r for r in (snap_to.get("rows") or [])}
+    all_tickers = sorted(set(rows_from) | set(rows_to))
+
+    ops = []
+    for tk in all_tickers:
+        rf = rows_from.get(tk) or {}
+        rt = rows_to.get(tk)   or {}
+        qf = rf.get("quantidade") or 0
+        qt = rt.get("quantidade") or 0
+        delta = qt - qf
+        if delta == 0:
+            continue
+        # preço médio: média simples dos dois preços (aproximação)
+        p_from = rf.get("preco")
+        p_to   = rt.get("preco")
+        if p_from and p_to:
+            preco_estimado = (p_from + p_to) / 2.0
+        else:
+            preco_estimado = p_to or p_from
+        valor_estimado = abs(delta) * (preco_estimado or 0)
+        if delta > 0:
+            direcao = "compra"
+        elif qt == 0:
+            direcao = "zerou"
+        else:
+            direcao = "venda"
+        ops.append({
+            "ticker":          tk,
+            "direcao":         direcao,
+            "qtde_from":       qf,
+            "qtde_to":         qt,
+            "delta_qtde":      delta,
+            "preco_estimado":  round(preco_estimado, 2) if preco_estimado else None,
+            "valor_estimado":  round(valor_estimado, 2),
+        })
+    return ops
+
+
+def _crossmatch_pretrade(operations, pretrade_history, date_from, date_to):
+    """Para cada operação inferida, tenta encontrar match em pretrade_history.executed_at
+    dentro da janela [date_from, date_to]. Match por ticker + direção + delta qtde compatível."""
+    # Pré-filtrar pretrade_history executados dentro da janela
+    candidates = []
+    for rec in pretrade_history:
+        exec_at = rec.get("executed_at")
+        if not exec_at:
+            continue
+        exec_date = exec_at[:10]
+        if not (date_from <= exec_date <= date_to):
+            continue
+        for op in (rec.get("operacoes") or []):
+            candidates.append({
+                "pretrade_id": rec.get("id"),
+                "executed_at": exec_at,
+                "ticker":      (op.get("ticker") or "").replace(".SA", "").upper(),
+                "direcao":     op.get("direcao"),
+                "quantidade":  op.get("quantidade") or 0,
+            })
+
+    for inferred in operations:
+        tk = inferred["ticker"].upper()
+        dir_inferred = inferred["direcao"]
+        # zerou matcheia com venda no pretrade
+        dir_search = "venda" if dir_inferred in ("venda", "zerou") else "compra"
+        matches = [c for c in candidates
+                   if c["ticker"] == tk and c["direcao"] == dir_search]
+        if matches:
+            # Pega o de quantidade mais próxima
+            matches.sort(key=lambda c: abs(c["quantidade"] - abs(inferred["delta_qtde"])))
+            best = matches[0]
+            inferred["pretrade_id"]     = best["pretrade_id"]
+            inferred["pretrade_exec_at"] = best["executed_at"]
+            inferred["rastreado"]       = True
+        else:
+            inferred["pretrade_id"]      = None
+            inferred["pretrade_exec_at"] = None
+            inferred["rastreado"]        = False
+    return operations
+
+
+@app.route("/api/portfolio-history/operations", methods=["GET"])
+@require_admin
+def api_portfolio_history_operations():
+    """Operações inferidas entre snapshots consecutivos no histórico, com
+    cross-match contra pretrade_history (mostra quais foram via pré-trade
+    e quais foram alterações manuais sem registro)."""
+    d_from = (request.args.get("from") or "").strip()
+    d_to   = (request.args.get("to")   or "").strip()
+    history = load_portfolio_history()
+    if not history:
+        return jsonify({"operations": [], "total": 0})
+
+    history_sorted = sorted(history, key=lambda s: s.get("timestamp") or "")
+    # Filtrar por data se passada
+    if d_from or d_to:
+        history_sorted = [s for s in history_sorted
+                          if (not d_from or (s.get("date") or "") >= d_from)
+                          and (not d_to or (s.get("date") or "") <= d_to)]
+
+    pretrade_h = load_pretrade_history()
+    range_from = d_from or (history_sorted[0]["date"] if history_sorted else "")
+    range_to   = d_to   or (history_sorted[-1]["date"] if history_sorted else "")
+
+    all_ops = []
+    for i in range(1, len(history_sorted)):
+        prev = history_sorted[i-1]
+        curr = history_sorted[i]
+        ops_pair = _infer_operations(prev, curr)
+        for op in ops_pair:
+            op["date_from"] = prev.get("date")
+            op["date_to"]   = curr.get("date")
+            op["snap_id_from"] = prev.get("id")
+            op["snap_id_to"]   = curr.get("id")
+        all_ops.extend(ops_pair)
+
+    # Cross-match com pretrade
+    _crossmatch_pretrade(all_ops, pretrade_h, range_from, range_to)
+
+    # Ordenar por data (descendente)
+    all_ops.sort(key=lambda o: (o.get("date_to") or "", o.get("ticker") or ""), reverse=True)
+    n_rastreadas = sum(1 for o in all_ops if o["rastreado"])
+    return jsonify({
+        "operations":         all_ops,
+        "total":              len(all_ops),
+        "n_rastreadas":       n_rastreadas,
+        "n_nao_rastreadas":   len(all_ops) - n_rastreadas,
+        "range_from":         range_from,
+        "range_to":           range_to,
+    })
+
+
+@app.route("/api/portfolio-history/diff/pdf", methods=["GET"])
+@require_admin
+def api_portfolio_history_diff_pdf():
+    """PDF de auditoria de diff entre 2 datas."""
+    d_from = (request.args.get("from") or "").strip()
+    d_to   = (request.args.get("to")   or "").strip()
+    if not d_from or not d_to:
+        return jsonify({"error": "params from e to obrigatórios"}), 400
+    history = load_portfolio_history()
+    snap_from = _ph_find_snap_by_date(history, d_from)
+    snap_to   = _ph_find_snap_by_date(history, d_to)
+    if not snap_from or not snap_to:
+        return jsonify({"error": "snapshots não encontrados"}), 404
+    diff = _diff_snapshots(snap_from, snap_to)
+    try:
+        pdf_bytes = _generate_portfolio_diff_pdf(diff)
+    except Exception as e:
+        return jsonify({"error": f"Erro ao gerar PDF: {str(e)}"}), 500
+    filename = f"carteira_diff_{snap_from.get('date')}_a_{snap_to.get('date')}.pdf"
+    from flask import make_response
+    resp = make_response(pdf_bytes)
+    resp.headers["Content-Type"]        = "application/pdf"
+    resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return resp
+
+
+def _generate_portfolio_diff_pdf(diff):
+    """Gera PDF de auditoria do diff entre 2 snapshots da carteira."""
+    from io import BytesIO
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
+                            leftMargin=1.2*cm, rightMargin=1.2*cm,
+                            topMargin=1.2*cm, bottomMargin=1.2*cm)
+
+    C_BG  = colors.HexColor("#0d0d1a"); C_HDR = colors.HexColor("#1a1a2e")
+    C_TXT = colors.white; C_OK = colors.HexColor("#00cc88")
+    C_NEG = colors.HexColor("#cc3333"); C_WARN = colors.HexColor("#f5a623")
+    C_BODY = colors.HexColor("#cccccc"); C_MUTED = colors.HexColor("#888888")
+    C_LINE = colors.HexColor("#333333")
+
+    st_title = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=14, textColor=C_TXT, spaceAfter=4)
+    st_sub   = ParagraphStyle("sub",   fontName="Helvetica",      fontSize=9,  textColor=C_MUTED, spaceAfter=2)
+    st_sec   = ParagraphStyle("sec",   fontName="Helvetica-Bold", fontSize=10, textColor=C_TXT, spaceBefore=10, spaceAfter=4)
+    st_foot  = ParagraphStyle("foot",  fontName="Helvetica",      fontSize=7,  textColor=C_MUTED, alignment=1, spaceBefore=6)
+
+    def tbl_style(header_rows=1, extra=None):
+        base = [
+            ("BACKGROUND", (0,0), (-1,header_rows-1), C_HDR),
+            ("TEXTCOLOR",  (0,0), (-1,header_rows-1), C_TXT),
+            ("FONTNAME",   (0,0), (-1,header_rows-1), "Helvetica-Bold"),
+            ("FONTSIZE",   (0,0), (-1,-1), 7),
+            ("FONTNAME",   (0,header_rows), (-1,-1), "Courier"),
+            ("TEXTCOLOR",  (0,header_rows), (-1,-1), C_BODY),
+            ("BACKGROUND", (0,header_rows), (-1,-1), C_BG),
+            ("ROWBACKGROUNDS", (0,header_rows), (-1,-1), [C_BG, colors.HexColor("#0f0f22")]),
+            ("GRID", (0,0), (-1,-1), 0.3, C_LINE),
+            ("TOPPADDING",  (0,0), (-1,-1), 3),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+            ("LEFTPADDING", (0,0), (-1,-1), 4),
+            ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ]
+        if extra: base.extend(extra)
+        return TableStyle(base)
+
+    def fmt(v, dec=2):
+        try: return f"{float(v):,.{dec}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except: return str(v) if v is not None else "—"
+
+    def fmtR(v, dec=2):
+        return f"R$ {fmt(v, dec)}" if v is not None else "—"
+
+    sf, st = diff["snap_from"], diff["snap_to"]
+    sd = diff["summary_diff"]
+
+    story = []
+    story.append(Paragraph("HARBOUR IAT FIF AÇÕES RL — DIFF DE CARTEIRA", st_title))
+    story.append(Paragraph(
+        f"De: {sf.get('date')} ({sf.get('source','—')})  →  Para: {st.get('date')} ({st.get('source','—')})",
+        st_sub
+    ))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=C_LINE, spaceAfter=6))
+
+    # ── Sumário ──
+    story.append(Paragraph("1. SUMÁRIO DAS MUDANÇAS", st_sec))
+    sum_rows = [
+        ["MÉTRICA", "DE", "PARA", "Δ"],
+        ["NAV Total",         fmtR(sd["nav_from"]),     fmtR(sd["nav_to"]),     f"{fmtR(sd['delta_nav'])} ({fmt(sd['delta_nav_pct'],2)}%)"],
+        ["Nº Posições",       str(sd["n_pos_from"]),    str(sd["n_pos_to"]),    f"{sd['delta_n_pos']:+d}"],
+        ["Grupo I (Ações/BDR) %", f"{fmt(sd['pct_g1_from'])}%", f"{fmt(sd['pct_g1_to'])}%", f"{fmt(sd['pct_g1_to'] - sd['pct_g1_from'])} pp"],
+        ["HHI Ativo",         str(sd["hhi_ativo_from"]), str(sd["hhi_ativo_to"]), f"{sd['delta_hhi_ativo']:+d}"],
+        ["HHI Setor",         str(sd["hhi_setor_from"]), str(sd["hhi_setor_to"]), f"{sd['delta_hhi_setor']:+d}"],
+        ["Novos / Removidos / Alterados", "—", "—",
+         f"+{diff['n_novos']}  / -{diff['n_removidos']}  / Δ{diff['n_alterados']}"],
+    ]
+    sum_tbl = Table(sum_rows, colWidths=[7*cm, 4.5*cm, 4.5*cm, 5*cm])
+    sum_tbl.setStyle(tbl_style())
+    story.append(sum_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Posições alteradas ──
+    story.append(Paragraph("2. POSIÇÕES (ordenadas por |Δ valor| desc)", st_sec))
+    pos_rows = [["ATIVO", "STATUS", "QTDE DE", "QTDE PARA", "Δ QTDE", "VALOR DE", "VALOR PARA", "Δ VALOR", "% DE", "% PARA", "Δ pp"]]
+    pos_extra = []
+    for i, p in enumerate(diff["posicoes"], start=1):
+        st_color = C_OK if p["status"] == "novo" else C_NEG if p["status"] == "removido" else C_WARN if p["status"] in ("aumentou","reduziu") else C_MUTED
+        pos_rows.append([
+            p["ticker"],
+            p["status"].upper(),
+            fmt(p["qtde_from"], 0),
+            fmt(p["qtde_to"], 0),
+            f"{int(p['delta_qtde']):+d}",
+            fmtR(p["valor_from"], 0),
+            fmtR(p["valor_to"], 0),
+            fmtR(p["delta_valor"], 0),
+            f"{fmt(p['pct_from'])}%",
+            f"{fmt(p['pct_to'])}%",
+            f"{p['delta_pct_pp']:+.2f}",
+        ])
+        pos_extra.append(("TEXTCOLOR", (1, i), (1, i), st_color))
+    pos_tbl = Table(pos_rows, colWidths=[2*cm, 2*cm, 2*cm, 2*cm, 1.8*cm, 2.5*cm, 2.5*cm, 2.5*cm, 1.5*cm, 1.5*cm, 1.5*cm], repeatRows=1)
+    pos_tbl.setStyle(tbl_style(extra=pos_extra))
+    story.append(pos_tbl)
+    story.append(Spacer(1, 6))
+
+    # ── Setores ──
+    story.append(Paragraph("3. ROTAÇÃO SETORIAL", st_sec))
+    sec_rows = [["SETOR", "% DE", "% PARA", "Δ pp"]]
+    for s in diff["setores_diff"]:
+        sec_rows.append([s["sector"], f"{fmt(s['pct_from'])}%", f"{fmt(s['pct_to'])}%", f"{s['delta_pp']:+.2f}"])
+    sec_tbl = Table(sec_rows, colWidths=[8*cm, 3*cm, 3*cm, 3*cm])
+    sec_tbl.setStyle(tbl_style())
+    story.append(sec_tbl)
+
+    story.append(Spacer(1, 8))
+    story.append(Paragraph(
+        "Diff baseado em snapshots de portfolio_history.json. NOVOS = entraram entre as datas; "
+        "REMOVIDOS = sairam; AUMENTOU/REDUZIU = mudança de quantidade.",
+        st_foot
+    ))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
 # Index Members (Bloomberg-style Leaders / Laggards)
 # ---------------------------------------------------------------------------
 

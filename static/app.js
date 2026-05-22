@@ -677,12 +677,13 @@ document.querySelectorAll('.bbg-fn').forEach(btn => {
     if (btn.dataset.tab === 'tab-indices')      initIndicesTab();
     if (btn.dataset.tab === 'tab-cvm-oficial')  loadCvmOficialTab();
     if (btn.dataset.tab === 'tab-liquidez')     loadLiquidezTab();
+    if (btn.dataset.tab === 'tab-ph')           loadPortfolioHistoryTab();
   });
 });
 
 // ── Portfolio history buttons (admin only — elements may not exist for viewers) ──
 document.getElementById('btn-ph-salvar')?.addEventListener('click', _phSaveSnapshot);
-document.getElementById('btn-ph-historico')?.addEventListener('click', _phToggleHistory);
+// (btn-ph-historico removido — funcionalidade movida pra aba 213 HISTÓRICO CARTEIRA)
 document.getElementById('btn-ph-voltar-vivo')?.addEventListener('click', _phVoltarVivo);
 
 function renderChartsIfVisible() {
@@ -3984,19 +3985,9 @@ function _ptRenderHistoryDetails(rec) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 200B) HISTÓRICO DE SNAPSHOTS DA CARTEIRA
+// 200B) HISTÓRICO DE SNAPSHOTS DA CARTEIRA — helpers compartilhados
+// (painel collapsible removido — aba 213 HISTÓRICO CARTEIRA agora é a UI)
 // ═══════════════════════════════════════════════════════════════════
-
-function _phToggleHistory() {
-  const panel = document.getElementById('portfolio-history-panel');
-  const btn   = document.getElementById('btn-ph-historico');
-  if (!panel) return;
-  _phHistoryOpen = !_phHistoryOpen;
-  panel.style.display   = _phHistoryOpen ? '' : 'none';
-  btn.style.color       = _phHistoryOpen ? '#f5a623' : '#888';
-  btn.style.borderColor = _phHistoryOpen ? '#f5a623' : '';
-  if (_phHistoryOpen) _phLoadHistory();
-}
 
 async function _phSaveSnapshot() {
   const btn = document.getElementById('btn-ph-salvar');
@@ -4011,7 +4002,6 @@ async function _phSaveSnapshot() {
     } else {
       btn.textContent = 'SALVO ✓';
       setTimeout(() => { btn.textContent = '↓ SALVAR SNAPSHOT'; btn.disabled = false; }, 2000);
-      if (_phHistoryOpen) _phLoadHistory();
       return;
     }
   } catch(e) { alert('Erro de comunicação ao salvar snapshot.'); }
@@ -4044,124 +4034,469 @@ function _phVoltarVivo() {
   fetchPortfolio();
 }
 
-async function _phLoadHistory() {
-  const listEl  = document.getElementById('portfolio-history-list');
-  const countEl = document.getElementById('ph-history-count');
-  if (!listEl) return;
-  listEl.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>';
-  try {
-    const res  = await fetch('/api/portfolio-history');
-    if (!res.ok) {
-      listEl.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar histórico.</p>';
+// ═══════════════════════════════════════════════════════════════════
+// 213) HISTÓRICO DA CARTEIRA — Módulo da aba dedicada
+// ═══════════════════════════════════════════════════════════════════
+
+const PortfolioHistory = (() => {
+  let _initialized = false;
+  let _currentSub  = 'timeline';
+  let _timeline    = null;
+  let _charts      = {};
+
+  const fmt   = (v, d=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
+  const fmtR0 = v => v == null ? '—' : 'R$ ' + fmt(v, 0);
+  const fmtRM = v => v == null ? '—' : 'R$ ' + fmt(v / 1e6, 1) + 'MM';
+  const fmtC  = v => v == null ? '—' : Number(v).toFixed(6);
+
+  function init() {
+    _bindOnce();
+    _loadTimeline();
+  }
+
+  function _bindOnce() {
+    if (_initialized) return;
+    _initialized = true;
+
+    document.querySelectorAll('.ph-subtab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sub = btn.dataset.subtab;
+        _currentSub = sub;
+        document.querySelectorAll('.ph-subtab').forEach(b => {
+          const on = b.dataset.subtab === sub;
+          b.classList.toggle('active', on);
+          b.style.color = on ? '#00cc88' : '#888';
+          b.style.borderColor = on ? '#00cc88' : '#333';
+        });
+        ['timeline','comparar','evolucao','operacoes'].forEach(s => {
+          const el = document.getElementById('ph-sub-' + s);
+          if (el) el.style.display = (s === sub) ? '' : 'none';
+        });
+        if (sub === 'evolucao') requestAnimationFrame(_loadEvolucao);
+        if (sub === 'comparar') _setupComparar();
+        if (sub === 'operacoes') _setupOperacoes();
+      });
+    });
+
+    document.getElementById('ph-detail-close')?.addEventListener('click', () => {
+      document.getElementById('ph-snapshot-detail').style.display = 'none';
+    });
+    document.getElementById('ph-cmp-run')?.addEventListener('click', _runDiff);
+    document.getElementById('ph-ops-run')?.addEventListener('click', _runOperacoes);
+  }
+
+  // ── TIMELINE ─────────────────────────────────────────────────────
+  async function _loadTimeline() {
+    const el = document.getElementById('ph-timeline-content');
+    if (!el) return;
+    try {
+      const res = await fetch('/api/portfolio-history/timeline');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      _timeline = await res.json();
+      _renderTimeline();
+    } catch(e) {
+      el.innerHTML = `<p style="color:#cc3333;font-family:monospace;font-size:11px">Erro: ${e.message}</p>`;
+    }
+  }
+
+  function _renderTimeline() {
+    const el = document.getElementById('ph-timeline-content');
+    const rangeEl = document.getElementById('ph-timeline-range');
+    const counterEl = document.getElementById('ph-summary-counter');
+    const snaps = _timeline.snapshots || [];
+
+    if (counterEl) counterEl.textContent = `${snaps.length} snapshot(s) · ${_timeline.first_date || '—'} → ${_timeline.last_date || '—'}`;
+    if (rangeEl)   rangeEl.textContent   = `${snaps.length} snapshot(s)`;
+
+    if (!snaps.length) {
+      el.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Nenhum snapshot salvo.</p>';
       return;
     }
-    const list = await res.json();
-    if (countEl) countEl.textContent = list.length ? `${list.length} snapshot(s)` : '';
 
-    if (!list.length) {
-      listEl.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Nenhum snapshot salvo.</p>';
-      return;
-    }
-
-    const fmt2 = (v, d=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
-    const now        = new Date();
+    // Agrupa por mês/ano
+    const now = new Date();
     const currentKey = now.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
-    const groupOrder = [];
-    const groups     = {};
-    list.forEach(rec => {
-      const dt  = rec.timestamp ? new Date(rec.timestamp) : null;
+    const groups = {};
+    const order  = [];
+    snaps.forEach(s => {
+      const dt = s.timestamp ? new Date(s.timestamp) : null;
       const key = dt ? dt.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}) : 'Sem data';
-      if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
-      groups[key].push(rec);
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(s);
     });
 
     let html = '<div style="display:flex;flex-direction:column;gap:0">';
-    groupOrder.forEach(key => {
-      const recs    = groups[key];
-      const isOpen  = key === currentKey;
-      const arrow   = isOpen ? '▼' : '▶';
+    order.forEach(key => {
+      const recs = groups[key];
+      const isOpen = key === currentKey;
+      const arrow = isOpen ? '▼' : '▶';
       const display = isOpen ? 'block' : 'none';
-      const keyCapitalized = key.charAt(0).toUpperCase() + key.slice(1);
+      const kCap = key.charAt(0).toUpperCase() + key.slice(1);
 
       html += `
-        <div class="ph-hist-group" style="margin-bottom:12px">
+        <div class="ph-tl-group" style="margin-bottom:12px">
           <div style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:11px;
                       color:#888;cursor:pointer;padding:5px 0;border-bottom:1px solid #222;
                       margin-bottom:6px;user-select:none"
-               onclick="(function(el){const body=el.nextElementSibling;const arr=el.querySelector('.ph-hist-arrow');
-                        const open=body.style.display!=='none';body.style.display=open?'none':'';
-                        arr.textContent=open?'▶':'▼';})(this)">
-            <span class="ph-hist-arrow">${arrow}</span>
-            <span style="color:#ccc;letter-spacing:0.04em">${keyCapitalized}</span>
-            <span style="color:#555">· ${recs.length} snapshot(s) ·</span>
+               onclick="(function(el){const b=el.nextElementSibling;const a=el.querySelector('.ph-tl-arrow');
+                        const o=b.style.display!=='none';b.style.display=o?'none':'';a.textContent=o?'▶':'▼';})(this)">
+            <span class="ph-tl-arrow">${arrow}</span>
+            <span style="color:#ccc;letter-spacing:0.04em">${kCap}</span>
+            <span style="color:#555">· ${recs.length} snapshot(s)</span>
           </div>
-          <div style="display:${display};padding-left:8px">
-            <div style="display:flex;flex-direction:column;gap:8px">`;
+          <div style="display:${display};padding-left:8px;display:flex;flex-direction:column;gap:6px">`;
 
       recs.forEach(rec => {
-        const ts     = rec.timestamp || '';
-        const dt     = ts ? new Date(ts) : null;
-        const dtStr  = dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '—';
-        const recId  = rec.id || '';
-        const dateLabel = dt ? dt.toLocaleDateString('pt-BR') : rec.date || '—';
-        const s      = rec.summary || {};
-        const navStr = s.total_value != null ? 'R$' + fmt2(s.total_value / 1e6, 1) + 'MM' : '—';
-        const cotaStr = s.cota_estimada != null ? Number(s.cota_estimada).toFixed(6) : '—';
-        const varPct  = s.variacao_pct;
-        const varStr  = varPct != null
-          ? `<span style="color:${Number(varPct)>=0?'#00cc88':'#cc3333'}">${Number(varPct)>=0?'+':''}${fmt2(varPct,2)}%</span>`
-          : '';
-        const isAuto   = rec.source === 'auto';
+        const dt = rec.timestamp ? new Date(rec.timestamp) : null;
+        const dtStr = dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '—';
+        const isAuto = rec.source === 'auto';
         const srcColor = isAuto ? '#555' : '#00aacc';
         const srcLabel = isAuto ? 'AUTO' : 'MANUAL';
+        const varPct = rec.variacao_pct;
+        const varStr = varPct != null
+          ? `<span style="color:${Number(varPct)>=0?'#00cc88':'#cc3333'}">${Number(varPct)>=0?'+':''}${fmt(varPct,2)}%</span>`
+          : '';
 
         html += `
-              <div class="ph-history-item" style="border:1px solid #222;padding:7px 10px;border-radius:2px">
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                  <span style="font-family:monospace;font-size:11px;color:#ccc;white-space:nowrap">${dtStr}</span>
-                  <span style="font-family:monospace;font-size:10px;font-weight:bold;
-                               color:${srcColor};border:1px solid ${srcColor};
-                               padding:1px 5px;border-radius:2px">${srcLabel}</span>
-                  <span style="font-family:monospace;font-size:11px;color:#888">${s.num_positions ?? '—'} posições</span>
-                  <span style="font-family:monospace;font-size:11px;color:#888">NAV: ${navStr}</span>
-                  <span style="font-family:monospace;font-size:11px;color:#888">Cota: ${cotaStr}</span>
-                  ${varStr ? `<span style="font-family:monospace;font-size:11px">Δdia: ${varStr}</span>` : ''}
-                  <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-                    <button class="ph-hist-view bbg-btn" data-id="${recId}" data-label="${dateLabel}"
-                            style="font-size:11px;padding:2px 10px;color:#ccc">VER</button>
-                    <a href="/api/portfolio-history/${recId}/pdf" target="_blank"
-                       style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #555;
-                              color:#ccc;text-decoration:none;cursor:pointer;border-radius:2px"
-                       title="Baixar PDF de auditoria">PDF</a>
-                    <button class="ph-hist-del bbg-btn" data-id="${recId}"
-                            style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1"
-                            title="Excluir">×</button>
-                  </div>
-                </div>
-              </div>`;
+          <div class="ph-tl-item" data-id="${rec.id}" data-date="${rec.date}"
+               style="border:1px solid #222;padding:8px 10px;border-radius:2px;cursor:pointer">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-family:monospace;font-size:11px;color:#ccc;white-space:nowrap;min-width:130px">${dtStr}</span>
+              <span style="font-family:monospace;font-size:10px;font-weight:bold;color:${srcColor};
+                           border:1px solid ${srcColor};padding:1px 5px;border-radius:2px">${srcLabel}</span>
+              <span style="font-family:monospace;font-size:11px;color:#888">${rec.num_positions ?? '—'} posições</span>
+              <span style="font-family:monospace;font-size:11px;color:#888">NAV: ${fmtRM(rec.nav)}</span>
+              <span style="font-family:monospace;font-size:11px;color:#888">Cota: ${fmtC(rec.cota_estimada)}</span>
+              ${varStr ? `<span style="font-family:monospace;font-size:11px">Δdia: ${varStr}</span>` : ''}
+              <span style="font-family:monospace;font-size:11px;color:#666">G1: ${fmt(rec.pct_grupo1)}%</span>
+              <div style="margin-left:auto;display:flex;gap:6px">
+                <a href="/api/portfolio-history/${rec.id}/pdf" target="_blank" onclick="event.stopPropagation()"
+                   style="font-family:monospace;font-size:11px;padding:2px 10px;border:1px solid #555;
+                          color:#ccc;text-decoration:none;border-radius:2px">PDF</a>
+                <button class="ph-tl-del bbg-btn" data-id="${rec.id}" onclick="event.stopPropagation()"
+                        style="font-size:12px;color:#cc3333;border-color:#333;padding:2px 8px;line-height:1">×</button>
+              </div>
+            </div>
+          </div>`;
       });
 
-      html += `
-            </div>
-          </div>
-        </div>`;
+      html += '</div></div>';
     });
     html += '</div>';
-    listEl.innerHTML = html;
+    el.innerHTML = html;
 
-    listEl.querySelectorAll('.ph-hist-view').forEach(btn => {
-      btn.addEventListener('click', () => _phLoadSnapshot(btn.dataset.id, btn.dataset.label));
+    // Click no item → expande detail panel
+    el.querySelectorAll('.ph-tl-item').forEach(item => {
+      item.addEventListener('click', () => _openDetail(item.dataset.id, item.dataset.date));
     });
-    listEl.querySelectorAll('.ph-hist-del').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!confirm('Excluir este snapshot da carteira?')) return;
-        const r = await fetch(`/api/portfolio-history/${btn.dataset.id}`, {method: 'DELETE'});
-        if (r.ok) _phLoadHistory();
+    el.querySelectorAll('.ph-tl-del').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Excluir este snapshot?')) return;
+        const r = await fetch(`/api/portfolio-history/${btn.dataset.id}`, {method:'DELETE'});
+        if (r.ok) _loadTimeline();
       });
     });
-  } catch(e) {
-    listEl.innerHTML = '<p style="color:#cc3333;font-family:monospace;font-size:11px;margin:0">Erro ao carregar histórico.</p>';
   }
+
+  async function _openDetail(id, dateLabel) {
+    const detail = document.getElementById('ph-snapshot-detail');
+    const dateEl = document.getElementById('ph-detail-date');
+    const contEl = document.getElementById('ph-detail-content');
+    const pdfEl  = document.getElementById('ph-detail-pdf-btn');
+    if (!detail) return;
+    detail.style.display = '';
+    dateEl.textContent = dateLabel;
+    if (pdfEl) pdfEl.href = `/api/portfolio-history/${id}/pdf`;
+    contEl.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:8px">Carregando...</p>';
+    try {
+      const r = await fetch(`/api/portfolio-history/${id}`);
+      const snap = await r.json();
+      const rows = (snap.rows || []).slice().sort((a,b) => (b.valor_liquido||0) - (a.valor_liquido||0));
+      let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">';
+      html += '<thead><tr style="color:#888;border-bottom:1px solid #333">'
+            + '<th style="text-align:left;padding:5px 8px">ATIVO</th>'
+            + '<th style="text-align:left;padding:5px 8px">SETOR</th>'
+            + '<th style="text-align:right;padding:5px 8px">QTDE</th>'
+            + '<th style="text-align:right;padding:5px 8px">PREÇO</th>'
+            + '<th style="text-align:right;padding:5px 8px">VALOR</th>'
+            + '<th style="text-align:right;padding:5px 8px">% PL</th></tr></thead><tbody>';
+      rows.forEach(r => {
+        html += `<tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:4px 8px;color:#f5a623">${r.ticker}</td>
+          <td style="padding:4px 8px;color:#888">${r.sector || '—'}</td>
+          <td style="padding:4px 8px;text-align:right">${fmt(r.quantidade, 0)}</td>
+          <td style="padding:4px 8px;text-align:right">${fmt(r.preco, 2)}</td>
+          <td style="padding:4px 8px;text-align:right;color:#ccc">${fmtR0(r.valor_liquido)}</td>
+          <td style="padding:4px 8px;text-align:right;color:#aaa">${fmt(r.pct_total, 2)}%</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      contEl.innerHTML = html;
+    } catch(e) {
+      contEl.innerHTML = `<p style="color:#cc3333">Erro: ${e.message}</p>`;
+    }
+  }
+
+  // ── COMPARAR ─────────────────────────────────────────────────────
+  function _setupComparar() {
+    if (!_timeline) return;
+    const from = document.getElementById('ph-cmp-from');
+    const to   = document.getElementById('ph-cmp-to');
+    if (from && !from.value && _timeline.first_date) from.value = _timeline.first_date;
+    if (to   && !to.value   && _timeline.last_date)  to.value   = _timeline.last_date;
+  }
+
+  async function _runDiff() {
+    const from = document.getElementById('ph-cmp-from').value;
+    const to   = document.getElementById('ph-cmp-to').value;
+    const cont = document.getElementById('ph-cmp-content');
+    const pdfB = document.getElementById('ph-cmp-pdf-btn');
+    if (!from || !to) { alert('Selecione duas datas.'); return; }
+    cont.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>';
+    try {
+      const r = await fetch(`/api/portfolio-history/diff?from=${from}&to=${to}`);
+      if (!r.ok) {
+        const e = await r.json();
+        cont.innerHTML = `<p style="color:#cc3333;font-family:monospace;font-size:11px">Erro: ${e.error || r.status}</p>`;
+        if (pdfB) pdfB.style.display = 'none';
+        return;
+      }
+      const d = await r.json();
+      _renderDiff(d, cont);
+      if (pdfB) {
+        pdfB.style.display = '';
+        pdfB.href = `/api/portfolio-history/diff/pdf?from=${from}&to=${to}`;
+      }
+    } catch(e) {
+      cont.innerHTML = `<p style="color:#cc3333">Erro: ${e.message}</p>`;
+    }
+  }
+
+  function _renderDiff(d, cont) {
+    const sd = d.summary_diff;
+    const dn = sd.delta_nav;
+    const dnPct = sd.delta_nav_pct;
+    const cls = v => Number(v) >= 0 ? 'color:#00cc88' : 'color:#cc3333';
+
+    let html = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;font-family:monospace;font-size:11px">
+        <div style="padding:8px;border:1px solid #222;border-radius:2px">
+          <div style="color:#888;font-size:10px">NAV</div>
+          <div style="color:#ccc">${fmtRM(sd.nav_from)} → ${fmtRM(sd.nav_to)}</div>
+          <div style="${cls(dn)};font-weight:bold;margin-top:2px">${dn>=0?'+':''}${fmtRM(dn)} (${dnPct>=0?'+':''}${fmt(dnPct,2)}%)</div>
+        </div>
+        <div style="padding:8px;border:1px solid #222;border-radius:2px">
+          <div style="color:#888;font-size:10px">Nº POSIÇÕES</div>
+          <div style="color:#ccc">${sd.n_pos_from} → ${sd.n_pos_to}</div>
+          <div style="${cls(sd.delta_n_pos)};font-weight:bold;margin-top:2px">${sd.delta_n_pos>=0?'+':''}${sd.delta_n_pos}</div>
+        </div>
+        <div style="padding:8px;border:1px solid #222;border-radius:2px">
+          <div style="color:#888;font-size:10px">GRUPO I (Ações/BDRs)</div>
+          <div style="color:#ccc">${fmt(sd.pct_g1_from)}% → ${fmt(sd.pct_g1_to)}%</div>
+          <div style="color:#aaa;font-weight:bold;margin-top:2px">${(sd.pct_g1_to-sd.pct_g1_from).toFixed(2)} pp</div>
+        </div>
+        <div style="padding:8px;border:1px solid #222;border-radius:2px">
+          <div style="color:#888;font-size:10px">CONCENTRAÇÃO HHI</div>
+          <div style="color:#ccc">${sd.hhi_ativo_from} → ${sd.hhi_ativo_to}</div>
+          <div style="${cls(-sd.delta_hhi_ativo)};font-weight:bold;margin-top:2px">${sd.delta_hhi_ativo>=0?'+':''}${sd.delta_hhi_ativo}</div>
+        </div>
+      </div>
+      <div style="font-family:monospace;font-size:11px;color:#888;margin-bottom:6px">
+        + ${d.n_novos} novo(s)  ·  - ${d.n_removidos} removido(s)  ·  Δ ${d.n_alterados} alterado(s)
+      </div>
+    `;
+
+    // Tabela de posições
+    html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">';
+    html += '<thead><tr style="color:#888;border-bottom:1px solid #333">'
+          + '<th style="text-align:left;padding:5px 8px">ATIVO</th>'
+          + '<th style="text-align:center;padding:5px 8px">STATUS</th>'
+          + '<th style="text-align:right;padding:5px 8px">QTDE DE</th>'
+          + '<th style="text-align:right;padding:5px 8px">QTDE PARA</th>'
+          + '<th style="text-align:right;padding:5px 8px">Δ QTDE</th>'
+          + '<th style="text-align:right;padding:5px 8px">VALOR DE</th>'
+          + '<th style="text-align:right;padding:5px 8px">VALOR PARA</th>'
+          + '<th style="text-align:right;padding:5px 8px">Δ VALOR</th>'
+          + '<th style="text-align:right;padding:5px 8px">% DE</th>'
+          + '<th style="text-align:right;padding:5px 8px">% PARA</th>'
+          + '<th style="text-align:right;padding:5px 8px">Δ pp</th>'
+          + '</tr></thead><tbody>';
+
+    d.posicoes.forEach(p => {
+      const stColor = p.status==='novo' ? '#00cc88'
+                    : p.status==='removido' ? '#cc3333'
+                    : p.status==='aumentou' ? '#f5a623'
+                    : p.status==='reduziu' ? '#aa6600'
+                    : '#666';
+      const stLabel = p.status==='manteve' ? '=' : p.status.toUpperCase();
+      html += `<tr style="border-bottom:1px solid #1a1a1a">
+        <td style="padding:4px 8px;color:#f5a623">${p.ticker}</td>
+        <td style="padding:4px 8px;text-align:center;color:${stColor};font-weight:bold">${stLabel}</td>
+        <td style="padding:4px 8px;text-align:right">${fmt(p.qtde_from, 0)}</td>
+        <td style="padding:4px 8px;text-align:right">${fmt(p.qtde_to, 0)}</td>
+        <td style="padding:4px 8px;text-align:right;${cls(p.delta_qtde)}">${p.delta_qtde>=0?'+':''}${fmt(p.delta_qtde,0)}</td>
+        <td style="padding:4px 8px;text-align:right;color:#888">${fmtR0(p.valor_from)}</td>
+        <td style="padding:4px 8px;text-align:right;color:#ccc">${fmtR0(p.valor_to)}</td>
+        <td style="padding:4px 8px;text-align:right;${cls(p.delta_valor)}">${fmtR0(p.delta_valor)}</td>
+        <td style="padding:4px 8px;text-align:right;color:#888">${fmt(p.pct_from)}%</td>
+        <td style="padding:4px 8px;text-align:right;color:#aaa">${fmt(p.pct_to)}%</td>
+        <td style="padding:4px 8px;text-align:right;${cls(p.delta_pct_pp)}">${p.delta_pct_pp>=0?'+':''}${fmt(p.delta_pct_pp)}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+
+    // Setores
+    if (d.setores_diff.length) {
+      html += '<div style="margin-top:12px;font-family:monospace;font-size:10px;color:#888;letter-spacing:0.04em">ROTAÇÃO SETORIAL</div>';
+      html += '<table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px;margin-top:4px"><tbody>';
+      d.setores_diff.forEach(s => {
+        html += `<tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:3px 8px;color:#aaa">${s.sector}</td>
+          <td style="padding:3px 8px;text-align:right;color:#888">${fmt(s.pct_from)}%</td>
+          <td style="padding:3px 8px;text-align:right;color:#ccc">${fmt(s.pct_to)}%</td>
+          <td style="padding:3px 8px;text-align:right;${cls(s.delta_pp)}">${s.delta_pp>=0?'+':''}${fmt(s.delta_pp)} pp</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+    }
+
+    cont.innerHTML = html;
+  }
+
+  // ── EVOLUÇÃO ─────────────────────────────────────────────────────
+  async function _loadEvolucao() {
+    try {
+      const r = await fetch('/api/portfolio-history/timeseries');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const ts = await r.json();
+      _renderEvolucao(ts);
+    } catch(e) { console.error('[ph] evolucao:', e); }
+  }
+
+  function _renderEvolucao(ts) {
+    const labels = ts.points.map(p => p.date);
+    _drawLine('ph-chart-nav', labels, ts.points.map(p => p.nav), '#00cc88', 'NAV (R$)', v => 'R$' + (v/1e6).toFixed(1) + 'MM');
+    _drawLine('ph-chart-npos', labels, ts.points.map(p => p.num_positions), '#f5a623', 'Nº Posições');
+    _drawLine('ph-chart-hhi', labels, ts.points.map(p => p.hhi_ativo), '#3399ff', 'HHI Ativo');
+    _drawLine('ph-chart-grupo1', labels, ts.points.map(p => p.pct_grupo1), '#00cc88', 'Grupo I (%)', v => v + '%');
+
+    // Stacked area de setores
+    _drawStacked('ph-chart-setor', labels, ts.all_sectors, ts.points);
+  }
+
+  function _drawLine(canvasId, labels, data, color, label, ytick) {
+    const c = document.getElementById(canvasId);
+    if (!c) return;
+    if (_charts[canvasId]) { _charts[canvasId].destroy(); }
+    _charts[canvasId] = new Chart(c.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [{
+        label, data, borderColor: color, backgroundColor: color + '22',
+        fill: true, tension: 0.25, pointRadius: 2, borderWidth: 1.5,
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color:'#888', font:{family:'monospace',size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:8 }, grid: { color:'#1a1a1a' } },
+          y: { ticks: { color:'#888', font:{family:'monospace',size:9}, callback: ytick ? (v => ytick(v)) : undefined }, grid: { color:'#1a1a1a' } },
+        },
+      },
+    });
+  }
+
+  function _drawStacked(canvasId, labels, sectors, points) {
+    const c = document.getElementById(canvasId);
+    if (!c) return;
+    if (_charts[canvasId]) { _charts[canvasId].destroy(); }
+    const palette = ['#00cc88','#f5a623','#3399ff','#cc3333','#cc66ff','#66cccc','#ffcc66','#999','#ff99cc','#99ff99'];
+    const datasets = sectors.map((sec, i) => ({
+      label: sec,
+      data: points.map(p => p.setor_pcts[sec] || 0),
+      backgroundColor: palette[i % palette.length] + 'cc',
+      borderColor: palette[i % palette.length],
+      borderWidth: 0.5,
+      fill: true, tension: 0.2, pointRadius: 0,
+    }));
+    _charts[canvasId] = new Chart(c.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color:'#ccc', font:{family:'monospace',size:10}, boxWidth:10 } } },
+        scales: {
+          x: { ticks: { color:'#888', font:{family:'monospace',size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:10 }, grid: { color:'#1a1a1a' } },
+          y: { stacked: true, ticks: { color:'#888', font:{family:'monospace',size:9}, callback: v => v + '%' }, grid: { color:'#1a1a1a' }, max: 100 },
+        },
+      },
+    });
+  }
+
+  // ── OPERAÇÕES INFERIDAS ─────────────────────────────────────────
+  function _setupOperacoes() {
+    if (!_timeline) return;
+    const from = document.getElementById('ph-ops-from');
+    const to   = document.getElementById('ph-ops-to');
+    if (from && !from.value && _timeline.first_date) from.value = _timeline.first_date;
+    if (to   && !to.value   && _timeline.last_date)  to.value   = _timeline.last_date;
+  }
+
+  async function _runOperacoes() {
+    const from = document.getElementById('ph-ops-from').value;
+    const to   = document.getElementById('ph-ops-to').value;
+    const cont = document.getElementById('ph-ops-content');
+    const sumE = document.getElementById('ph-ops-summary');
+    cont.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px;margin:0">Carregando...</p>';
+    try {
+      const url = `/api/portfolio-history/operations${from || to ? '?' + (from ? `from=${from}` : '') + (from && to ? '&' : '') + (to ? `to=${to}` : '') : ''}`;
+      const r = await fetch(url);
+      const data = await r.json();
+      sumE.innerHTML = `${data.total} operação(ões) detectada(s) · <span style="color:#00cc88">${data.n_rastreadas} rastreada(s) (pré-trade)</span> · <span style="color:#cc3333">${data.n_nao_rastreadas} não rastreada(s)</span>`;
+      if (!data.total) { cont.innerHTML = '<p style="color:#555;font-family:monospace;font-size:11px">Nenhuma operação inferida no intervalo.</p>'; return; }
+
+      let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">';
+      html += '<thead><tr style="color:#888;border-bottom:1px solid #333">'
+            + '<th style="text-align:left;padding:5px 8px">DATA</th>'
+            + '<th style="text-align:left;padding:5px 8px">ATIVO</th>'
+            + '<th style="text-align:center;padding:5px 8px">DIR</th>'
+            + '<th style="text-align:right;padding:5px 8px">QTDE DE</th>'
+            + '<th style="text-align:right;padding:5px 8px">QTDE PARA</th>'
+            + '<th style="text-align:right;padding:5px 8px">Δ QTDE</th>'
+            + '<th style="text-align:right;padding:5px 8px">PREÇO EST.</th>'
+            + '<th style="text-align:right;padding:5px 8px">VALOR EST.</th>'
+            + '<th style="text-align:center;padding:5px 8px">PRÉ-TRADE</th>'
+            + '</tr></thead><tbody>';
+      data.operations.forEach(op => {
+        const dirColor = op.direcao === 'compra' ? '#f5a623' : op.direcao === 'venda' ? '#00cc88' : '#cc3333';
+        const rastrColor = op.rastreado ? '#00cc88' : '#cc3333';
+        const rastrLabel = op.rastreado
+          ? `<span title="ID ${op.pretrade_id ? op.pretrade_id.slice(0,8) : ''}">✓ ${op.pretrade_exec_at ? op.pretrade_exec_at.slice(0,10) : ''}</span>`
+          : '⚠ manual';
+        html += `<tr style="border-bottom:1px solid #1a1a1a">
+          <td style="padding:4px 8px;color:#888">${op.date_to}</td>
+          <td style="padding:4px 8px;color:#f5a623">${op.ticker}</td>
+          <td style="padding:4px 8px;text-align:center;color:${dirColor};font-weight:bold">${op.direcao.toUpperCase()}</td>
+          <td style="padding:4px 8px;text-align:right">${fmt(op.qtde_from,0)}</td>
+          <td style="padding:4px 8px;text-align:right">${fmt(op.qtde_to,0)}</td>
+          <td style="padding:4px 8px;text-align:right;color:${op.delta_qtde>=0?'#00cc88':'#cc3333'}">${op.delta_qtde>=0?'+':''}${fmt(op.delta_qtde,0)}</td>
+          <td style="padding:4px 8px;text-align:right">${fmt(op.preco_estimado,2)}</td>
+          <td style="padding:4px 8px;text-align:right;color:#ccc">${fmtR0(op.valor_estimado)}</td>
+          <td style="padding:4px 8px;text-align:center;color:${rastrColor}">${rastrLabel}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      cont.innerHTML = html;
+    } catch(e) {
+      cont.innerHTML = `<p style="color:#cc3333">Erro: ${e.message}</p>`;
+    }
+  }
+
+  return { init };
+})();
+
+function loadPortfolioHistoryTab() {
+  PortfolioHistory.init();
 }
 
 // ═══════════════════════════════════════════════════════════════════

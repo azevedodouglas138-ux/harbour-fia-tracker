@@ -497,6 +497,184 @@ UI_METHODOLOGY: dict = {
         ),
     },
 
+    # ═════════════════════════ HISTÓRICO DA CARTEIRA (aba 213) ═════════════════════════
+
+    "ph_card_timeline": {
+        "title": "Timeline de Snapshots da Carteira",
+        "what": (
+            "Lista todos os snapshots gravados de portfolio_history.json, "
+            "agrupados por mês. Cada snapshot é a foto completa da carteira "
+            "naquele momento (posições, preços, NAV, cota)."
+        ),
+        "formula": (
+            "Snapshots gerados em 2 momentos:\n"
+            "  • AUTO: auto-close diário 17:35 BRT (dias úteis), via\n"
+            "    api_quota-history/auto-close → _build_portfolio_snapshot\n"
+            "  • MANUAL: botão SALVAR SNAPSHOT na aba TABELA."
+        ),
+        "window": "Toda a história desde o primeiro snapshot.",
+        "source": "data/portfolio_history.json.",
+        "interpretation": (
+            "Clique em qualquer snapshot para ver a carteira completa "
+            "daquela data. Use o botão PDF para baixar relatório de "
+            "auditoria do dia específico. Lacunas no histórico indicam "
+            "dias em que o auto-close falhou (raro após o fix de "
+            "persistência síncrona)."
+        ),
+    },
+
+    "ph_card_comparar": {
+        "title": "Diff entre 2 Datas da Carteira",
+        "what": (
+            "Compara duas snapshots da carteira e mostra tudo o que mudou "
+            "entre elas: posições novas/removidas/alteradas, deltas de NAV, "
+            "rotação setorial, mudança de concentração."
+        ),
+        "formula": (
+            "Para cada ticker que aparece em pelo menos um dos snapshots:\n"
+            "  Δ qtde  = qtde_to − qtde_from\n"
+            "  Δ valor = valor_to − valor_from\n"
+            "  Δ pp    = pct_to − pct_from\n\n"
+            "Status:\n"
+            "  novo      : entrou na carteira no período\n"
+            "  removido  : saiu da carteira\n"
+            "  aumentou  : aumento de quantidade\n"
+            "  reduziu   : redução de quantidade\n"
+            "  manteve   : sem alteração de quantidade\n\n"
+            "Se a data exata não tiver snapshot, usa o mais recente em ou "
+            "antes da data informada."
+        ),
+        "window": "Entre as duas datas selecionadas.",
+        "source": "data/portfolio_history.json (helper _diff_snapshots).",
+        "interpretation": (
+            "Use para reporting mensal/trimestral, ou para responder \"o "
+            "que mudou desde a última auditoria\". Posições ordenadas por "
+            "|Δ valor| desc — primeiras são as mais impactantes."
+        ),
+    },
+
+    "ph_chart_nav": {
+        "title": "Evolução do NAV (R$)",
+        "what": (
+            "Valor de ativos da carteira (sem caixa/proventos) ao longo do "
+            "tempo, calculado em cada snapshot."
+        ),
+        "formula": "NAV = Σ (quantidade_i × preço_i) no momento do snapshot.",
+        "window": "Toda a história de snapshots.",
+        "source": "summary.total_value em cada snapshot de portfolio_history.json.",
+        "interpretation": (
+            "Inclinação reflete combinação de retorno da carteira + entradas/"
+            "saídas de capital. Para isolar o retorno puro, comparar com a "
+            "Cota Estimada (mesma aba, sub-aba EVOLUÇÃO no futuro)."
+        ),
+    },
+
+    "ph_chart_npos": {
+        "title": "Nº de Posições",
+        "what": (
+            "Quantidade de tickers diferentes na carteira em cada snapshot. "
+            "Indicador de diversificação por ativo."
+        ),
+        "formula": "len(snapshot.rows).",
+        "window": "Toda a história.",
+        "source": "Contagem de posições por snapshot.",
+        "interpretation": (
+            "Crescente = maior diversificação. Quedas indicam consolidação "
+            "(removeu posições) ou stop em ativos. Cruzar com HHI para ver "
+            "se a concentração também acompanhou."
+        ),
+    },
+
+    "ph_chart_hhi": {
+        "title": "HHI Concentração (por ativo)",
+        "what": (
+            "Índice de Herfindahl-Hirschman da concentração por ativo da "
+            "carteira. Métrica clássica de concentração: menor = mais "
+            "diversificado, maior = mais concentrado."
+        ),
+        "formula": (
+            "HHI = Σ (pct_ativo_i)² × 10.000  (com pct em 0..1)\n\n"
+            "Range típico: 500 (muito diversificado) a 3.000 (concentrado).\n"
+            "Se 100% em 1 ativo → HHI = 10.000."
+        ),
+        "window": "Calculado em cada snapshot.",
+        "source": "summary.rows + cálculo HHI em _ph_extract_metrics.",
+        "interpretation": (
+            "Subindo = carteira ficando mais concentrada (poucos ativos "
+            "ganhando peso). Útil para auditar política de risco de "
+            "concentração."
+        ),
+    },
+
+    "ph_chart_grupo1": {
+        "title": "% Grupo I (Ações + BDRs) — Res. CVM 175",
+        "what": (
+            "Percentual do NAV alocado em ativos do Grupo I (Ações + BDRs), "
+            "exigência mínima de 67% para FIA conforme Res. CVM 175."
+        ),
+        "formula": (
+            "Grupo I = {Acao, BDR, Acao BDR}\n"
+            "pct_g1 = Σ valor_i (para categoria ∈ Grupo I) / NAV × 100"
+        ),
+        "window": "Calculado em cada snapshot.",
+        "source": "categoria por posição em portfolio.json (snapshot rows).",
+        "interpretation": (
+            "Deve estar sempre ≥ 67% (linha implícita). Quedas abaixo "
+            "indicam violação regulatória — investigar imediatamente. "
+            "Mesma regra avaliada no pré-trade antes de cada execução."
+        ),
+    },
+
+    "ph_chart_setor": {
+        "title": "Rotação Setorial (% por Setor ao Longo do Tempo)",
+        "what": (
+            "Gráfico empilhado mostrando como o peso de cada setor da "
+            "carteira evoluiu. Permite ver rotações setoriais explícitas "
+            "ao longo do tempo."
+        ),
+        "formula": (
+            "Para cada snapshot e setor:\n"
+            "  pct_setor = Σ valor_ativos_do_setor / NAV × 100\n\n"
+            "Setor vem do yfinance (campo sector), traduzido para PT."
+        ),
+        "window": "Toda a história.",
+        "source": "rows[].sector em cada snapshot.",
+        "interpretation": (
+            "Mudanças bruscas em camadas = rebalanceamento setorial. "
+            "Camadas dominantes consistentes = tese setorial forte. "
+            "Usa categoria 'Outros' quando o yfinance não retornou setor."
+        ),
+    },
+
+    "ph_card_operacoes": {
+        "title": "Operações Inferidas + Cross-match com Pré-Trade",
+        "what": (
+            "Compara cada par de snapshots consecutivos no histórico e "
+            "infere as operações que devem ter ocorrido (variações de "
+            "quantidade). Cruza com pretrade_history.executed_at para "
+            "identificar quais operações passaram pelo workflow oficial "
+            "e quais foram mudanças manuais sem registro."
+        ),
+        "formula": (
+            "Para cada par (snap_t-1, snap_t):\n"
+            "  Para cada ticker com Δ qtde ≠ 0:\n"
+            "    direção = 'compra' se Δ>0, 'venda' se reduziu, 'zerou' se 0\n"
+            "    preço estimado = (preço_t-1 + preço_t) / 2\n"
+            "    valor estimado = |Δ qtde| × preço estimado\n\n"
+            "Cross-match: busca em pretrade_history os executed_at no "
+            "intervalo da janela, match por ticker + direção + |Δ qtde| "
+            "mais próximo."
+        ),
+        "window": "Configurável (DE/ATÉ). Default = toda a história.",
+        "source": "portfolio_history + pretrade_history.",
+        "interpretation": (
+            "✓ RASTREADA = operação inferida bate com pré-trade executado. "
+            "⚠ MANUAL = mudança da carteira sem registro de pré-trade "
+            "(alteração direta de quantidade via modal). Para auditoria "
+            "ANBIMA, todas as operações deveriam estar rastreadas."
+        ),
+    },
+
     "tab_var_dia": {
         "title": "Variação do Dia (%)",
         "what": "Retorno do ativo no pregão atual em relação ao fechamento de ontem.",
