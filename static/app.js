@@ -711,6 +711,9 @@ document.getElementById('btn-refresh').addEventListener('click', async () => {
     root.setAttribute('data-theme', t);
     try { localStorage.setItem('harbour-theme', t); } catch (e) {}
     sync();
+    // Atualiza favicon para combinar com o tema
+    const favEl = document.getElementById('favicon-link');
+    if (favEl) favEl.href = (t === 'harbour') ? '/static/favicon-harbour.svg' : '/static/favicon.svg';
     // Atualiza graficos existentes para respeitar o novo tema
     try { refreshAllChartsTheme(); } catch (e) { console.warn('theme refresh:', e); }
     // Hook para outros componentes que queiram reagir

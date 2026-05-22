@@ -11,6 +11,10 @@
         var t = localStorage.getItem('harbour-theme');
         if (t !== 'dark' && t !== 'harbour') t = 'dark';
         document.documentElement.setAttribute('data-theme', t);
+        if (t === 'harbour') {
+          var el = document.getElementById('favicon-link');
+          if (el) el.href = '/static/favicon-harbour.svg';
+        }
       } catch(e) {}
     })();
   </script>
