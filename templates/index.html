@@ -1284,7 +1284,7 @@
       <button class="bbg-btn liq-subtab" data-subtab="mercado" style="font-size:11px;padding:5px 18px;color:#888;border-color:#333">LIQUIDEZ MERCADO</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <span class="risk-ctrl-label">CENÁRIO:</span>
+      <span class="risk-ctrl-label">CENÁRIO <span class="col-info" data-tip-key="liq_cenarios">ⓘ</span>:</span>
       <select id="liq-scenario" class="bbg-input" style="font-size:11px;padding:4px 10px;background:#0a0a0a;color:#ccc;border:1px solid #333">
         <option value="neutro">Neutro</option>
         <option value="stress">Stress</option>
@@ -1306,7 +1306,7 @@
     <!-- Gráfico: Liquidez Fundo (cumulativo) -->
     <div class="chart-card risk-card" style="margin-bottom:10px">
       <div class="chart-card-header">
-        <span class="chart-card-title">LIQUIDEZ FUNDO</span>
+        <span class="chart-card-title">LIQUIDEZ FUNDO <span class="col-info" data-tip-key="liq_card_fundo">ⓘ</span></span>
         <span style="font-family:monospace;font-size:10px;color:#555" id="liq-scenario-label">Cenário: Neutro</span>
       </div>
       <div style="padding:14px;height:340px;position:relative">
@@ -1317,7 +1317,7 @@
     <!-- Tabela: Liquidez Ativos (heatmap por bucket) -->
     <div class="chart-card risk-card" style="margin-bottom:10px">
       <div class="chart-card-header" style="justify-content:space-between">
-        <span class="chart-card-title">LIQUIDEZ ATIVOS</span>
+        <span class="chart-card-title">LIQUIDEZ ATIVOS <span class="col-info" data-tip-key="liq_card_ativos">ⓘ</span></span>
         <input id="liq-ativos-search" type="text" placeholder="Buscar por ativo..." class="bbg-input"
                style="font-size:11px;padding:4px 8px;width:200px;background:#0a0a0a;color:#ccc;border:1px solid #333">
       </div>
@@ -1340,7 +1340,7 @@
     <!-- Compliance CVM/ANBIMA -->
     <div class="chart-card risk-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">COMPLIANCE CVM / ANBIMA</span>
+        <span class="chart-card-title">COMPLIANCE CVM / ANBIMA <span class="col-info" data-tip-key="liq_card_compliance">ⓘ</span></span>
         <span id="liq-compliance-overall" style="font-family:monospace;font-size:11px;color:#888"></span>
       </div>
       <div id="liq-compliance-content" style="padding:14px">
@@ -1356,19 +1356,19 @@
     <!-- KPIs -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
       <div class="chart-card risk-card" style="padding:12px">
-        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">VALOR EM CARTEIRA</div>
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">VALOR EM CARTEIRA <span class="col-info" data-tip-key="liq_kpi_valor">ⓘ</span></div>
         <div id="liq-kpi-valor" style="font-family:monospace;font-size:16px;color:#fff;font-weight:bold">—</div>
       </div>
       <div class="chart-card risk-card" style="padding:12px">
-        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">VOL. MÉDIO PONDERADO</div>
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">VOL. MÉDIO PONDERADO <span class="col-info" data-tip-key="liq_kpi_vol_ponderado">ⓘ</span></div>
         <div id="liq-kpi-vol" style="font-family:monospace;font-size:16px;color:#fff;font-weight:bold">—</div>
       </div>
       <div class="chart-card risk-card" style="padding:12px">
-        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">% ALTA LIQUIDEZ</div>
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">% ALTA LIQUIDEZ <span class="col-info" data-tip-key="liq_kpi_alta">ⓘ</span></div>
         <div id="liq-kpi-alta" style="font-family:monospace;font-size:16px;color:#00cc88;font-weight:bold">—</div>
       </div>
       <div class="chart-card risk-card" style="padding:12px">
-        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">PRAZO MÉDIO PARA ZERAR</div>
+        <div style="font-family:monospace;font-size:10px;color:#888;margin-bottom:4px">PRAZO MÉDIO PARA ZERAR <span class="col-info" data-tip-key="liq_kpi_prazo_medio">ⓘ</span></div>
         <div id="liq-kpi-prazo" style="font-family:monospace;font-size:16px;color:#fff;font-weight:bold">—</div>
       </div>
     </div>
@@ -1377,7 +1377,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
       <div class="chart-card risk-card">
         <div class="chart-card-header">
-          <span class="chart-card-title">FAIXAS DE LIQUIDEZ</span>
+          <span class="chart-card-title">FAIXAS DE LIQUIDEZ <span class="col-info" data-tip-key="liq_card_faixas">ⓘ</span></span>
         </div>
         <div style="padding:14px;height:280px;position:relative">
           <canvas id="liq-faixas-chart"></canvas>
@@ -1385,7 +1385,7 @@
       </div>
       <div class="chart-card risk-card">
         <div class="chart-card-header">
-          <span class="chart-card-title">PRAZO MÉDIO PONDERADO (HISTÓRICO)</span>
+          <span class="chart-card-title">PRAZO MÉDIO PONDERADO (HISTÓRICO) <span class="col-info" data-tip-key="liq_card_prazo_historico">ⓘ</span></span>
         </div>
         <div style="padding:14px;height:280px;position:relative">
           <canvas id="liq-prazo-historico-chart"></canvas>
@@ -1396,7 +1396,7 @@
     <!-- Matriz por ativo -->
     <div class="chart-card risk-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">MÉTRICAS LIQUIDEZ POR ATIVO</span>
+        <span class="chart-card-title">MÉTRICAS LIQUIDEZ POR ATIVO <span class="col-info" data-tip-key="liq_card_matriz">ⓘ</span></span>
       </div>
       <div style="overflow-x:auto;padding:8px 4px">
         <table id="liq-matriz-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:11px">

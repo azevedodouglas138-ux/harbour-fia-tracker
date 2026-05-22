@@ -15,6 +15,10 @@ from functools import wraps
 from flask import Flask, Response, jsonify, render_template, request, send_file, session, redirect, url_for
 
 from risk_methodology import RISK_METHODOLOGY
+from liquidity_methodology import LIQUIDITY_METHODOLOGY
+# Merge: o frontend usa um único window.RISK_METHODOLOGY (chaves prefixadas
+# resolvem colisão: risk_* / liq_*). Mantém o handler de tooltip simples.
+METHODOLOGY = {**RISK_METHODOLOGY, **LIQUIDITY_METHODOLOGY}
 
 
 # ---------------------------------------------------------------------------
@@ -916,7 +920,7 @@ def index():
     return render_template("index.html",
                            role=session.get("role", "viewer"),
                            viewer_config=load_viewer_config(),
-                           risk_methodology=RISK_METHODOLOGY,
+                           risk_methodology=METHODOLOGY,
                            asset_ver=_asset_version())
 
 @app.route("/api/portfolio")
@@ -4455,16 +4459,36 @@ def _prazo_resgate_position(pos):
     return PRAZO_RESGATE_POR_CATEGORIA.get(cat, 2)
 
 
-def _calc_days_to_liquidate(valor, avg_vol_rs, prazo_resgate, volume_mult=0.20):
-    """Calcula dias necessários para liquidar a posição completa.
-    = max(prazo_settlement, valor / (volume_diário × participação_max))"""
+def _calc_days_market_only(valor, avg_vol_rs, volume_mult=0.20):
+    """Dias necessários para EXECUTAR as vendas (sem contar settlement).
+    Cada dia útil de venda absorve volume_mult × volume_médio do ativo.
+    Default: 20% do ADV — teto seguro de participação para não impactar preço."""
     if not valor or valor <= 0:
-        return prazo_resgate
+        return 0.0
     if not avg_vol_rs or avg_vol_rs <= 0:
-        # Sem dado de volume → só o prazo de settlement (assume liquidez imediata em mercado)
-        return prazo_resgate
-    days_market = valor / (avg_vol_rs * volume_mult)
-    return max(prazo_resgate, days_market)
+        return 0.0  # sem dado → assume liquidez instantânea no mercado
+    return valor / (avg_vol_rs * volume_mult)
+
+
+def _calc_days_to_liquidate(valor, avg_vol_rs, prazo_resgate, volume_mult=0.20):
+    """Total de dias úteis até 100% da posição estar liquidada EM CAIXA.
+    = prazo_settlement + (dias de execução - 1, se > 1)
+    Para ativos onde 1 dia de venda já basta: total = prazo_settlement.
+    Para ativos pouco líquidos: total = settlement + extra dias necessários."""
+    days_market = _calc_days_market_only(valor, avg_vol_rs, volume_mult)
+    return prazo_resgate + max(days_market - 1, 0.0)
+
+
+def _liquidatable_fraction(B, prazo_resgate, days_market):
+    """Fração da posição (0.0 a 1.0) liquidada e em caixa até o bucket B (dias úteis).
+    Modelo settlement-aware: durante prazo_settlement, caixa ainda não chegou (0%).
+    A partir daí, cada novo dia de bucket adiciona 1 fatia das vendas que já settled."""
+    if B < prazo_resgate:
+        return 0.0
+    sell_days_settled = B - prazo_resgate + 1
+    # max(days_market, 1.0) garante que ativo super-líquido (days_market < 1) seja
+    # contado como 1 dia de venda — o caixa total chega em D+settlement.
+    return min(sell_days_settled / max(days_market, 1.0), 1.0)
 
 
 def _percentile(sorted_vals, p):
@@ -4547,12 +4571,15 @@ def _build_liquidity_snapshot(scenario="neutro"):
         avg_vol_rs = (avg_vol * price) if (avg_vol and price) else None
 
         prazo_resgate = _prazo_resgate_position(pos)
-        days = _calc_days_to_liquidate(valor, avg_vol_rs, prazo_resgate, volume_mult)
+        days_market   = _calc_days_market_only(valor, avg_vol_rs, volume_mult)
+        days          = _calc_days_to_liquidate(valor, avg_vol_rs, prazo_resgate, volume_mult)
 
-        # Liquidez por bucket: 100% se já liquidatável até esse bucket, senão 0%
-        # (modelo cumulativo simples — uma posição é liquidatável em "days" dias inteiros)
+        # Liquidez por bucket — RAMPA settlement-aware:
+        # B < prazo_settlement: 0% (caixa ainda não chegou)
+        # B >= settlement: rampa linear conforme vendas vão settling
+        # Mais realista que step-function (que pulava de 0 a 100% num bucket só).
         liq_por_bucket = [
-            (100.0 if (days <= B) else 0.0)
+            _liquidatable_fraction(B, prazo_resgate, days_market) * 100.0
             for B in LIQUIDEZ_BUCKETS
         ]
 
