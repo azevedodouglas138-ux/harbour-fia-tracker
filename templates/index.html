@@ -194,21 +194,21 @@
           <th data-col="pct_total" class="num">% TOTAL</th>
           <th data-col="valor_liquido" class="num">VALOR LÍQ.</th>
           <th data-col="preco" class="num">PREÇO</th>
-          <th data-col="var_dia_pct" class="num">VAR. DIA</th>
+          <th data-col="var_dia_pct" class="num">VAR. DIA <span class="col-info" data-tip-key="tab_var_dia">ⓘ</span></th>
           <th data-col="quantidade" class="num">QTDE</th>
           <th data-col="liq_diaria_mm" class="num">LIQ. DIÁRIA <span class="col-info" data-tip="Score de -30 a +30 que estima em quantos dias o fundo consegue liquidar a posição. Cálculo: dias = valor da posição ÷ (volume financeiro médio 3m × 20% de participação). Score = 10 − 10×log₂(dias). Quanto maior o score, mais rápida a saída. Valores automáticos (auto) usam dados do yfinance; é possível sobrescrever manualmente.">ⓘ</span></th>
           <th data-col="trailing_pe" class="num">P/L TRAIL.</th>
-          <th data-col="forward_pe" class="num">P/L FWD.</th>
+          <th data-col="forward_pe" class="num">P/L FWD. <span class="col-info" data-tip-key="tab_pl_fwd">ⓘ</span></th>
           <th data-col="peg_ratio" class="num">PEG</th>
           <th data-col="enterprise_to_ebitda" class="num">EV/EBITDA</th>
           <th data-col="return_on_equity" class="num">ROE %</th>
-          <th data-col="beta" class="num">BETA</th>
+          <th data-col="beta" class="num">BETA <span class="col-info" data-tip-key="tab_beta">ⓘ</span></th>
           <th data-col="price_to_book" class="num">P/VPA</th>
-          <th data-col="dividend_yield" class="num">DIV. YIELD</th>
-          <th data-col="market_cap_bi" class="num">MKT CAP</th>
+          <th data-col="dividend_yield" class="num">DIV. YIELD <span class="col-info" data-tip-key="tab_dy">ⓘ</span></th>
+          <th data-col="market_cap_bi" class="num">MKT CAP <span class="col-info" data-tip-key="tab_mkt_cap">ⓘ</span></th>
           <th data-col="lucro_mi_26" class="num">LUCRO MI 26</th>
           <th data-col="preco_alvo" class="num">P. ALVO</th>
-          <th data-col="upside_pct" class="num">UPSIDE</th>
+          <th data-col="upside_pct" class="num">UPSIDE <span class="col-info" data-tip-key="tab_upside">ⓘ</span></th>
           <th class="actions-col"></th>
         </tr>
       </thead>
@@ -299,14 +299,14 @@
 
     <div class="chart-card">
       <div class="chart-card-header">
-        <span class="chart-title">CONCENTRAÇÃO POR ATIVO</span>
+        <span class="chart-title">CONCENTRAÇÃO POR ATIVO <span class="col-info" data-tip-key="chart_concentracao">ⓘ</span></span>
       </div>
       <canvas id="sector-chart"></canvas>
       <div id="sector-legend" class="sector-legend"></div>
     </div>
     <div class="chart-card">
       <div class="chart-card-header">
-        <span class="chart-title">UPSIDE POR ATIVO (%)</span>
+        <span class="chart-title">UPSIDE POR ATIVO (%) <span class="col-info" data-tip-key="chart_upside">ⓘ</span></span>
       </div>
       <canvas id="upside-chart"></canvas>
     </div>
@@ -314,7 +314,7 @@
     <!-- Drawdown -->
     <div class="chart-card">
       <div class="chart-card-header">
-        <span class="chart-title">DRAWDOWN</span>
+        <span class="chart-title">DRAWDOWN <span class="col-info" data-tip-key="chart_drawdown">ⓘ</span></span>
         <span id="dd-current" class="chart-badge"></span>
       </div>
       <div class="chart-loading" id="dd-loading">CARREGANDO...</div>
@@ -324,7 +324,7 @@
     <!-- Volatilidade Rolante -->
     <div class="chart-card">
       <div class="chart-card-header">
-        <span class="chart-title">VOLATILIDADE ANUALIZADA 21D</span>
+        <span class="chart-title">VOLATILIDADE ANUALIZADA 21D <span class="col-info" data-tip-key="chart_volatilidade">ⓘ</span></span>
         <span id="vol-current" class="chart-badge"></span>
       </div>
       <div class="chart-loading" id="vol-loading">CARREGANDO...</div>
@@ -336,7 +336,7 @@
   <div class="charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
-        <span class="chart-title">ATRIBUIÇÃO DE RETORNO — CONTRIBUIÇÃO POR ATIVO</span>
+        <span class="chart-title">ATRIBUIÇÃO DE RETORNO — CONTRIBUIÇÃO POR ATIVO <span class="col-info" data-tip-key="chart_atribuicao">ⓘ</span></span>
         <div class="range-selector">
           <button class="attrib-btn active" data-period="day">DIA</button>
           <button class="attrib-btn" data-period="week">SEMANA</button>
@@ -366,7 +366,7 @@
   <div class="charts-grid" style="padding-top:0">
     <div class="chart-card wide">
       <div class="chart-card-header">
-        <span class="chart-title">CONSISTÊNCIA — HARBOUR IAT FIF AÇÕES RL</span>
+        <span class="chart-title">CONSISTÊNCIA — HARBOUR IAT FIF AÇÕES RL <span class="col-info" data-tip-key="chart_consistencia">ⓘ</span></span>
       </div>
       <div id="consistency-loading" class="chart-loading">CARREGANDO...</div>
       <div id="consistency-wrap" class="hidden"></div>
@@ -899,7 +899,7 @@
     <!-- Impacto na Cota -->
     <div class="chart-card risk-card" id="pretrade-cota-card" style="flex:1">
       <div class="chart-card-header">
-        <span class="chart-card-title">IMPACTO NA COTA &amp; NAV</span>
+        <span class="chart-card-title">IMPACTO NA COTA &amp; NAV <span class="col-info" data-tip-key="pt_card_impacto_cota">ⓘ</span></span>
       </div>
       <div id="pretrade-cota-content" style="padding:14px">
         <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Execute uma simulação para ver o impacto.</p>
@@ -911,7 +911,7 @@
     <!-- Compliance -->
     <div class="chart-card risk-card" id="pretrade-compliance-card" style="flex:1">
       <div class="chart-card-header">
-        <span class="chart-card-title">COMPLIANCE — RESOLUÇÃO CVM 175</span>
+        <span class="chart-card-title">COMPLIANCE — RESOLUÇÃO CVM 175 <span class="col-info" data-tip-key="pt_card_compliance">ⓘ</span></span>
       </div>
       <div id="pretrade-compliance-content" style="padding:14px">
         <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>
@@ -921,7 +921,7 @@
     <!-- Carteira Antes vs Depois -->
     <div class="chart-card risk-card" id="pretrade-portfolio-card" style="flex:1">
       <div class="chart-card-header">
-        <span class="chart-card-title">CARTEIRA — ANTES vs DEPOIS</span>
+        <span class="chart-card-title">CARTEIRA — ANTES vs DEPOIS <span class="col-info" data-tip-key="pt_card_carteira_antes_depois">ⓘ</span></span>
       </div>
       <div id="pretrade-portfolio-content" style="padding:14px">
         <p style="color:#555;font-family:monospace;font-size:11px;margin:0">Aguardando simulação.</p>
@@ -972,7 +972,7 @@
   <div id="pretrade-params-panel" style="display:none;margin-top:12px">
     <div class="chart-card risk-card" style="margin:0">
       <div class="chart-card-header" style="justify-content:space-between">
-        <span class="chart-card-title">PARÂMETROS DE COMPLIANCE — PRÉ-TRADE</span>
+        <span class="chart-card-title">PARÂMETROS DE COMPLIANCE — PRÉ-TRADE <span class="col-info" data-tip-key="pt_params_compliance">ⓘ</span></span>
         <span style="font-family:monospace;font-size:10px;color:#555">Alterações entram em vigor na próxima simulação</span>
       </div>
       <div id="pretrade-params-content" style="padding:14px">
@@ -1164,32 +1164,32 @@
 
   <div class="cvm-cards">
     <div class="cvm-card">
-      <div class="cvm-card-lbl">COTA CVM</div>
+      <div class="cvm-card-lbl">COTA CVM <span class="col-info" data-tip-key="cvm_kpi_cota">ⓘ</span></div>
       <div class="cvm-card-val" id="cvm-card-cota">—</div>
       <div class="cvm-card-sub" id="cvm-card-cota-date">—</div>
     </div>
     <div class="cvm-card">
-      <div class="cvm-card-lbl">DIFF vs CALC</div>
+      <div class="cvm-card-lbl">DIFF vs CALC <span class="col-info" data-tip-key="cvm_kpi_diff">ⓘ</span></div>
       <div class="cvm-card-val" id="cvm-card-diff">—</div>
       <div class="cvm-card-sub">cota oficial vs calculada</div>
     </div>
     <div class="cvm-card">
-      <div class="cvm-card-lbl">PATRIMÔNIO LÍQUIDO</div>
+      <div class="cvm-card-lbl">PATRIMÔNIO LÍQUIDO <span class="col-info" data-tip-key="cvm_kpi_pl">ⓘ</span></div>
       <div class="cvm-card-val" id="cvm-card-pl">—</div>
       <div class="cvm-card-sub">R$</div>
     </div>
     <div class="cvm-card">
-      <div class="cvm-card-lbl">Nº COTISTAS</div>
+      <div class="cvm-card-lbl">Nº COTISTAS <span class="col-info" data-tip-key="cvm_kpi_cotst">ⓘ</span></div>
       <div class="cvm-card-val" id="cvm-card-cotst">—</div>
       <div class="cvm-card-sub" id="cvm-card-cotst-var">—</div>
     </div>
     <div class="cvm-card">
-      <div class="cvm-card-lbl">CAPTAÇÃO LÍQ. 30D</div>
+      <div class="cvm-card-lbl">CAPTAÇÃO LÍQ. 30D <span class="col-info" data-tip-key="cvm_kpi_captc_30d">ⓘ</span></div>
       <div class="cvm-card-val" id="cvm-card-capt30">—</div>
       <div class="cvm-card-sub">últimos 30 dias</div>
     </div>
     <div class="cvm-card">
-      <div class="cvm-card-lbl">CAPTAÇÃO LÍQ. 12M</div>
+      <div class="cvm-card-lbl">CAPTAÇÃO LÍQ. 12M <span class="col-info" data-tip-key="cvm_kpi_captc_12m">ⓘ</span></div>
       <div class="cvm-card-val" id="cvm-card-capt12m">—</div>
       <div class="cvm-card-sub">últimos 12 meses</div>
     </div>
@@ -1198,28 +1198,28 @@
   <div class="cvm-charts-grid">
     <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">EVOLUÇÃO DO PATRIMÔNIO LÍQUIDO</span>
+        <span class="chart-card-title">EVOLUÇÃO DO PATRIMÔNIO LÍQUIDO <span class="col-info" data-tip-key="cvm_chart_pl">ⓘ</span></span>
       </div>
       <div class="cvm-chart-wrap"><canvas id="cvm-chart-pl"></canvas></div>
     </div>
 
     <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">COTA CVM vs COTA CALCULADA</span>
+        <span class="chart-card-title">COTA CVM vs COTA CALCULADA <span class="col-info" data-tip-key="cvm_chart_cota_vs">ⓘ</span></span>
       </div>
       <div class="cvm-chart-wrap"><canvas id="cvm-chart-cota"></canvas></div>
     </div>
 
     <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">FLUXO DIÁRIO — CAPTAÇÃO vs RESGATE</span>
+        <span class="chart-card-title">FLUXO DIÁRIO — CAPTAÇÃO vs RESGATE <span class="col-info" data-tip-key="cvm_chart_fluxo">ⓘ</span></span>
       </div>
       <div class="cvm-chart-wrap"><canvas id="cvm-chart-fluxo"></canvas></div>
     </div>
 
     <div class="chart-card cvm-chart-card">
       <div class="chart-card-header">
-        <span class="chart-card-title">Nº DE COTISTAS</span>
+        <span class="chart-card-title">Nº DE COTISTAS <span class="col-info" data-tip-key="cvm_chart_cotst">ⓘ</span></span>
       </div>
       <div class="cvm-chart-wrap"><canvas id="cvm-chart-cotst"></canvas></div>
     </div>

@@ -16,9 +16,10 @@ from flask import Flask, Response, jsonify, render_template, request, send_file,
 
 from risk_methodology import RISK_METHODOLOGY
 from liquidity_methodology import LIQUIDITY_METHODOLOGY
+from ui_methodology import UI_METHODOLOGY
 # Merge: o frontend usa um único window.RISK_METHODOLOGY (chaves prefixadas
-# resolvem colisão: risk_* / liq_*). Mantém o handler de tooltip simples.
-METHODOLOGY = {**RISK_METHODOLOGY, **LIQUIDITY_METHODOLOGY}
+# resolvem colisão: risk_* / liq_* / pt_* / cvm_* / chart_* / tab_*).
+METHODOLOGY = {**RISK_METHODOLOGY, **LIQUIDITY_METHODOLOGY, **UI_METHODOLOGY}
 
 
 # ---------------------------------------------------------------------------
