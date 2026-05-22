@@ -643,7 +643,7 @@ document.getElementById('btn-refresh').addEventListener('click', async () => {
   btn.disabled = false;
 });
 
-// ── Theme toggle (Light / Dark) ──────────────────────────────────
+// ── Theme toggle ─────────────────────────────────────────────────
 (function initThemeToggle() {
   const root = document.documentElement;
   const buttons = document.querySelectorAll('.bbg-theme-btn');
@@ -4944,16 +4944,14 @@ const CvmOficial = (() => {
   const fmtInt = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR');
 
   function _pickChartColors() {
-    const body = document.body;
-    const isLight = body.classList.contains('theme-light') || body.dataset.theme === 'light';
     return {
       orange: '#f5a623',
       orangeFill: 'rgba(245, 166, 35, 0.15)',
       cyan: '#00d4ff',
       green: '#00cc88',
       red: '#ff4d4f',
-      text: isLight ? '#333' : '#aaa',
-      grid: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
+      text: '#aaa',
+      grid: 'rgba(255,255,255,0.05)',
     };
   }
 

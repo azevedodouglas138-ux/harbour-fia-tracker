@@ -8,7 +8,8 @@
   <script>
     (function(){
       try {
-        var t = localStorage.getItem('harbour-theme') || 'dark';
+        var t = localStorage.getItem('harbour-theme');
+        if (t !== 'dark') t = 'dark';
         document.documentElement.setAttribute('data-theme', t);
       } catch(e) {}
     })();
@@ -41,8 +42,7 @@
 
   <div class="bbg-topbar-actions">
     <div class="bbg-theme-toggle" role="group" aria-label="Tema">
-      <button type="button" class="bbg-theme-btn" data-theme-set="light" title="Tema claro">&#9728; LIGHT</button>
-      <button type="button" class="bbg-theme-btn" data-theme-set="dark" title="Tema escuro">&#9790; DARK</button>
+      <button type="button" class="bbg-theme-btn active" data-theme-set="dark" title="Tema Bloomberg">&#9790; DARK</button>
     </div>
     <button class="bbg-btn" id="btn-refresh">&#8635; REFRESH</button>
     {% if role == 'admin' %}
