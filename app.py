@@ -326,9 +326,10 @@ def load_portfolio_history():
 
 def save_portfolio_history(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
-    with open(PORTFOLIO_HISTORY_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
-    github_push_async("data/portfolio_history.json", content, "chore: update portfolio_history.json")
+    # SYNC: snapshots da carteira são críticos para auditoria — não podem
+    # ser perdidos em restart de container (bug observado entre 13-20/05).
+    _save_with_github(PORTFOLIO_HISTORY_FILE, "data/portfolio_history.json", content,
+                      "chore: update portfolio_history.json")
 
 def get_effective_fund_config():
     """Returns fund_config, overriding quota_fechamento/data_fechamento with the last history entry."""
