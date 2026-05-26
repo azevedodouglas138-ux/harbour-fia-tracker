@@ -1487,107 +1487,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   border-color: #444;
 }
 
-/* ── 211) ÍNDICES — Leaders / Laggards ── */
-.idx-stats-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 6px 10px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  font-family: var(--mono);
-  font-size: 11px;
-  margin-bottom: 8px;
-}
-.idx-stat-label {
-  color: var(--orange);
-  font-weight: bold;
-  letter-spacing: 1px;
-}
-.idx-stat-val {
-  color: var(--text);
-  font-weight: bold;
-}
-.idx-stat-sep {
-  color: var(--text-dim);
-}
-.bbg-input-date {
-  background: var(--surface3);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 3px 6px;
-  outline: none;
-}
-.bbg-input-date:focus { border-color: var(--orange); }
-
-.idx-panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-@media (max-width: 900px) {
-  .idx-panels { grid-template-columns: 1fr; }
-}
-
-.idx-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-.idx-panel-header {
-  padding: 5px 10px;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: 1.5px;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
-}
-.idx-panel-header.positive { color: var(--green); }
-.idx-panel-header.negative { color: var(--red);   }
-
-.idx-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--mono);
-  font-size: 11px;
-}
-.idx-table thead tr {
-  border-bottom: 1px solid var(--border2);
-}
-.idx-table thead th {
-  padding: 4px 6px;
-  color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-.idx-th-rank  { width: 26px; text-align: left; }
-.idx-th-name  { text-align: left; }
-.idx-th-num   { text-align: right; min-width: 62px; }
-
-.idx-row {
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  transition: background 0.1s;
-}
-.idx-row:hover { background: var(--surface2); }
-
-.idx-td-rank  { padding: 3px 4px 3px 8px; color: var(--text-muted); width: 26px; }
-.idx-td-name  { padding: 3px 6px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.idx-td-num   { padding: 3px 8px 3px 4px; text-align: right; white-space: nowrap; }
-
-.idx-ticker {
-  color: var(--orange-text);
-  font-weight: bold;
-  font-size: 10px;
-}
-.idx-star {
-  color: #ffcc00;
-  font-size: 10px;
-}
-
 
 /* ═══════════════════════════════════════════════════════════════════
    RESPONSIVE OVERHAUL — Pente fino multi-breakpoint (2026-04-16)
@@ -1644,11 +1543,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 
   /* Footer ponderada já não bate por colspan — esconde para evitar desalinhamento */
   #portfolio-table .weighted-row { display: none; }
-
-  /* Idx panels: ainda 2 col mas tabelas mais compactas */
-  .idx-table { font-size: 10px; }
-  .idx-td-name { max-width: 160px; }
-  .idx-th-num  { min-width: 54px; }
 
   /* Risk metrics: blocos menores */
   .risk-metric-block { min-width: 95px; padding: 7px 10px; }
@@ -1720,11 +1614,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .research-main {
     padding: 0 10px 16px;
   }
-
-  /* Idx panels stackam (já fazem em 900) — refinar tabela */
-  .idx-table { font-size: 9px; }
-  .idx-th-rank, .idx-td-rank { width: 22px; }
-  .idx-td-name { max-width: 140px; }
 
   /* Cfg footer wraps */
   .cfg-footer { flex-wrap: wrap; gap: 8px; }
@@ -1800,10 +1689,6 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .chart-card:not(.wide) canvas { max-height: 200px; min-height: 160px; }
   .chart-card { padding: 8px; gap: 6px; }
   .chart-title { font-size: 9px; letter-spacing: 0.4px; }
-
-  /* Idx tabela: esconde rank em mobile */
-  .idx-th-rank, .idx-td-rank { display: none; }
-  .idx-td-name { max-width: 110px; }
 
   /* Toolbar de decisões wrap */
   .ptf-decisions-toolbar { flex-direction: column; align-items: stretch; gap: 6px; }
