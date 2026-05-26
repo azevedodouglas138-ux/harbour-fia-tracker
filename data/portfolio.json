@@ -17,7 +17,8 @@
       "quantidade": 8000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
-      "preco_alvo": 1000.0
+      "preco_alvo": 1300.0,
+      "prazo_resgate_d": null
     },
     {
       "ticker": "MDNE3",
