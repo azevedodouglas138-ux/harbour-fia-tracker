@@ -142,10 +142,6 @@
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-pretrade"><span class="fn-num">209)</span> PRÉ-TRADE</button>
   {% set ns.first = false %}
   {% endif %}
-  {% if role == 'admin' or viewer_config.tab_events %}
-  <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-events"><span class="fn-num">210)</span> EVENTOS</button>
-  {% set ns.first = false %}
-  {% endif %}
   {% if role == 'admin' or viewer_config.get('tab_liquidez', true) %}
   <button class="bbg-fn{% if ns.first %} active{% endif %}" data-tab="tab-liquidez"><span class="fn-num">212)</span> LIQUIDEZ</button>
   {% set ns.first = false %}
@@ -495,12 +491,6 @@
         <span class="viewer-access-label">RISCO</span>
         <button class="viewer-toggle {% if viewer_config.tab_risk %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_risk">
           {% if viewer_config.tab_risk %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
-        </button>
-      </div>
-      <div class="viewer-access-row">
-        <span class="viewer-access-label">EVENTOS</span>
-        <button class="viewer-toggle {% if viewer_config.tab_events %}viewer-toggle--on{% else %}viewer-toggle--off{% endif %}" data-key="tab_events">
-          {% if viewer_config.tab_events %}● LIBERADO{% else %}○ BLOQUEADO{% endif %}
         </button>
       </div>
       <div class="viewer-access-row">
@@ -992,37 +982,6 @@
       </div>
     </div>
   </div>
-
-</div>
-{% endif %}
-
-
-<!-- ═══════════════════════════════════════════════════════════════════
-     210) EVENTOS
-     ═══════════════════════════════════════════════════════════════════ -->
-{% if role == 'admin' or viewer_config.tab_events %}
-<div id="tab-events" class="tab-content{% if ns2.first %} active{% endif %}">
-{% set ns2.first = false %}
-
-  <div class="fin-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-    <div class="fin-stmt-tabs">
-      <button class="fin-stmt-btn active" data-events-mode="timeline">TIMELINE</button>
-      <button class="fin-stmt-btn" data-events-mode="byasset">POR ATIVO</button>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="bbg-btn risk-btn active" data-event-filter="RESULTADO" style="color:var(--orange);border-color:var(--orange)">RESULTADO</button>
-      <button class="bbg-btn risk-btn active" data-event-filter="DIVIDENDO" style="color:#00cc88;border-color:#00cc88">DIVIDENDO</button>
-      <button class="bbg-btn risk-btn active" data-event-filter="EX-DIV" style="color:#ffcc00;border-color:#ffcc00">EX-DIV</button>
-      <button class="bbg-btn risk-btn active" data-event-filter="SPLIT" style="color:#00aacc;border-color:#00aacc">SPLIT</button>
-    </div>
-    <button class="bbg-btn" id="btn-events-refresh" style="font-size:13px">&#8635; ATUALIZAR</button>
-  </div>
-
-  <div id="events-loading" class="risk-loading" style="display:none">CARREGANDO EVENTOS CORPORATIVOS...</div>
-  <div id="events-error" class="risk-error hidden"></div>
-
-  <div id="events-timeline-view" style="padding:12px 0"></div>
-  <div id="events-byasset-view" class="hidden" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;padding:12px 0"></div>
 
 </div>
 {% endif %}

@@ -346,7 +346,6 @@ _VIEWER_CONFIG_DEFAULTS = {
     "tab_config":        True,
     "tab_history":       True,
     "tab_risk":          True,
-    "tab_events":        False,
 }
 
 def load_viewer_config():
@@ -870,7 +869,6 @@ _HEAVY_PATHS_EXACT = {
     "/api/attribution", "/api/history",
     "/api/performance-chart", "/api/drawdown-volatility",
     "/api/performance-indicators", "/api/monthly-returns", "/api/annual-returns",
-    "/api/events",
 }
 
 @app.after_request
@@ -3204,161 +3202,6 @@ def api_pretrade_simulate():
             }
             for r in sorted(pdata_antes["rows"], key=lambda x: x.get("pct_total") or 0, reverse=True)
         ],
-    })
-
-
-# ─── EVENTOS CORPORATIVOS ──────────────────────────────────────────────────────
-
-EVENTS_TTL = 24 * 3600
-
-def _evento_descricao(tipo, confirmado):
-    mapa = {
-        "RESULTADO": "Earnings Date" if confirmado else "Earnings Date (estimado)",
-        "DIVIDENDO": "Proventos declarados" if confirmado else "Proventos pagos",
-        "EX-DIV":   "Data ex-dividendo",
-        "SPLIT":    "Desdobramento de ações",
-    }
-    return mapa.get(tipo, tipo)
-
-def fetch_events(tickers):
-    import pandas as pd
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    hoje = _brt_now().date()
-
-    def _fetch_one(yticker):
-        eventos = []
-        try:
-            t = yf.Ticker(yticker)
-
-            # Earnings date via calendar
-            try:
-                cal = t.calendar
-                if cal:
-                    earnings = cal.get("Earnings Date") or cal.get("earnings_date")
-                    if earnings is not None:
-                        datas = earnings if isinstance(earnings, (list, tuple)) else [earnings]
-                        for d in datas[:1]:  # só o primeiro (mais provável)
-                            try:
-                                dstr = str(d.date()) if hasattr(d, "date") else str(d)[:10]
-                                eventos.append({"tipo": "RESULTADO", "data": dstr, "valor": None, "confirmado": False})
-                            except Exception:
-                                pass
-            except Exception:
-                pass
-
-            # Dividendos históricos (últimos 180 dias)
-            try:
-                divs = t.dividends
-                if divs is not None and len(divs) > 0:
-                    corte = pd.Timestamp(hoje) - pd.Timedelta(days=180)
-                    divs_rec = divs[divs.index >= corte]
-                    for ts, valor in divs_rec.items():
-                        try:
-                            dstr = str(ts.date()) if hasattr(ts, "date") else str(ts)[:10]
-                            eventos.append({"tipo": "DIVIDENDO", "data": dstr, "valor": _round(float(valor), 4), "confirmado": True})
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-
-            # Ex-dividend date via info
-            try:
-                info = t.info or {}
-                ex_div_ts = info.get("exDividendDate")
-                if ex_div_ts:
-                    import datetime as _dt
-                    if isinstance(ex_div_ts, (int, float)):
-                        ex_date = _dt.date.fromtimestamp(ex_div_ts)
-                    elif hasattr(ex_div_ts, "date"):
-                        ex_date = ex_div_ts.date()
-                    else:
-                        ex_date = None
-                    if ex_date:
-                        last_div = info.get("lastDividendValue") or info.get("dividendRate")
-                        eventos.append({"tipo": "EX-DIV", "data": str(ex_date), "valor": _round(float(last_div), 4) if last_div else None, "confirmado": True})
-            except Exception:
-                pass
-
-        except Exception:
-            pass
-
-        return yticker, eventos
-
-    result = {}
-    with ThreadPoolExecutor(max_workers=5) as ex:
-        futures = {ex.submit(_fetch_one, t): t for t in tickers}
-        for f in as_completed(futures):
-            try:
-                yticker, evs = f.result()
-                result[yticker] = evs
-            except Exception:
-                pass
-    return result
-
-def get_cached_events(tickers):
-    cache = load_cache()
-    now   = time.time()
-    key   = "events_v1"
-    if key in cache and now < cache[key].get("expires_at", 0):
-        return cache[key]["data"]
-    fresh = fetch_events(tickers)
-    cache[key] = {"data": fresh, "expires_at": now + EVENTS_TTL}
-    save_cache(cache)
-    return fresh
-
-@app.route("/api/events")
-def api_events():
-    portfolio   = load_portfolio()
-    positions   = portfolio["positions"]
-    tickers     = [p["yahoo_ticker"] for p in positions]
-    ticker_map  = {p["yahoo_ticker"]: p["ticker"] for p in positions}
-
-    dias_futuro      = int(request.args.get("dias_futuro", 90))
-    incl_historico   = request.args.get("incluir_historico", "1") != "0"
-    force            = request.args.get("force", "0") == "1"
-
-    if force:
-        cache = load_cache()
-        cache.pop("events_v1", None)
-        save_cache(cache)
-
-    eventos_por_ticker = get_cached_events(tickers)
-    hoje = _brt_now().date()
-
-    todos_eventos = []
-    for yahoo_ticker, eventos in eventos_por_ticker.items():
-        for ev in eventos:
-            try:
-                from datetime import date as _date
-                data_ev = datetime.strptime(ev["data"], "%Y-%m-%d").date()
-            except Exception:
-                continue
-            dias = (data_ev - hoje).days
-            eh_futuro = 0 <= dias <= dias_futuro
-            eh_hist   = incl_historico and -180 <= dias < 0
-            if not (eh_futuro or eh_hist):
-                continue
-            todos_eventos.append({
-                "ticker":         ticker_map.get(yahoo_ticker, yahoo_ticker.replace(".SA", "")),
-                "yahoo_ticker":   yahoo_ticker,
-                "tipo":           ev["tipo"],
-                "data":           ev["data"],
-                "dias_ate_evento": dias,
-                "valor":          ev.get("valor"),
-                "confirmado":     ev.get("confirmado", False),
-                "descricao":      _evento_descricao(ev["tipo"], ev.get("confirmado", False)),
-            })
-
-    todos_eventos.sort(key=lambda x: x["data"])
-
-    por_ativo = {}
-    for ev in todos_eventos:
-        por_ativo.setdefault(ev["yahoo_ticker"], []).append(ev)
-
-    return jsonify({
-        "eventos":    todos_eventos,
-        "por_ativo":  por_ativo,
-        "gerado_em":  _brt_now().isoformat(),
     })
 
 

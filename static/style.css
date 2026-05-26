@@ -1438,7 +1438,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 .risk-liq-bar.bbg-orange { background: var(--orange); }
 
 /* ══════════════════════════════════════════════════════════════
-   Toolbar/sub-tabs reaproveitados (eventos, índices)
+   Toolbar/sub-tabs reaproveitados
    ══════════════════════════════════════════════════════════════ */
 .fin-header {
   display: flex;
