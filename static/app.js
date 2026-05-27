@@ -756,8 +756,11 @@ let _perfCache     = null;
 let _perfCacheTime = 0;
 const PERF_CACHE_TTL = 10 * 60 * 1000; // 10 min
 
-// Filtra série por range usando datas de calendário, não contagem de entradas
-function filterSeriesByRange(allSeries, range) {
+// Filtra série por range usando datas de calendário, não contagem de entradas.
+// Com includeBaseBefore=true, prepende o último ponto STRICTAMENTE antes do cutoff
+// para que o rebase do gráfico use a mesma base do backend (api_performance_indicators
+// usa before[-1] — ex: cota de 2025-12-31 como base do YTD, não a primeira de 2026).
+function filterSeriesByRange(allSeries, range, includeBaseBefore = false) {
   if (!range || range === '0' || range === 0) return allSeries;
   if (range && typeof range === 'object' && range.from) {
     return allSeries.filter(s =>
@@ -774,7 +777,14 @@ function filterSeriesByRange(allSeries, range) {
     cutoff.setDate(cutoff.getDate() - parseInt(range));
   }
   const cutoffStr = cutoff.toISOString().slice(0, 10);
-  return allSeries.filter(s => s.date >= cutoffStr);
+  const inWindow = allSeries.filter(s => s.date >= cutoffStr);
+  if (!includeBaseBefore) return inWindow;
+  let baseEntry = null;
+  for (const s of allSeries) {
+    if (s.date < cutoffStr) baseEntry = s;
+    else break;
+  }
+  return baseEntry ? [baseEntry, ...inWindow] : inWindow;
 }
 
 async function loadHistoryChart(days) {
@@ -801,7 +811,9 @@ async function loadHistoryChart(days) {
     }
 
     // ── Filter by range (calendar days, not entry count) ──
-    const series = filterSeriesByRange(allSeries, days);
+    // includeBaseBefore=true: usa cota do dia ANTES do cutoff como base, casando com a tabela
+    // de indicadores (api_performance_indicators) — ex.: base do YTD = cota de 31/dez.
+    const series = filterSeriesByRange(allSeries, days, true);
 
     // ── Helper: rebase a {date→value} map to the series window ──
     function getBenchmarkData(backendKey, seriesDates, cache) {
