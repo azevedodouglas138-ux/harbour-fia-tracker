@@ -108,7 +108,8 @@
       "quantidade": 80000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
-      "preco_alvo": 22.0
+      "preco_alvo": 19.0,
+      "prazo_resgate_d": null
     },
     {
       "ticker": "HAPV3",
