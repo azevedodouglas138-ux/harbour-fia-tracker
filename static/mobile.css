@@ -1,0 +1,217 @@
+/* ═══════════════════════════════════════════════════════════════
+   HARBOUR IAT FIA — App mobile (PWA) read-only
+   Reaproveita as variáveis de tema do app desktop:
+   :root = Bloomberg Terminal | html[data-theme="harbour"] = Harbour
+   ═══════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #000000;
+  --surface:     #0d0d0d;
+  --surface2:    #141414;
+  --surface3:    #1c1c1c;
+  --border:      #2a2a2a;
+  --border2:     #3a3a3a;
+  --orange:      #ff8c00;
+  --orange-dim:  rgba(255,140,0,0.12);
+  --orange-text: #ffaa33;
+  --text:        #ffffff;
+  --text-muted:  #888888;
+  --text-dim:    #444444;
+  --green:       #00cc44;
+  --green-dim:   rgba(0,204,68,0.1);
+  --red:         #ff3333;
+  --red-dim:     rgba(255,51,51,0.1);
+  --cyan:        #00aacc;
+  --yellow:      #ffcc00;
+  --mono: 'Cascadia Code', ui-monospace, 'SF Mono', Menlo, 'Courier New', monospace;
+  --heading-family: var(--mono);
+  --m-header-h: 50px;
+  --m-tab-h:    58px;
+}
+
+html[data-theme="harbour"] {
+  --bg:          #0a0f24;
+  --surface:     #11193e;
+  --surface2:    #1a234d;
+  --surface3:    #273273;
+  --border:      #2e3a7a;
+  --border2:     #4e64a6;
+  --orange:      #9ab7f9;
+  --orange-dim:  rgba(154,183,249,0.14);
+  --orange-text: #c6d6fc;
+  --text:        #ffffff;
+  --text-muted:  #829fd9;
+  --text-dim:    #4e64a6;
+  --green:       #16c47f;
+  --green-dim:   rgba(22,196,127,0.12);
+  --red:         #ef4565;
+  --red-dim:     rgba(239,69,101,0.12);
+  --cyan:        #9ab7f9;
+  --yellow:      #f6c453;
+  --mono: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --heading-family: -apple-system, BlinkMacSystemFont, 'Poppins', system-ui, sans-serif;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  overscroll-behavior-y: none;
+}
+body { min-height: 100vh; }
+
+/* ───────── Header fixo ───────── */
+.m-header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  height: calc(var(--m-header-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 14px 0;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.m-header-info { display: flex; flex-direction: column; line-height: 1.1; }
+.m-fund { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; color: var(--orange-text); }
+.m-updated { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.m-header-actions { display: flex; gap: 6px; }
+.m-iconbtn {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-size: 18px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-iconbtn:active { background: var(--surface3); }
+
+/* ───────── Área principal ───────── */
+.m-main {
+  padding: calc(var(--m-header-h) + env(safe-area-inset-top) + 12px) 14px
+           calc(var(--m-tab-h) + env(safe-area-inset-bottom) + 16px);
+  max-width: 640px; margin: 0 auto;
+}
+.m-screen { display: none; animation: fade .18s ease; }
+.m-screen.is-active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.m-section-title {
+  font-family: var(--heading-family);
+  font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-muted); font-weight: 600;
+  margin: 22px 2px 10px;
+}
+
+/* ───────── Card grande da cota ───────── */
+.m-cota-card {
+  background: linear-gradient(160deg, var(--surface2), var(--surface));
+  border: 1px solid var(--border); border-radius: 18px;
+  padding: 22px 18px; text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+}
+.m-cota-label { font-size: 11px; letter-spacing: 2px; color: var(--text-muted); }
+.m-cota-value {
+  font-size: clamp(38px, 13vw, 56px); font-weight: 800; line-height: 1.05;
+  margin: 6px 0 4px; color: var(--text); font-family: var(--mono);
+}
+.m-cota-change {
+  display: inline-block; font-size: 17px; font-weight: 700;
+  padding: 3px 12px; border-radius: 999px; margin-top: 2px;
+}
+.m-cota-change.up   { color: var(--green); background: var(--green-dim); }
+.m-cota-change.down { color: var(--red);   background: var(--red-dim); }
+.m-cota-change.flat { color: var(--text-muted); background: var(--surface3); }
+.m-cota-ref { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+
+/* ───────── Grade de métricas ───────── */
+.m-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.m-metric {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.m-metric-lbl { font-size: 11px; color: var(--text-muted); letter-spacing: .3px; }
+.m-metric-val { font-size: 21px; font-weight: 700; color: var(--text); }
+.m-metric-val.up   { color: var(--green); }
+.m-metric-val.down { color: var(--red); }
+
+/* ───────── Carteira ───────── */
+.m-carteira-head { display: flex; align-items: baseline; justify-content: space-between; }
+.m-carteira-count { font-size: 11px; color: var(--text-muted); }
+.m-cards { display: flex; flex-direction: column; gap: 8px; }
+.m-pos {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.m-pos-left { min-width: 0; }
+.m-pos-ticker { font-size: 16px; font-weight: 700; color: var(--text); }
+.m-pos-name { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
+.m-pos-right { text-align: right; flex-shrink: 0; }
+.m-pos-var { font-size: 16px; font-weight: 700; }
+.m-pos-var.up { color: var(--green); }
+.m-pos-var.down { color: var(--red); }
+.m-pos-var.flat { color: var(--text-muted); }
+.m-pos-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.m-pos-weight {
+  font-size: 11px; color: var(--orange-text); font-weight: 600;
+  margin-top: 2px;
+}
+.m-pos-bar {
+  height: 3px; border-radius: 2px; background: var(--orange);
+  opacity: .55; margin-top: 6px;
+}
+
+/* ───────── Rentabilidade (gráfico) ───────── */
+.m-range { display: flex; gap: 8px; margin: 2px 2px 12px; }
+.m-range-btn {
+  flex: 1; padding: 8px 0; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 13px; font-weight: 600;
+  font-family: var(--mono); -webkit-tap-highlight-color: transparent;
+}
+.m-range-btn.is-active { color: var(--bg); background: var(--orange); border-color: var(--orange); }
+.m-chart-wrap {
+  position: relative; height: 320px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px;
+}
+.m-legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 12px; }
+.m-legend span { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+.m-legend i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+
+/* ───────── Avisos / toast ───────── */
+.m-warn {
+  margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+  background: var(--red-dim); color: var(--red); font-size: 12px; line-height: 1.4;
+}
+.m-toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--m-tab-h) + env(safe-area-inset-bottom) + 14px);
+  z-index: 80; background: var(--surface3); color: var(--text);
+  border: 1px solid var(--border2); border-radius: 999px;
+  padding: 8px 16px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+
+/* ───────── Estados de carregamento ───────── */
+.m-skeleton { color: var(--text-dim); }
+.m-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 30px 0; }
+
+/* ───────── Bottom tab bar ───────── */
+.m-tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+  height: calc(var(--m-tab-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex; background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.m-tab {
+  flex: 1; background: none; border: none; color: var(--text-muted);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; font-family: var(--mono); -webkit-tap-highlight-color: transparent;
+  padding-top: 2px;
+}
+.m-tab-ico { font-size: 17px; line-height: 1; }
+.m-tab-lbl { font-size: 10px; letter-spacing: .3px; }
+.m-tab.is-active { color: var(--orange); }
+.m-tab.is-active .m-tab-ico { transform: translateY(-1px); }

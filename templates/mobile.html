@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <title>Harbour FIA</title>
+
+  <!-- PWA / iOS -->
+  <meta name="theme-color" content="#000000" id="meta-theme-color" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Harbour FIA" />
+  <link rel="manifest" href="/static/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/static/icon-180.png?v={{ asset_ver }}" />
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" id="favicon-link" />
+
+  <!-- Tema: lê preferência antes de renderizar (evita flash) -->
+  <script>
+    (function(){
+      try {
+        var t = localStorage.getItem('harbour-theme');
+        if (t !== 'dark' && t !== 'harbour') t = 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        var mc = document.getElementById('meta-theme-color');
+        if (mc) mc.setAttribute('content', t === 'harbour' ? '#0a0f24' : '#000000');
+        if (t === 'harbour') {
+          var fl = document.getElementById('favicon-link');
+          if (fl) fl.href = '/static/favicon-harbour.svg';
+        }
+      } catch(e) {}
+    })();
+  </script>
+
+  <link rel="stylesheet" href="/static/mobile.css?v={{ asset_ver }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body data-role="{{ role }}">
+
+  <header class="m-header">
+    <div class="m-header-info">
+      <span class="m-fund">HARBOUR IAT</span>
+      <span class="m-updated" id="m-updated">—</span>
+    </div>
+    <div class="m-header-actions">
+      <button class="m-iconbtn" id="m-refresh" aria-label="Atualizar" title="Atualizar">&#8635;</button>
+      <button class="m-iconbtn" id="m-theme-toggle" aria-label="Trocar tema" title="Trocar tema">&#9680;</button>
+    </div>
+  </header>
+
+  <main class="m-main" id="m-main">
+
+    <!-- ───────── RESUMO ───────── -->
+    <section class="m-screen is-active" id="screen-resumo">
+      <div class="m-cota-card" id="cota-card">
+        <div class="m-cota-label">COTA</div>
+        <div class="m-cota-value" id="cota-value">—</div>
+        <div class="m-cota-change" id="cota-change">—</div>
+        <div class="m-cota-ref" id="cota-ref">—</div>
+      </div>
+
+      <h2 class="m-section-title">Rentabilidade</h2>
+      <div class="m-grid2" id="rent-grid">
+        <div class="m-metric"><span class="m-metric-lbl">No mês</span><span class="m-metric-val" id="r-mes">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">No ano</span><span class="m-metric-val" id="r-ano">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">12 meses</span><span class="m-metric-val" id="r-12m">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Desde início</span><span class="m-metric-val" id="r-total">—</span></div>
+      </div>
+
+      <h2 class="m-section-title">Indicadores</h2>
+      <div class="m-grid2" id="ind-grid">
+        <div class="m-metric"><span class="m-metric-lbl">IBOV hoje</span><span class="m-metric-val" id="i-ibov">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Alpha hoje</span><span class="m-metric-val" id="i-alpha">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Sharpe</span><span class="m-metric-val" id="i-sharpe">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Volatilidade</span><span class="m-metric-val" id="i-vol">—</span></div>
+      </div>
+    </section>
+
+    <!-- ───────── CARTEIRA ───────── -->
+    <section class="m-screen" id="screen-carteira">
+      <div class="m-carteira-head">
+        <h2 class="m-section-title">Carteira</h2>
+        <span class="m-carteira-count" id="cart-count"></span>
+      </div>
+      <div id="carteira-list" class="m-cards"></div>
+    </section>
+
+    <!-- ───────── RENTABILIDADE ───────── -->
+    <section class="m-screen" id="screen-rent">
+      <h2 class="m-section-title">Rentabilidade acumulada</h2>
+      <div class="m-range" id="rent-range">
+        <button class="m-range-btn" data-range="6m">6M</button>
+        <button class="m-range-btn" data-range="12m">12M</button>
+        <button class="m-range-btn is-active" data-range="total">Total</button>
+      </div>
+      <div class="m-chart-wrap"><canvas id="rent-chart"></canvas></div>
+      <div class="m-legend" id="rent-legend"></div>
+    </section>
+
+    <!-- ───────── RISCO / LIQUIDEZ ───────── -->
+    <section class="m-screen" id="screen-risco">
+      <h2 class="m-section-title">Risco</h2>
+      <div class="m-grid2" id="risk-grid">
+        <div class="m-metric"><span class="m-metric-lbl">VaR 95% (1d)</span><span class="m-metric-val" id="k-var95">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">VaR 99% (1d)</span><span class="m-metric-val" id="k-var99">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Drawdown atual</span><span class="m-metric-val" id="k-dd">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Vol. anualizada</span><span class="m-metric-val" id="k-vol">—</span></div>
+      </div>
+
+      <h2 class="m-section-title">Liquidez</h2>
+      <div class="m-grid2" id="liq-grid">
+        <div class="m-metric"><span class="m-metric-lbl">Liquidável 1 dia</span><span class="m-metric-val" id="l-1d">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Liquidável 5 dias</span><span class="m-metric-val" id="l-5d">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Liquidável 10 dias</span><span class="m-metric-val" id="l-10d">—</span></div>
+        <div class="m-metric"><span class="m-metric-lbl">Pior dia (hist.)</span><span class="m-metric-val" id="k-worst">—</span></div>
+      </div>
+      <p class="m-warn" id="risk-warn" hidden></p>
+    </section>
+
+  </main>
+
+  <nav class="m-tabbar" id="m-tabbar">
+    <button class="m-tab is-active" data-target="resumo">
+      <span class="m-tab-ico">&#9632;</span><span class="m-tab-lbl">Resumo</span>
+    </button>
+    <button class="m-tab" data-target="carteira">
+      <span class="m-tab-ico">&#9783;</span><span class="m-tab-lbl">Carteira</span>
+    </button>
+    <button class="m-tab" data-target="rent">
+      <span class="m-tab-ico">&#9650;</span><span class="m-tab-lbl">Rentab.</span>
+    </button>
+    <button class="m-tab" data-target="risco">
+      <span class="m-tab-ico">&#9888;</span><span class="m-tab-lbl">Risco</span>
+    </button>
+  </nav>
+
+  <div class="m-toast" id="m-toast" hidden></div>
+
+  <script src="/static/mobile.js?v={{ asset_ver }}"></script>
+</body>
+</html>

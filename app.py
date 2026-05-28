@@ -45,6 +45,8 @@ yf = _lazy_import("yfinance")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+# Sessões duram 30 dias para o app mobile (PWA) não exigir login a cada abertura.
+app.permanent_session_lifetime = timedelta(days=30)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -840,7 +842,7 @@ def get_export_data():
 # Auth
 # ---------------------------------------------------------------------------
 
-_PUBLIC = {"/login", "/logout"}
+_PUBLIC = {"/login", "/logout", "/sw.js", "/static/manifest.webmanifest"}
 
 def require_admin(f):
     @wraps(f)
@@ -885,9 +887,11 @@ def login():
         u = request.form.get("username", "").strip()
         p = request.form.get("password", "")
         if LOGIN_PASS and u == LOGIN_USER and p == LOGIN_PASS:
+            session.permanent = True
             session["role"] = "admin"
             return redirect("/")
         if VIEWER_PASS and u == VIEWER_USER and p == VIEWER_PASS:
+            session.permanent = True
             session["role"] = "viewer"
             return redirect("/")
         error = "Usuário ou senha incorretos."
@@ -905,11 +909,13 @@ def logout():
 def _asset_version():
     try:
         base = os.path.dirname(os.path.abspath(__file__))
-        mtimes = [
-            os.path.getmtime(os.path.join(base, "static", "app.js")),
-            os.path.getmtime(os.path.join(base, "static", "style.css")),
-        ]
-        return str(int(max(mtimes)))
+        candidates = ["app.js", "style.css", "mobile.js", "mobile.css"]
+        mtimes = []
+        for name in candidates:
+            path = os.path.join(base, "static", name)
+            if os.path.exists(path):
+                mtimes.append(os.path.getmtime(path))
+        return str(int(max(mtimes))) if mtimes else "0"
     except Exception:
         return "0"
 
@@ -921,6 +927,23 @@ def index():
                            viewer_config=load_viewer_config(),
                            risk_methodology=METHODOLOGY,
                            asset_ver=_asset_version())
+
+
+@app.route("/m")
+def mobile():
+    return render_template("mobile.html",
+                           role=session.get("role", "viewer"),
+                           asset_ver=_asset_version())
+
+
+@app.route("/sw.js")
+def service_worker():
+    # Servido na raiz para o service worker ter escopo "/" (controla /m e /static).
+    resp = send_file(os.path.join(BASE_DIR, "static", "sw.js"),
+                     mimetype="application/javascript")
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    return resp
 
 @app.route("/api/portfolio")
 def api_portfolio():
