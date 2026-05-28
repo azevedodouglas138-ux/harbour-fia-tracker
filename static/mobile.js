@@ -31,7 +31,12 @@
   }
   function fmtCota(v) {
     if (v == null || isNaN(v)) return '—';
-    return 'R$ ' + new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 6 }).format(v);
+    return new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 6 }).format(v);
+  }
+  function fmtBRL(v, dec) {
+    dec = dec == null ? 2 : dec;
+    if (v == null || isNaN(v)) return '—';
+    return 'R$ ' + new Intl.NumberFormat('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(v);
   }
   function fmtDate(s) {
     if (!s) return '';
@@ -107,6 +112,7 @@
   }
 
   function renderCarteira() {
+    collapseExpand();
     const p = state.portfolio;
     const list = $('carteira-list');
     if (!p || !p.rows || !p.rows.length) {
@@ -120,22 +126,116 @@
     list.innerHTML = rows.map((r) => {
       const v = r.var_dia_pct;
       const barW = Math.max(4, Math.round(((r.pct_total || 0) / maxW) * 100));
-      const sub = r.upside_pct != null
-        ? '<div class="m-pos-sub">upside ' + fmtPct(r.upside_pct, 0) + '</div>' : '';
+      const weight = fmtPctMag(r.pct_total, 1) + ' do fundo';
+      const upside = r.upside_pct != null ? ' · upside ' + fmtPct(r.upside_pct, 0) : '';
       const name = r.short_name ? '<div class="m-pos-name">' + r.short_name + '</div>' : '';
+      const price = r.preco != null ? '<div class="m-pos-price">' + fmtBRL(r.preco) + '</div>' : '';
       return (
-        '<div class="m-pos">' +
+        '<div class="m-pos" data-ticker="' + r.ticker + '" data-yahoo="' + (r.yahoo_ticker || '') + '">' +
           '<div class="m-pos-left">' +
-            '<div class="m-pos-ticker">' + r.ticker + '</div>' + name +
-            '<div class="m-pos-weight">' + fmtPctMag(r.pct_total, 1) + ' do fundo</div>' +
+            '<div class="m-pos-ticker">' + r.ticker + ' <span class="m-pos-caret">›</span></div>' + name +
+            '<div class="m-pos-weight">' + weight + upside + '</div>' +
             '<div class="m-pos-bar" style="width:' + barW + '%"></div>' +
           '</div>' +
-          '<div class="m-pos-right">' +
-            '<div class="m-pos-var ' + sign(v) + '">' + (v == null ? '—' : fmtPct(v)) + '</div>' + sub +
+          '<div class="m-pos-right">' + price +
+            '<div class="m-pos-var ' + sign(v) + '">' + (v == null ? '—' : fmtPct(v)) + '</div>' +
           '</div>' +
         '</div>'
       );
     }).join('');
+  }
+
+  // ───────── Carteira: expandir ativo (mini gráfico vs IBOV) ─────────
+  const expanded = { ticker: null, chart: null, range: '6M' };
+
+  function collapseExpand() {
+    if (expanded.chart) { expanded.chart.destroy(); expanded.chart = null; }
+    const panel = document.querySelector('.m-pos-expand');
+    if (panel) panel.remove();
+    const open = document.querySelector('.m-pos.is-open');
+    if (open) open.classList.remove('is-open');
+    expanded.ticker = null;
+  }
+
+  function openExpand(card) {
+    const ticker = card.dataset.ticker;
+    const yahoo = card.dataset.yahoo;
+    if (expanded.ticker === ticker) { collapseExpand(); return; }
+    collapseExpand();
+    if (!yahoo) return;
+    expanded.ticker = ticker;
+    card.classList.add('is-open');
+    const ranges = ['1M', '3M', '6M', 'YTD', '1A'];
+    const panel = document.createElement('div');
+    panel.className = 'm-pos-expand';
+    panel.innerHTML =
+      '<div class="m-range m-range-stock">' +
+        ranges.map((r) => '<button class="m-range-btn' + (r === expanded.range ? ' is-active' : '') + '" data-r="' + r + '">' + r + '</button>').join('') +
+      '</div>' +
+      '<div class="m-chart-wrap m-mini"><canvas></canvas><div class="m-mini-load">carregando…</div></div>' +
+      '<div class="m-stats">' +
+        '<div class="m-stat"><span>PERÍODO</span><b data-k="ret">—</b></div>' +
+        '<div class="m-stat"><span>VS IBOV</span><b data-k="vsibov">—</b></div>' +
+        '<div class="m-stat"><span>MÁX 52S</span><b data-k="hi">—</b></div>' +
+        '<div class="m-stat"><span>MÍN 52S</span><b data-k="lo">—</b></div>' +
+        '<div class="m-stat"><span>P. ATUAL</span><b data-k="px">—</b></div>' +
+      '</div>';
+    card.after(panel);
+    panel.querySelectorAll('.m-range-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        panel.querySelectorAll('.m-range-btn').forEach((x) => x.classList.toggle('is-active', x === b));
+        expanded.range = b.dataset.r;
+        loadStock(yahoo, panel);
+      });
+    });
+    loadStock(yahoo, panel);
+  }
+
+  async function loadStock(yahoo, panel) {
+    const load = panel.querySelector('.m-mini-load');
+    const canvas = panel.querySelector('canvas');
+    load.style.display = ''; load.textContent = 'carregando…'; canvas.style.display = 'none';
+    const set = (k, txt, cls) => {
+      const el = panel.querySelector('[data-k="' + k + '"]');
+      if (el) { el.textContent = txt; el.className = ''; if (cls) el.classList.add(cls); }
+    };
+    try {
+      const d = await api('/api/stock-history/' + encodeURIComponent(yahoo) + '?range=' + expanded.range);
+      if (!d.series || !d.series.length) { load.textContent = 'sem dados para o período.'; return; }
+      const co = themeColors();
+      set('ret', fmtPct(d.period_return), sign(d.period_return));
+      set('vsibov', fmtPct(d.vs_ibov), sign(d.vs_ibov));
+      set('hi', d.w52_high != null ? fmtBRL(d.w52_high) : '—');
+      set('lo', d.w52_low != null ? fmtBRL(d.w52_low) : '—');
+      set('px', d.series.length ? fmtBRL(d.series[d.series.length - 1].price) : '—');
+      const labels = d.series.map((s) => s.date);
+      if (expanded.chart) { expanded.chart.destroy(); expanded.chart = null; }
+      load.style.display = 'none'; canvas.style.display = '';
+      expanded.chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Ativo', data: d.series.map((s) => (s.indexed != null ? s.indexed - 100 : null)), borderColor: co.orange, borderWidth: 2, pointRadius: 0, tension: 0.15, fill: false },
+            { label: 'IBOV', data: d.series.map((s) => (s.ibov != null ? s.ibov - 100 : null)), borderColor: co.cyan, borderWidth: 1.3, pointRadius: 0, tension: 0.15, fill: false, borderDash: [4, 3] },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { title: (it) => (it.length ? fmtDate(it[0].label) : ''), label: (it) => it.dataset.label + ': ' + fmtPct(it.parsed.y) } },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: co.muted, maxTicksLimit: 4, maxRotation: 0, callback: (v, i) => { const s = labels[i]; if (!s) return ''; const p = s.split('-'); return p[2] + '/' + p[1]; } } },
+            y: { grid: { color: co.border }, ticks: { color: co.muted, callback: (v) => Number(v).toFixed(0) + '%' } },
+          },
+        },
+      });
+    } catch (e) {
+      load.textContent = 'erro ao carregar.';
+    }
   }
 
   function themeColors() {
@@ -147,9 +247,28 @@
   function cutoffDate(lastStr, kind) {
     if (kind === 'total') return null;
     const d = new Date(lastStr + 'T00:00:00');
+    if (kind === 'ytd') return d.getFullYear() + '-01-01';
     if (kind === '6m') d.setMonth(d.getMonth() - 6);
     else if (kind === '12m') d.setMonth(d.getMonth() - 12);
+    else if (kind === '24m') d.setMonth(d.getMonth() - 24);
+    else if (kind === '36m') d.setMonth(d.getMonth() - 36);
+    else return null;
     return d.toISOString().slice(0, 10);
+  }
+
+  // Recorta a série na janela, incluindo o último ponto ANTES do corte como
+  // base (mesma metodologia do desktop — ancora no fechamento anterior).
+  function windowSeries(series, kind) {
+    if (kind === 'total') return series;
+    const last = series[series.length - 1].date;
+    const cutoff = cutoffDate(last, kind);
+    if (!cutoff) return series;
+    let anchor = 0;
+    for (let i = 0; i < series.length; i++) {
+      if (series[i].date < cutoff) anchor = i;
+      else break;
+    }
+    return series.slice(anchor);
   }
 
   function renderRentChart() {
@@ -157,9 +276,7 @@
     const cv = $('rent-chart');
     if (!d || !d.series || !d.series.length || !cv) return;
     const co = themeColors();
-    const last = d.series[d.series.length - 1].date;
-    const cutoff = cutoffDate(last, chartRange);
-    const series = cutoff ? d.series.filter((s) => s.date >= cutoff) : d.series;
+    const series = windowSeries(d.series, chartRange);
     if (!series.length) return;
     const labels = series.map((s) => s.date);
 
@@ -232,6 +349,42 @@
     }
   }
 
+  const RENT_WINS = [['6m', '6M'], ['ytd', 'YTD'], ['12m', '12M'], ['24m', '24M'], ['36m', '36M'], ['total', 'Total']];
+
+  function windowReturns(d, kind) {
+    const s = windowSeries(d.series, kind);
+    if (!s.length) return { fund: null, ibov: null, cdi: null };
+    const f0 = s[0].fund, f1 = s[s.length - 1].fund;
+    const fund = f0 ? (f1 / f0 - 1) * 100 : null;
+    let ib0 = null, ib1 = null;
+    for (const x of s) { if (x.ibov != null) { ib0 = x.ibov; break; } }
+    for (let i = s.length - 1; i >= 0; i--) { if (s[i].ibov != null) { ib1 = s[i].ibov; break; } }
+    const ibov = (ib0 && ib1) ? (ib1 / ib0 - 1) * 100 : null;
+    let cdi = null;
+    const cm = d.benchmarks && d.benchmarks.cdi;
+    if (cm) {
+      let c0 = null, c1 = null;
+      for (const x of s) { if (cm[x.date] != null) { c0 = cm[x.date]; break; } }
+      for (let i = s.length - 1; i >= 0; i--) { if (cm[s[i].date] != null) { c1 = cm[s[i].date]; break; } }
+      if (c0 && c1) cdi = (c1 / c0 - 1) * 100;
+    }
+    return { fund: fund, ibov: ibov, cdi: cdi };
+  }
+
+  function renderRentTable() {
+    const d = state.perfChart;
+    const el = $('rent-table');
+    if (!d || !d.series || !d.series.length || !el) return;
+    const body = RENT_WINS.map(([k, lbl]) => {
+      const r = windowReturns(d, k);
+      return '<tr><td class="m-rt-win">' + lbl + '</td>' +
+        '<td class="' + sign(r.fund) + '">' + fmtPct(r.fund) + '</td>' +
+        '<td class="' + sign(r.ibov) + '">' + fmtPct(r.ibov) + '</td>' +
+        '<td class="' + sign(r.cdi) + '">' + fmtPct(r.cdi) + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<table><thead><tr><th>Janela</th><th>Fundo</th><th>IBOV</th><th>CDI</th></tr></thead><tbody>' + body + '</tbody></table>';
+  }
+
   function renderRisco() {
     const v = state.risk.var;
     if (v && !v.error) {
@@ -276,6 +429,7 @@
     state.perfChart = await api('/api/performance-chart');
     state.loaded.rent = true;
     renderRentChart();
+    renderRentTable();
   }
 
   async function loadRisk() {
@@ -366,6 +520,10 @@
         document.querySelectorAll('.m-range-btn').forEach((x) => x.classList.toggle('is-active', x === b));
         renderRentChart();
       });
+    });
+    $('carteira-list').addEventListener('click', (e) => {
+      const card = e.target.closest('.m-pos');
+      if (card) openExpand(card);
     });
     $('m-refresh').addEventListener('click', refreshActive);
     $('m-theme-toggle').addEventListener('click', () => {

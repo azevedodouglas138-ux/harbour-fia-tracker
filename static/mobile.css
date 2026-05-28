@@ -112,7 +112,7 @@ body { min-height: 100vh; }
 .m-cota-label { font-size: 11px; letter-spacing: 2px; color: var(--text-muted); }
 .m-cota-value {
   font-size: clamp(38px, 13vw, 56px); font-weight: 800; line-height: 1.05;
-  margin: 6px 0 4px; color: var(--text); font-family: var(--mono);
+  margin: 6px 0 4px; color: var(--orange); font-family: var(--mono);
 }
 .m-cota-change {
   display: inline-block; font-size: 17px; font-weight: 700;
@@ -161,6 +161,49 @@ body { min-height: 100vh; }
   height: 3px; border-radius: 2px; background: var(--orange);
   opacity: .55; margin-top: 6px;
 }
+.m-pos-price { font-size: 15px; font-weight: 700; color: var(--text); }
+.m-pos-right .m-pos-var { margin-top: 2px; }
+.m-pos-caret {
+  font-size: 13px; color: var(--text-dim); display: inline-block;
+  transition: transform .18s ease; vertical-align: middle;
+}
+.m-pos { transition: border-color .15s ease; }
+.m-pos.is-open { border-color: var(--orange); }
+.m-pos.is-open .m-pos-caret { transform: rotate(90deg); color: var(--orange); }
+
+/* ── Painel de expansão do ativo ── */
+.m-pos-expand {
+  background: var(--surface2); border: 1px solid var(--orange);
+  border-radius: 14px; padding: 12px; margin: -2px 0 2px;
+  animation: fade .18s ease;
+}
+.m-pos-expand .m-range { margin: 0 0 10px; }
+.m-chart-wrap.m-mini { height: 200px; padding: 6px; }
+.m-mini-load {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 12px;
+}
+.m-stats { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 12px; }
+.m-stat { flex: 1 1 27%; display: flex; flex-direction: column; gap: 2px; }
+.m-stat span { font-size: 10px; color: var(--text-muted); letter-spacing: .4px; }
+.m-stat b { font-size: 13px; font-weight: 700; color: var(--text); }
+.m-stat b.up { color: var(--green); }
+.m-stat b.down { color: var(--red); }
+.m-stat b.flat { color: var(--text-muted); }
+
+/* ── Tabela de retornos por janela ── */
+.m-rent-table { margin-top: 16px; }
+.m-rent-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.m-rent-table th {
+  text-align: right; color: var(--text-muted); font-weight: 600;
+  font-size: 11px; padding: 7px 8px; border-bottom: 1px solid var(--border2);
+}
+.m-rent-table th:first-child { text-align: left; }
+.m-rent-table td { text-align: right; padding: 8px; border-bottom: 1px solid var(--border); }
+.m-rent-table td.m-rt-win { text-align: left; color: var(--text-muted); font-weight: 600; }
+.m-rent-table td.up { color: var(--green); }
+.m-rent-table td.down { color: var(--red); }
+.m-rent-table td.flat { color: var(--text-muted); }
 
 /* ───────── Rentabilidade (gráfico) ───────── */
 .m-range { display: flex; gap: 8px; margin: 2px 2px 12px; }
