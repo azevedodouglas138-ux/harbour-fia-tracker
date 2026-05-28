@@ -3,7 +3,7 @@
    Escopo "/" mas só interfere no app mobile (/m, assets mobile, /api).
    O app desktop ("/", app.js, style.css) passa direto pela rede.
    ══════════════════════════════════════════════════════════════ */
-const VERSION = 'harbour-m-v2';
+const VERSION = 'harbour-m-v3';
 const SHELL = [
   '/m',
   '/static/mobile.css',
@@ -50,18 +50,6 @@ async function networkFirst(request, cacheKey) {
   }
 }
 
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(VERSION);
-  // Sem ignoreSearch: o ?v=<asset_ver> precisa diferenciar versoes, senao o
-  // arquivo novo casa com o antigo em cache e a atualizacao nunca aparece.
-  const cached = await cache.match(request);
-  const network = fetch(request).then((res) => {
-    if (res && res.ok) cache.put(request, res.clone());
-    return res;
-  }).catch(() => null);
-  return cached || (await network) || fetch(request);
-}
-
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return; // escritas: passthrough
@@ -80,11 +68,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets do app mobile + Chart.js → stale-while-revalidate
+  // Assets do app mobile + Chart.js → network-first (sempre fresco quando online;
+  // cache só como fallback offline). Evita servir JS/CSS antigo preso em cache.
   const isMobileAsset = sameOrigin && /\/static\/(mobile\.(css|js)|icon-|favicon|manifest)/.test(url.pathname);
   const isChart = url.href.indexOf('cdn.jsdelivr.net') !== -1 && url.href.indexOf('chart') !== -1;
   if (isMobileAsset || isChart) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(networkFirst(request));
     return;
   }
 
