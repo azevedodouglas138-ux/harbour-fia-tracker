@@ -3,7 +3,7 @@
    Escopo "/" mas só interfere no app mobile (/m, assets mobile, /api).
    O app desktop ("/", app.js, style.css) passa direto pela rede.
    ══════════════════════════════════════════════════════════════ */
-const VERSION = 'harbour-m-v1';
+const VERSION = 'harbour-m-v2';
 const SHELL = [
   '/m',
   '/static/mobile.css',
@@ -52,7 +52,9 @@ async function networkFirst(request, cacheKey) {
 
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(VERSION);
-  const cached = await cache.match(request, { ignoreSearch: true });
+  // Sem ignoreSearch: o ?v=<asset_ver> precisa diferenciar versoes, senao o
+  // arquivo novo casa com o antigo em cache e a atualizacao nunca aparece.
+  const cached = await cache.match(request);
   const network = fetch(request).then((res) => {
     if (res && res.ok) cache.put(request, res.clone());
     return res;
