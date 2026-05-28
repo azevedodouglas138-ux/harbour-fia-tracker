@@ -139,6 +139,15 @@ body { min-height: 100vh; }
 .m-carteira-head { display: flex; align-items: baseline; justify-content: space-between; }
 .m-carteira-count { font-size: 11px; color: var(--text-muted); }
 .m-cards { display: flex; flex-direction: column; gap: 8px; }
+.m-fundline {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-left: 3px solid var(--orange); border-radius: 14px;
+  padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.m-fundline-label {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  letter-spacing: .5px; text-transform: uppercase;
+}
 .m-pos {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 14px; padding: 12px 14px;

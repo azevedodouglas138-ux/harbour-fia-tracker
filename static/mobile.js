@@ -120,13 +120,41 @@
       setVal('cart-count', '');
       return;
     }
-    const rows = p.rows.slice().sort((a, b) => (b.pct_total || 0) - (a.pct_total || 0));
-    const maxW = Math.max.apply(null, rows.map((r) => r.pct_total || 0)) || 1;
+    const q = p.quota || {};
+    const caixa = q.caixa || 0;
+    const prov = q.proventos_a_receber || 0;
+    const equity = p.total_value || 0;
+    // PL do fundo = ativos + caixa + proventos a receber (base dos percentuais).
+    const base = (equity + caixa + prov) || 1;
+    const pctFund = (v) => (v != null ? (v / base) * 100 : null);
+
+    const rows = p.rows.slice().sort((a, b) => (b.valor_liquido || 0) - (a.valor_liquido || 0));
+    const maxW = Math.max.apply(null, rows.map((r) => pctFund(r.valor_liquido) || 0)
+      .concat([(caixa / base) * 100, (prov / base) * 100])) || 1;
     setVal('cart-count', rows.length + ' ativos');
-    list.innerHTML = rows.map((r) => {
+
+    const fundLine = (label, value) => {
+      const w = (value / base) * 100;
+      const barW = Math.max(4, Math.round((w / maxW) * 100));
+      return (
+        '<div class="m-fundline">' +
+          '<div class="m-pos-left">' +
+            '<div class="m-fundline-label">' + label + '</div>' +
+            '<div class="m-pos-weight">' + fmtPctMag(w, 1) + ' do fundo</div>' +
+            '<div class="m-pos-bar" style="width:' + barW + '%"></div>' +
+          '</div>' +
+          '<div class="m-pos-right"><div class="m-pos-price">' + fmtBRL(value) + '</div></div>' +
+        '</div>'
+      );
+    };
+
+    let html = fundLine('Caixa', caixa) + fundLine('Proventos a receber', prov);
+
+    html += rows.map((r) => {
       const v = r.var_dia_pct;
-      const barW = Math.max(4, Math.round(((r.pct_total || 0) / maxW) * 100));
-      const weight = fmtPctMag(r.pct_total, 1) + ' do fundo';
+      const w = pctFund(r.valor_liquido);
+      const barW = Math.max(4, Math.round(((w || 0) / maxW) * 100));
+      const weight = (w != null ? fmtPctMag(w, 1) : '—') + ' do fundo';
       const upside = r.upside_pct != null ? ' · upside ' + fmtPct(r.upside_pct, 0) : '';
       const name = r.short_name ? '<div class="m-pos-name">' + r.short_name + '</div>' : '';
       const price = r.preco != null ? '<div class="m-pos-price">' + fmtBRL(r.preco) + '</div>' : '';
@@ -143,6 +171,8 @@
         '</div>'
       );
     }).join('');
+
+    list.innerHTML = html;
   }
 
   // ───────── Carteira: expandir ativo (mini gráfico vs IBOV) ─────────
