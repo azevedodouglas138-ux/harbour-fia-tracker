@@ -158,11 +158,15 @@
       const upside = r.upside_pct != null ? ' · upside ' + fmtPct(r.upside_pct, 0) : '';
       const name = r.short_name ? '<div class="m-pos-name">' + r.short_name + '</div>' : '';
       const price = r.preco != null ? '<div class="m-pos-price">' + fmtBRL(r.preco) + '</div>' : '';
+      const qtyFmt = r.quantidade != null ? new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(r.quantidade) + ' ações' : null;
+      const nomFmt = r.valor_liquido != null ? fmtBRL(r.valor_liquido, 0) : null;
+      const posInfo = (qtyFmt || nomFmt) ? '<div class="m-pos-sub">' + [qtyFmt, nomFmt].filter(Boolean).join(' · ') + '</div>' : '';
       return (
         '<div class="m-pos" data-ticker="' + r.ticker + '" data-yahoo="' + (r.yahoo_ticker || '') + '">' +
           '<div class="m-pos-left">' +
             '<div class="m-pos-ticker">' + r.ticker + ' <span class="m-pos-caret">›</span></div>' + name +
             '<div class="m-pos-weight">' + weight + upside + '</div>' +
+            posInfo +
             '<div class="m-pos-bar" style="width:' + barW + '%"></div>' +
           '</div>' +
           '<div class="m-pos-right">' + price +
