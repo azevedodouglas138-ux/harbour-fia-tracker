@@ -3256,5 +3256,257 @@
     },
     "executed_at": "2026-06-22T14:19:03",
     "compliance_override": false
+  },
+  {
+    "id": "2d8b90bf-3be4-4c2d-8154-54ecd1a595d8",
+    "timestamp": "2026-06-23T14:44:07",
+    "label": "",
+    "operacoes": [
+      {
+        "corretagem_rs": 0,
+        "custo_op_rs": 9580,
+        "direcao": "compra",
+        "is_novo": true,
+        "preco": 9.58,
+        "quantidade": 1000,
+        "sector": "Industriais",
+        "ticker": "MOVI3",
+        "valor_total_rs": 9580,
+        "yahoo_ticker": "MOVI3.SA"
+      }
+    ],
+    "basket": {
+      "custo_total_rs": 9580,
+      "num_operacoes": 1
+    },
+    "antes": {
+      "caixa": 60000,
+      "cota_estimada": 3.62765133,
+      "hhi": 3375,
+      "nav_total": 18067981.3,
+      "pct_grupo1": 97.95,
+      "weighted_beta": 1.21,
+      "weighted_upside": 59.29
+    },
+    "depois": {
+      "caixa": 50420,
+      "cota_estimada": 3.62773993,
+      "hhi": 3372,
+      "nav_total": 18067981.3,
+      "pct_grupo1": 98,
+      "weighted_beta": 1.21,
+      "weighted_upside": 59.26
+    },
+    "impactos": {
+      "impacto_por_cota_rs": 8.86e-05,
+      "variacao_beta": 0,
+      "variacao_cota_pct": 0.0024,
+      "variacao_hhi": -3,
+      "variacao_nav_rs": 0,
+      "variacao_upside_pp": -0.03
+    },
+    "compliance": [
+      {
+        "limite_pct": 67,
+        "regra": "Mín. 67% em Ações/BDRs — Grupo I (Res. CVM 175)",
+        "status": "ok",
+        "tipo": "minimo",
+        "valor_antes_pct": 97.95,
+        "valor_depois_pct": 98
+      },
+      {
+        "limite_pct": 40,
+        "regra": "Conc. por Ativo — MOVI3 (interno)",
+        "status": "ok",
+        "tipo": "maximo",
+        "valor_antes_pct": 0,
+        "valor_depois_pct": 0.05
+      }
+    ],
+    "rows_antes": [
+      {
+        "pct_total": 36.92,
+        "ticker": "MUTC34",
+        "valor_liquido": 6534290,
+        "yahoo_ticker": "MUTC34.SA"
+      },
+      {
+        "pct_total": 17.02,
+        "ticker": "MDNE3",
+        "valor_liquido": 3011800,
+        "yahoo_ticker": "MDNE3.SA"
+      },
+      {
+        "pct_total": 14.85,
+        "ticker": "TEND3",
+        "valor_liquido": 2628750,
+        "yahoo_ticker": "TEND3.SA"
+      },
+      {
+        "pct_total": 10.55,
+        "ticker": "BMEB4",
+        "valor_liquido": 1866700,
+        "yahoo_ticker": "BMEB4.SA"
+      },
+      {
+        "pct_total": 8.01,
+        "ticker": "ROXO34",
+        "valor_liquido": 1417000,
+        "yahoo_ticker": "ROXO34.SA"
+      },
+      {
+        "pct_total": 7.69,
+        "ticker": "A1MD34",
+        "valor_liquido": 1360640,
+        "yahoo_ticker": "A1MD34.SA"
+      },
+      {
+        "pct_total": 4.9,
+        "ticker": "VTRU3",
+        "valor_liquido": 866450,
+        "yahoo_ticker": "VTRU3.SA"
+      },
+      {
+        "pct_total": 0.03,
+        "ticker": "PRIO3",
+        "valor_liquido": 5607,
+        "yahoo_ticker": "PRIO3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "TTEN3",
+        "valor_liquido": 1499,
+        "yahoo_ticker": "TTEN3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "HAPV3",
+        "valor_liquido": 1030,
+        "yahoo_ticker": "HAPV3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "M2RV34",
+        "valor_liquido": 1465.3,
+        "yahoo_ticker": "M2RV34.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "SIMH3",
+        "valor_liquido": 771,
+        "yahoo_ticker": "SIMH3.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "RAPT4",
+        "valor_liquido": 447,
+        "yahoo_ticker": "RAPT4.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "CSNA3",
+        "valor_liquido": 532,
+        "yahoo_ticker": "CSNA3.SA"
+      }
+    ],
+    "rows_depois": [
+      {
+        "pct_total": 36.9,
+        "ticker": "MUTC34",
+        "valor_liquido": 6534290,
+        "yahoo_ticker": "MUTC34.SA"
+      },
+      {
+        "pct_total": 17.01,
+        "ticker": "MDNE3",
+        "valor_liquido": 3011800,
+        "yahoo_ticker": "MDNE3.SA"
+      },
+      {
+        "pct_total": 14.85,
+        "ticker": "TEND3",
+        "valor_liquido": 2628750,
+        "yahoo_ticker": "TEND3.SA"
+      },
+      {
+        "pct_total": 10.54,
+        "ticker": "BMEB4",
+        "valor_liquido": 1866700,
+        "yahoo_ticker": "BMEB4.SA"
+      },
+      {
+        "pct_total": 8,
+        "ticker": "ROXO34",
+        "valor_liquido": 1417000,
+        "yahoo_ticker": "ROXO34.SA"
+      },
+      {
+        "pct_total": 7.68,
+        "ticker": "A1MD34",
+        "valor_liquido": 1360640,
+        "yahoo_ticker": "A1MD34.SA"
+      },
+      {
+        "pct_total": 4.89,
+        "ticker": "VTRU3",
+        "valor_liquido": 866450,
+        "yahoo_ticker": "VTRU3.SA"
+      },
+      {
+        "pct_total": 0.05,
+        "ticker": "MOVI3",
+        "valor_liquido": 9580,
+        "yahoo_ticker": "MOVI3.SA"
+      },
+      {
+        "pct_total": 0.03,
+        "ticker": "PRIO3",
+        "valor_liquido": 5607,
+        "yahoo_ticker": "PRIO3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "TTEN3",
+        "valor_liquido": 1499,
+        "yahoo_ticker": "TTEN3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "HAPV3",
+        "valor_liquido": 1030,
+        "yahoo_ticker": "HAPV3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "M2RV34",
+        "valor_liquido": 1465.3,
+        "yahoo_ticker": "M2RV34.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "SIMH3",
+        "valor_liquido": 771,
+        "yahoo_ticker": "SIMH3.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "RAPT4",
+        "valor_liquido": 447,
+        "yahoo_ticker": "RAPT4.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "CSNA3",
+        "valor_liquido": 532,
+        "yahoo_ticker": "CSNA3.SA"
+      }
+    ],
+    "parametros_compliance": {
+      "enable_concentracao_ativo": true,
+      "enable_concentracao_setor": false,
+      "grupo1_minimo_pct": 67,
+      "limite_concentracao_ativo_pct": 40,
+      "limite_concentracao_setor_pct": 40
+    }
   }
 ]
