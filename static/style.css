@@ -326,6 +326,8 @@ td {
 td.num { text-align: right; }
 td:last-child { border-right: none; }
 
+.row-num-col { width: 20px; text-align: right; color: var(--text-dim); cursor: default; }
+.row-num { font-size: 9px; color: var(--text-dim); text-align: right; padding-right: 4px; user-select: none; }
 .ticker-cell { color: var(--orange-text); font-weight: 700; font-size: 12px; }
 .name-sub { font-size: 9px; color: var(--text-muted); display: block; font-weight: 400; }
 
@@ -1522,10 +1524,10 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 
 @media (max-width: 1280px) {
   /* Esconde colunas raras da carteira (PEG, EV/EBITDA) */
-  #portfolio-table th:nth-child(12),
-  #portfolio-table tbody td:nth-child(12),
   #portfolio-table th:nth-child(13),
-  #portfolio-table tbody td:nth-child(13) { display: none; }
+  #portfolio-table tbody td:nth-child(13),
+  #portfolio-table th:nth-child(14),
+  #portfolio-table tbody td:nth-child(14) { display: none; }
 }
 
 /* ── TABLET landscape (≤1100px) ─────────────────────────────────── */
@@ -1534,12 +1536,12 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   .charts-toolbar, .charts-grid, .cfg-grid { padding-left: 10px; padding-right: 10px; }
 
   /* Esconde mais colunas (BETA, P/VPA, DIV.YIELD) */
-  #portfolio-table th:nth-child(15),
-  #portfolio-table tbody td:nth-child(15),
   #portfolio-table th:nth-child(16),
   #portfolio-table tbody td:nth-child(16),
   #portfolio-table th:nth-child(17),
-  #portfolio-table tbody td:nth-child(17) { display: none; }
+  #portfolio-table tbody td:nth-child(17),
+  #portfolio-table th:nth-child(18),
+  #portfolio-table tbody td:nth-child(18) { display: none; }
 
   /* Footer ponderada já não bate por colspan — esconde para evitar desalinhamento */
   #portfolio-table .weighted-row { display: none; }

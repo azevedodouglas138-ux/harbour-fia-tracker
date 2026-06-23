@@ -29,7 +29,7 @@ let _currentExpandRange = '1M';
 const _inlineCharts     = new Map();
 const _stockHistCache   = new Map();
 const STOCK_HIST_CACHE_TTL = 5 * 60 * 1000;
-const TABLE_COL_COUNT   = 22;
+const TABLE_COL_COUNT   = 23;
 
 // ── Portfolio history state ───────────────────────────────────────
 let _phHistoryOpen    = false;
@@ -221,7 +221,7 @@ function renderTable() {
   const tbody = document.getElementById('portfolio-body');
   tbody.innerHTML = '';
 
-  rows.forEach(row => {
+  rows.forEach((row, idx) => {
     const tr = document.createElement('tr');
     tr.dataset.ticker = row.ticker;
 
@@ -245,6 +245,7 @@ function renderTable() {
     }
 
     tr.innerHTML = `
+      <td class="row-num">${idx + 1}</td>
       <td class="ticker-cell"><span class="ticker-click" data-ticker="${row.ticker}">${row.ticker}</span>${row.short_name?`<span class="name-sub">${row.short_name}</span>`:''}</td>
       <td>${row.categoria||'—'}</td>
       <td>${row.sector||'—'}</td>
@@ -306,7 +307,7 @@ function renderWeightedRow() {
   const ws = portfolioData.weighted_stats;
   tfoot.innerHTML = `
     <tr class="weighted-row">
-      <td colspan="9" class="weighted-label">CARTEIRA (POND.)</td>
+      <td colspan="10" class="weighted-label">CARTEIRA (POND.)</td>
       <td class="num">${fmt(ws.w_trailing_pe,1)}</td>
       <td class="num">${fmt(ws.w_forward_pe,1)}</td>
       <td class="num">${fmt(ws.w_peg_ratio,2)}</td>
