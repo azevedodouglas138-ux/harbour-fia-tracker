@@ -3773,6 +3773,8 @@
       "grupo1_minimo_pct": 67,
       "limite_concentracao_ativo_pct": 40,
       "limite_concentracao_setor_pct": 40
-    }
+    },
+    "executed_at": "2026-06-24T13:48:43",
+    "compliance_override": false
   }
 ]
