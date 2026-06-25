@@ -14,7 +14,7 @@
       "ticker": "MUTC34",
       "yahoo_ticker": "MUTC34.SA",
       "categoria": "BDR",
-      "quantidade": 7000.0,
+      "quantidade": 6500.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 1300.0,
@@ -134,7 +134,7 @@
       "ticker": "MOVI3",
       "yahoo_ticker": "MOVI3.SA",
       "categoria": "Acao",
-      "quantidade": 2500.0,
+      "quantidade": 50000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": null
