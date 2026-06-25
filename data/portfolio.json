@@ -147,7 +147,8 @@
       "quantidade": 1000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
-      "preco_alvo": null
+      "preco_alvo": 7.0,
+      "prazo_resgate_d": null
     }
   ]
 }
