@@ -33,7 +33,7 @@
       "ticker": "BMEB4",
       "yahoo_ticker": "BMEB4.SA",
       "categoria": "Acao",
-      "quantidade": 28000.0,
+      "quantidade": 25000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 150.0,
@@ -43,7 +43,7 @@
       "ticker": "TEND3",
       "yahoo_ticker": "TEND3.SA",
       "categoria": "Acao",
-      "quantidade": 70000.0,
+      "quantidade": 55000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": 650.0,
       "preco_alvo": 50.0
