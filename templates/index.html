@@ -431,6 +431,70 @@
       </div>
     </div>
 
+    {% if role == 'admin' %}
+    <div class="cfg-panel costs-panel">
+      <div class="cfg-panel-title">◆ DESPESAS DO FUNDO</div>
+
+      <div class="costs-form">
+        <div class="cfg-field">
+          <label>RUBRICA</label>
+          <select id="cost-rubrica">
+            <option value="gestao">Taxa de Gestão</option>
+            <option value="administracao">Administração</option>
+            <option value="custodia">Custódia</option>
+            <option value="performance">Taxa de Performance</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="cfg-field costs-field-desc">
+          <label>DESCRIÇÃO</label>
+          <input type="text" id="cost-descricao" placeholder="ex: Taxa de gestão jun/26" />
+        </div>
+        <div class="cfg-field">
+          <label>COMPETÊNCIA</label>
+          <input type="month" id="cost-competencia" />
+        </div>
+        <div class="cfg-field">
+          <label>VALOR (R$)</label>
+          <input type="number" id="cost-valor" step="0.01" placeholder="0,00" />
+        </div>
+        <div class="cfg-field costs-form-action">
+          <button class="bbg-btn bbg-btn-primary" id="cost-provisionar">PROVISIONAR</button>
+        </div>
+        <span class="cfg-status" id="cost-status"></span>
+      </div>
+      <span class="cfg-hint">Provisionar soma o valor à provisão (Custos Provisionados, ou Provisão de Performance) e reflete a obrigação no PL. Pagar debita o caixa e baixa a provisão no mesmo valor — <strong>sem impacto na cota</strong>.</span>
+
+      <div class="costs-subtitle">CUSTOS EM ABERTO (PROVISIONADOS)</div>
+      <div class="costs-table-wrap">
+        <table class="costs-table">
+          <thead>
+            <tr>
+              <th>RUBRICA</th><th>DESCRIÇÃO</th><th>COMPET.</th>
+              <th class="num">VALOR (R$)</th><th>PROVISIONADO</th><th class="act">AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="costs-open-body"></tbody>
+        </table>
+        <div class="costs-empty" id="costs-open-empty">Nenhum custo em aberto.</div>
+      </div>
+
+      <div class="costs-subtitle">HISTÓRICO DE PAGAMENTOS</div>
+      <div class="costs-table-wrap">
+        <table class="costs-table">
+          <thead>
+            <tr>
+              <th>PAGO EM</th><th>RUBRICA</th><th>DESCRIÇÃO</th>
+              <th class="num">VALOR (R$)</th><th class="num">CAIXA (ANTES → DEPOIS)</th><th class="act">AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="costs-paid-body"></tbody>
+        </table>
+        <div class="costs-empty" id="costs-paid-empty">Nenhum pagamento registrado.</div>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="cfg-panel">
       <div class="cfg-panel-title">◆ LIMITES DE LIQUIDEZ (COMPLIANCE)</div>
       <div class="cfg-fields">

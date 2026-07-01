@@ -1592,6 +1592,7 @@ async function loadConfig() {
   if (liqMaxZerr) liqMaxZerr.value = config.liquidez_max_zerar_dias ?? 30;
   const descEl = document.getElementById('cfg-descricao-fundo');
   if (descEl) descEl.value = config.descricao_fundo ?? '';
+  if (document.getElementById('costs-open-body')) loadFundCosts();
 }
 
 document.getElementById('cfg-save')?.addEventListener('click', async () => {
@@ -1621,6 +1622,124 @@ document.getElementById('cfg-save')?.addEventListener('click', async () => {
     status.style.color = '#ff3333';
   }
 });
+
+// ── Despesas do fundo (custos recorrentes) ───────────────────────
+const COST_RUBRICA_LABELS = {
+  gestao: 'Taxa de Gestão', administracao: 'Administração',
+  custodia: 'Custódia', performance: 'Taxa de Performance', outro: 'Outro',
+};
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function fmtCostDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso.length <= 10 ? iso + 'T00:00:00' : iso);
+  return isNaN(d) ? iso : d.toLocaleDateString('pt-BR');
+}
+
+async function loadFundCosts() {
+  try {
+    const res = await fetch('/api/fund-costs');
+    if (!res.ok) return;
+    renderFundCosts(await res.json());
+  } catch (e) { console.error('loadFundCosts', e); }
+}
+
+function renderFundCosts(items) {
+  const openBody = document.getElementById('costs-open-body');
+  if (!openBody) return;
+  const paidBody  = document.getElementById('costs-paid-body');
+  const openEmpty = document.getElementById('costs-open-empty');
+  const paidEmpty = document.getElementById('costs-paid-empty');
+  const open = items.filter(c => c.status === 'provisionado');
+  const paid = items.filter(c => c.status === 'pago');
+  const label = c => escHtml(COST_RUBRICA_LABELS[c.rubrica] || c.rubrica);
+
+  openBody.innerHTML = open.map(c => `
+    <tr>
+      <td>${label(c)}</td>
+      <td>${escHtml(c.descricao) || '—'}</td>
+      <td>${escHtml(c.competencia) || '—'}</td>
+      <td class="num">${fmt(c.valor_rs)}</td>
+      <td>${fmtCostDate(c.created_at)}</td>
+      <td class="act">
+        <button class="bbg-btn bbg-btn-primary costs-act" data-act="pay" data-id="${c.id}">PAGAR</button>
+        <button class="bbg-btn bbg-btn-danger costs-act" data-act="del" data-id="${c.id}">EXCLUIR</button>
+      </td>
+    </tr>`).join('');
+  openEmpty.style.display = open.length ? 'none' : 'block';
+
+  paidBody.innerHTML = paid.map(c => `
+    <tr>
+      <td>${fmtCostDate(c.pago_em)}</td>
+      <td>${label(c)}</td>
+      <td>${escHtml(c.descricao) || '—'}</td>
+      <td class="num">${fmt(c.valor_rs)}</td>
+      <td class="num">${fmt(c.caixa_antes)} → ${fmt(c.caixa_depois)}</td>
+      <td class="act">
+        <button class="bbg-btn costs-act" data-act="estornar" data-id="${c.id}">ESTORNAR</button>
+      </td>
+    </tr>`).join('');
+  paidEmpty.style.display = paid.length ? 'none' : 'block';
+}
+
+function setCostStatus(msg, isErr) {
+  const status = document.getElementById('cost-status');
+  if (!status) return;
+  status.textContent = msg;
+  status.style.color = isErr ? '#ff3333' : '#00cc44';
+  setTimeout(() => { if (status.textContent === msg) status.textContent = ''; }, 4000);
+}
+
+document.getElementById('cost-provisionar')?.addEventListener('click', async () => {
+  const rubrica     = document.getElementById('cost-rubrica').value;
+  const descricao   = document.getElementById('cost-descricao').value;
+  const competencia = document.getElementById('cost-competencia').value;
+  const valor       = parseFloat(document.getElementById('cost-valor').value);
+  if (!valor || valor <= 0) { setCostStatus('✖ Informe um valor maior que zero', true); return; }
+  const res = await fetch('/api/fund-costs', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rubrica, descricao, competencia, valor_rs: valor }),
+  });
+  if (res.ok) {
+    document.getElementById('cost-descricao').value = '';
+    document.getElementById('cost-valor').value = '';
+    setCostStatus('✔ Provisionado', false);
+    await loadConfig();
+    await fetchPortfolio();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    setCostStatus('✖ ' + (err.error || 'Erro ao provisionar'), true);
+  }
+});
+
+// Ações nas tabelas (delegação — as linhas são recriadas a cada render)
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.costs-act');
+  if (!btn) return;
+  const { act, id } = btn.dataset;
+  if (act === 'pay') {
+    if (!confirm('Confirmar pagamento? O valor será debitado do CAIXA e a provisão será baixada no mesmo valor. A cota NÃO é afetada.')) return;
+    await costAction(`/api/fund-costs/${id}/pay`, 'POST');
+  } else if (act === 'estornar') {
+    if (!confirm('Estornar este pagamento? O caixa e a provisão voltam ao estado anterior (custo retorna para "em aberto").')) return;
+    await costAction(`/api/fund-costs/${id}/estornar`, 'POST');
+  } else if (act === 'del') {
+    if (!confirm('Excluir este custo em aberto? A provisão será revertida.')) return;
+    await costAction(`/api/fund-costs/${id}`, 'DELETE');
+  }
+});
+
+async function costAction(url, method) {
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' } });
+  if (res.ok) {
+    await loadConfig();
+    await fetchPortfolio();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    alert(err.error || 'Erro na operação');
+  }
+}
 
 // ── Edit Modal ───────────────────────────────────────────────────
 function openEditModal(row) {

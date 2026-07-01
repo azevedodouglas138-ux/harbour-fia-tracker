@@ -670,6 +670,54 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 }
 .cfg-status { font-size: 10px; color: var(--green); }
 
+/* ── Despesas do fundo (custos recorrentes) ────────────────────── */
+.costs-panel { grid-column: 1 / -1; }
+.costs-form {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 8px;
+}
+.costs-form .cfg-field { flex: 0 0 auto; }
+.costs-form .costs-field-desc { flex: 1 1 220px; min-width: 180px; }
+.costs-form select,
+.costs-form input {
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  padding: 6px 8px; outline: none; border-radius: 2px;
+  transition: border-color .12s;
+}
+.costs-form select:focus,
+.costs-form input:focus { border-color: var(--orange); }
+.costs-form-action { align-self: flex-end; }
+.costs-form #cost-status { align-self: center; }
+
+.costs-subtitle {
+  font-size: 9px; font-weight: 700; color: var(--orange-text);
+  letter-spacing: 0.6px; text-transform: uppercase; margin: 16px 0 6px;
+}
+.costs-table-wrap { border: 1px solid var(--border); overflow-x: auto; }
+.costs-table { width: 100%; border-collapse: collapse; }
+.costs-table th {
+  position: static; cursor: default;
+  padding: 6px 10px; text-align: left; white-space: nowrap;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px;
+  color: var(--orange-text); background: var(--surface2);
+  border-bottom: 1px solid var(--orange); border-right: 1px solid var(--border);
+}
+.costs-table th.num { text-align: right; }
+.costs-table th.act { text-align: center; }
+.costs-table td {
+  padding: 5px 10px; color: var(--text);
+  font-family: var(--mono); font-size: 11px;
+  border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.costs-table td.num { text-align: right; }
+.costs-table td.act { text-align: center; }
+.costs-table td.act .bbg-btn { padding: 3px 8px; margin: 0 2px; }
+.costs-table tr:last-child td { border-bottom: none; }
+.costs-empty {
+  padding: 10px; font-size: 10px; color: var(--text-muted); text-align: center;
+}
+
 /* ═══════════════ MODALS ═════════════════════════════════════════ */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 600;
