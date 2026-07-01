@@ -199,7 +199,6 @@ QUOTA_HISTORY_FILE     = os.path.join(DATA_DIR, "quota_history.json")
 VIEWER_CONFIG_FILE     = os.path.join(DATA_DIR, "viewer_config.json")
 PRETRADE_HISTORY_FILE  = os.path.join(DATA_DIR, "pretrade_history.json")
 PORTFOLIO_HISTORY_FILE = os.path.join(DATA_DIR, "portfolio_history.json")
-FUND_COSTS_FILE        = os.path.join(DATA_DIR, "fund_costs.json")
 
 _price_cache = {"data": {}, "expires_at": 0}
 FUNDAMENTALS_TTL = 4 * 3600
@@ -319,17 +318,6 @@ def save_pretrade_history(data):
     content = json.dumps(data, ensure_ascii=False, indent=2)
     _save_with_github(PRETRADE_HISTORY_FILE, "data/pretrade_history.json", content,
                       "chore: update pretrade_history.json via UI")
-
-def load_fund_costs():
-    if not os.path.exists(FUND_COSTS_FILE):
-        return []
-    with open(FUND_COSTS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def save_fund_costs(data):
-    content = json.dumps(data, ensure_ascii=False, indent=2)
-    _save_with_github(FUND_COSTS_FILE, "data/fund_costs.json", content,
-                      "chore: update fund_costs.json via UI")
 
 def load_portfolio_history():
     if not os.path.exists(PORTFOLIO_HISTORY_FILE):
@@ -638,13 +626,10 @@ def calculate_quota(rows, fund_config, prices):
     caixa      = fund_config.get("caixa") or 0
     proventos  = fund_config.get("proventos_a_receber") or 0
     custos     = fund_config.get("custos_provisionados") or 0
-    perf_prov  = fund_config.get("performance_fee_acumulada_rs") or 0
     fee_rate   = (fund_config.get("performance_fee_rate") or 20) / 100
 
     nav_carteira = sum(r.get("valor_liquido") or 0 for r in rows)
-    # Provisão de performance é passivo do fundo (reduz o PL), assim como os
-    # custos provisionados — mantém a baixa dupla consistente no pagamento.
-    nav_total    = nav_carteira + caixa + proventos - custos - perf_prov
+    nav_total    = nav_carteira + caixa + proventos - custos
 
     brt_now    = datetime.utcnow() - timedelta(hours=3)
     today_str  = brt_now.strftime("%Y-%m-%d")
@@ -1046,141 +1031,6 @@ def api_update_fund_config():
             try: config[key] = float(val)
             except: config[key] = val
     save_fund_config(config)
-    invalidate_price_cache()
-    return jsonify({"ok": True})
-
-
-# ─── DESPESAS DO FUNDO (custos recorrentes) ──────────────────────────────────
-# Ciclo de vida de cada custo: provisionar (soma na provisão → nav_total cai,
-# refletindo a obrigação) → pagar (baixa dupla: debita o caixa E reduz a provisão
-# no mesmo valor → nav_total volta ao mesmo ponto). O débito NUNCA toca a cota,
-# que depende só do retorno da carteira (ver calculate_quota). Fonte única de
-# dados: fund_costs.json — "em aberto" = provisionado, "histórico" = pago.
-
-_COST_RUBRICAS = {"gestao", "administracao", "custodia", "performance", "outro"}
-
-def _provisao_field_for(rubrica):
-    """Rubrica → campo de provisão no fund_config."""
-    return "performance_fee_acumulada_rs" if rubrica == "performance" else "custos_provisionados"
-
-def _cost_bump_provisao(config, field, delta):
-    config[field] = round(float(config.get(field) or 0) + delta, 2)
-
-@app.route("/api/fund-costs", methods=["GET"])
-@require_admin
-def api_fund_costs_list():
-    costs = load_fund_costs()
-    # em aberto primeiro; dentro de cada grupo, mais recente primeiro
-    costs.sort(key=lambda c: (c.get("pago_em") or c.get("created_at") or ""), reverse=True)
-    costs.sort(key=lambda c: 0 if c.get("status") == "provisionado" else 1)
-    return jsonify(costs)
-
-@app.route("/api/fund-costs", methods=["POST"])
-@require_admin
-def api_fund_costs_create():
-    import uuid
-    payload = request.json or {}
-    rubrica = (payload.get("rubrica") or "").strip().lower()
-    if rubrica not in _COST_RUBRICAS:
-        return jsonify({"error": "Rubrica inválida"}), 400
-    try:
-        valor = float(payload.get("valor_rs"))
-    except (TypeError, ValueError):
-        return jsonify({"error": "Valor inválido"}), 400
-    if valor <= 0:
-        return jsonify({"error": "Valor deve ser maior que zero"}), 400
-
-    field = _provisao_field_for(rubrica)
-    with _portfolio_write_lock:
-        config = load_fund_config()
-        _cost_bump_provisao(config, field, valor)   # provisiona (obrigação pendente)
-        record = {
-            "id":            str(uuid.uuid4()),
-            "created_at":    _brt_now().isoformat(timespec="seconds"),
-            "rubrica":       rubrica,
-            "descricao":     (payload.get("descricao") or "").strip()[:120],
-            "competencia":   (payload.get("competencia") or "").strip()[:20],
-            "valor_rs":      round(valor, 2),
-            "provisao_field": field,
-            "status":        "provisionado",
-            "pago_em":       None,
-            "caixa_antes":   None,
-            "caixa_depois":  None,
-        }
-        costs = load_fund_costs()
-        costs.append(record)
-        save_fund_costs(costs)
-        save_fund_config(config)
-    invalidate_price_cache()
-    return jsonify(record), 201
-
-@app.route("/api/fund-costs/<cost_id>/pay", methods=["POST"])
-@require_admin
-def api_fund_costs_pay(cost_id):
-    payload = request.json or {}
-    with _portfolio_write_lock:
-        costs = load_fund_costs()
-        item  = next((c for c in costs if c.get("id") == cost_id), None)
-        if not item:
-            return jsonify({"error": "Custo não encontrado"}), 404
-        if item.get("status") != "provisionado":
-            return jsonify({"error": "Custo já foi pago"}), 409
-        valor = float(item.get("valor_rs") or 0)
-        field = item.get("provisao_field") or _provisao_field_for(item.get("rubrica"))
-        config = load_fund_config()
-        caixa_antes = float(config.get("caixa") or 0)
-        config["caixa"] = round(caixa_antes - valor, 2)
-        _cost_bump_provisao(config, field, -valor)   # baixa dupla → nav_total invariante
-        item["status"]       = "pago"
-        item["pago_em"]      = (payload.get("pago_em") or "").strip() or _brt_now().isoformat(timespec="seconds")
-        item["caixa_antes"]  = round(caixa_antes, 2)
-        item["caixa_depois"] = config["caixa"]
-        save_fund_costs(costs)
-        save_fund_config(config)
-    invalidate_price_cache()
-    return jsonify(item)
-
-@app.route("/api/fund-costs/<cost_id>/estornar", methods=["POST"])
-@require_admin
-def api_fund_costs_estornar(cost_id):
-    with _portfolio_write_lock:
-        costs = load_fund_costs()
-        item  = next((c for c in costs if c.get("id") == cost_id), None)
-        if not item:
-            return jsonify({"error": "Custo não encontrado"}), 404
-        if item.get("status") != "pago":
-            return jsonify({"error": "Custo não está pago"}), 409
-        valor = float(item.get("valor_rs") or 0)
-        field = item.get("provisao_field") or _provisao_field_for(item.get("rubrica"))
-        config = load_fund_config()
-        config["caixa"] = round(float(config.get("caixa") or 0) + valor, 2)
-        _cost_bump_provisao(config, field, valor)   # devolve a provisão
-        item["status"]       = "provisionado"
-        item["pago_em"]      = None
-        item["caixa_antes"]  = None
-        item["caixa_depois"] = None
-        save_fund_costs(costs)
-        save_fund_config(config)
-    invalidate_price_cache()
-    return jsonify(item)
-
-@app.route("/api/fund-costs/<cost_id>", methods=["DELETE"])
-@require_admin
-def api_fund_costs_delete(cost_id):
-    with _portfolio_write_lock:
-        costs = load_fund_costs()
-        item  = next((c for c in costs if c.get("id") == cost_id), None)
-        if not item:
-            return jsonify({"error": "Custo não encontrado"}), 404
-        if item.get("status") != "provisionado":
-            return jsonify({"error": "Só é possível excluir custos em aberto. Estorne o pagamento primeiro."}), 409
-        valor = float(item.get("valor_rs") or 0)
-        field = item.get("provisao_field") or _provisao_field_for(item.get("rubrica"))
-        config = load_fund_config()
-        _cost_bump_provisao(config, field, -valor)   # reverte a provisão
-        costs = [c for c in costs if c.get("id") != cost_id]
-        save_fund_costs(costs)
-        save_fund_config(config)
     invalidate_price_cache()
     return jsonify({"ok": True})
 
