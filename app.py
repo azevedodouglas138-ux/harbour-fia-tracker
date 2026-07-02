@@ -1939,6 +1939,12 @@ def api_attribution():
             start_dt = now_dt - timedelta(days=8)
         elif period == "month":
             start_dt = datetime(now_dt.year, now_dt.month, 1) - timedelta(days=1)
+        elif period == "30d":
+            start_dt = now_dt - timedelta(days=31)
+        elif period == "90d":
+            start_dt = now_dt - timedelta(days=91)
+        elif period == "6m":
+            start_dt = now_dt - timedelta(days=183)
         elif period == "ytd":
             start_dt = datetime(now_dt.year, 1, 1) - timedelta(days=1)
         else:
