@@ -5004,5 +5004,315 @@
     },
     "executed_at": "2026-07-01T14:45:07",
     "compliance_override": false
+  },
+  {
+    "id": "68af7581-4bea-495d-8f00-72aaabe1dd8f",
+    "timestamp": "2026-07-02T12:15:10",
+    "label": "",
+    "operacoes": [
+      {
+        "corretagem_rs": 0,
+        "custo_op_rs": 455965,
+        "direcao": "compra",
+        "is_novo": false,
+        "preco": 911.93,
+        "quantidade": 500,
+        "sector": "Tecnologia",
+        "ticker": "MUTC34",
+        "valor_total_rs": 455965,
+        "yahoo_ticker": "MUTC34.SA"
+      },
+      {
+        "corretagem_rs": 0,
+        "custo_op_rs": -187700,
+        "direcao": "venda",
+        "is_novo": false,
+        "preco": 37.54,
+        "quantidade": 5000,
+        "sector": "Imobiliário",
+        "ticker": "TEND3",
+        "valor_total_rs": 187700,
+        "yahoo_ticker": "TEND3.SA"
+      },
+      {
+        "corretagem_rs": 0,
+        "custo_op_rs": -281883.5,
+        "direcao": "venda",
+        "is_novo": false,
+        "preco": 141.65,
+        "quantidade": 1990,
+        "sector": "Tecnologia",
+        "ticker": "M2RV34",
+        "valor_total_rs": 281883.5,
+        "yahoo_ticker": "M2RV34.SA"
+      }
+    ],
+    "basket": {
+      "custo_total_rs": -13618.5,
+      "num_operacoes": 3
+    },
+    "antes": {
+      "caixa": 1290955.2,
+      "cota_estimada": 3.60162736,
+      "hhi": 3338,
+      "nav_total": 18168308.2,
+      "pct_grupo1": 91.18,
+      "weighted_beta": 1.27,
+      "weighted_upside": 76.84
+    },
+    "depois": {
+      "caixa": 1304573.7,
+      "cota_estimada": 3.66197803,
+      "hhi": 3415,
+      "nav_total": 18514163.2,
+      "pct_grupo1": 91.27,
+      "weighted_beta": 1.3,
+      "weighted_upside": 75.5
+    },
+    "impactos": {
+      "impacto_por_cota_rs": 0.06035067,
+      "variacao_beta": 0.03,
+      "variacao_cota_pct": 1.6757,
+      "variacao_hhi": 77,
+      "variacao_nav_rs": 345855,
+      "variacao_upside_pp": -1.34
+    },
+    "compliance": [
+      {
+        "limite_pct": 67,
+        "regra": "Mín. 67% em Ações/BDRs — Grupo I (Res. CVM 175)",
+        "status": "ok",
+        "tipo": "minimo",
+        "valor_antes_pct": 91.18,
+        "valor_depois_pct": 91.27
+      },
+      {
+        "limite_pct": 40,
+        "regra": "Conc. por Ativo — M2RV34 (interno)",
+        "status": "ok",
+        "tipo": "maximo",
+        "valor_antes_pct": 1.6,
+        "valor_depois_pct": 0.01
+      },
+      {
+        "limite_pct": 40,
+        "regra": "Conc. por Ativo — MUTC34 (interno)",
+        "status": "alerta",
+        "tipo": "maximo",
+        "valor_antes_pct": 34.01,
+        "valor_depois_pct": 37.78
+      },
+      {
+        "limite_pct": 40,
+        "regra": "Conc. por Ativo — TEND3 (interno)",
+        "status": "ok",
+        "tipo": "maximo",
+        "valor_antes_pct": 12.26,
+        "valor_depois_pct": 11.11
+      }
+    ],
+    "rows_antes": [
+      {
+        "pct_total": 34.01,
+        "ticker": "MUTC34",
+        "valor_liquido": 5633550,
+        "yahoo_ticker": "MUTC34.SA"
+      },
+      {
+        "pct_total": 18.32,
+        "ticker": "MDNE3",
+        "valor_liquido": 3035000,
+        "yahoo_ticker": "MDNE3.SA"
+      },
+      {
+        "pct_total": 12.26,
+        "ticker": "TEND3",
+        "valor_liquido": 2030600,
+        "yahoo_ticker": "TEND3.SA"
+      },
+      {
+        "pct_total": 9.98,
+        "ticker": "BMEB4",
+        "valor_liquido": 1654000,
+        "yahoo_ticker": "BMEB4.SA"
+      },
+      {
+        "pct_total": 9.2,
+        "ticker": "ROXO34",
+        "valor_liquido": 1524900,
+        "yahoo_ticker": "ROXO34.SA"
+      },
+      {
+        "pct_total": 9.18,
+        "ticker": "A1MD34",
+        "valor_liquido": 1521135,
+        "yahoo_ticker": "A1MD34.SA"
+      },
+      {
+        "pct_total": 5.3,
+        "ticker": "VTRU3",
+        "valor_liquido": 877500,
+        "yahoo_ticker": "VTRU3.SA"
+      },
+      {
+        "pct_total": 1.6,
+        "ticker": "M2RV34",
+        "valor_liquido": 265540,
+        "yahoo_ticker": "M2RV34.SA"
+      },
+      {
+        "pct_total": 0.07,
+        "ticker": "M1TA34",
+        "valor_liquido": 10940,
+        "yahoo_ticker": "M1TA34.SA"
+      },
+      {
+        "pct_total": 0.03,
+        "ticker": "PRIO3",
+        "valor_liquido": 5228,
+        "yahoo_ticker": "PRIO3.SA"
+      },
+      {
+        "pct_total": 0.02,
+        "ticker": "PGMN3",
+        "valor_liquido": 3690,
+        "yahoo_ticker": "PGMN3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "TTEN3",
+        "valor_liquido": 1523,
+        "yahoo_ticker": "TTEN3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "HAPV3",
+        "valor_liquido": 1055,
+        "yahoo_ticker": "HAPV3.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "SIMH3",
+        "valor_liquido": 766,
+        "yahoo_ticker": "SIMH3.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "RAPT4",
+        "valor_liquido": 458,
+        "yahoo_ticker": "RAPT4.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "CSNA3",
+        "valor_liquido": 468,
+        "yahoo_ticker": "CSNA3.SA"
+      }
+    ],
+    "rows_depois": [
+      {
+        "pct_total": 37.78,
+        "ticker": "MUTC34",
+        "valor_liquido": 6383510,
+        "yahoo_ticker": "MUTC34.SA"
+      },
+      {
+        "pct_total": 17.96,
+        "ticker": "MDNE3",
+        "valor_liquido": 3035000,
+        "yahoo_ticker": "MDNE3.SA"
+      },
+      {
+        "pct_total": 11.11,
+        "ticker": "TEND3",
+        "valor_liquido": 1877000,
+        "yahoo_ticker": "TEND3.SA"
+      },
+      {
+        "pct_total": 9.79,
+        "ticker": "BMEB4",
+        "valor_liquido": 1654000,
+        "yahoo_ticker": "BMEB4.SA"
+      },
+      {
+        "pct_total": 9.02,
+        "ticker": "ROXO34",
+        "valor_liquido": 1524900,
+        "yahoo_ticker": "ROXO34.SA"
+      },
+      {
+        "pct_total": 9,
+        "ticker": "A1MD34",
+        "valor_liquido": 1521135,
+        "yahoo_ticker": "A1MD34.SA"
+      },
+      {
+        "pct_total": 5.19,
+        "ticker": "VTRU3",
+        "valor_liquido": 877500,
+        "yahoo_ticker": "VTRU3.SA"
+      },
+      {
+        "pct_total": 0.06,
+        "ticker": "M1TA34",
+        "valor_liquido": 10940,
+        "yahoo_ticker": "M1TA34.SA"
+      },
+      {
+        "pct_total": 0.03,
+        "ticker": "PRIO3",
+        "valor_liquido": 5228,
+        "yahoo_ticker": "PRIO3.SA"
+      },
+      {
+        "pct_total": 0.02,
+        "ticker": "PGMN3",
+        "valor_liquido": 3690,
+        "yahoo_ticker": "PGMN3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "TTEN3",
+        "valor_liquido": 1523,
+        "yahoo_ticker": "TTEN3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "HAPV3",
+        "valor_liquido": 1055,
+        "yahoo_ticker": "HAPV3.SA"
+      },
+      {
+        "pct_total": 0.01,
+        "ticker": "M2RV34",
+        "valor_liquido": 1416.5,
+        "yahoo_ticker": "M2RV34.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "SIMH3",
+        "valor_liquido": 766,
+        "yahoo_ticker": "SIMH3.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "RAPT4",
+        "valor_liquido": 458,
+        "yahoo_ticker": "RAPT4.SA"
+      },
+      {
+        "pct_total": 0,
+        "ticker": "CSNA3",
+        "valor_liquido": 468,
+        "yahoo_ticker": "CSNA3.SA"
+      }
+    ],
+    "parametros_compliance": {
+      "enable_concentracao_ativo": true,
+      "enable_concentracao_setor": false,
+      "grupo1_minimo_pct": 67,
+      "limite_concentracao_ativo_pct": 40,
+      "limite_concentracao_setor_pct": 40
+    }
   }
 ]
