@@ -4718,6 +4718,13 @@ const CvmOficial = (() => {
     document.getElementById('cvm-card-capt30').style.color = capt30 >= 0 ? 'var(--cvm-ok, #00cc88)' : 'var(--cvm-err, #ff4d4f)';
     document.getElementById('cvm-card-capt12m').style.color = capt12m >= 0 ? 'var(--cvm-ok, #00cc88)' : 'var(--cvm-err, #ff4d4f)';
 
+    // PL médio diário dos últimos 12 meses (padrão lâmina CVM/ANBIMA)
+    const pl12m = recs.filter(r => r.dt_comptc >= iso(d365) && r.vl_patrim_liq != null);
+    const plMedio12m = pl12m.length
+      ? pl12m.reduce((s, r) => s + (r.vl_patrim_liq || 0), 0) / pl12m.length
+      : null;
+    document.getElementById('cvm-card-pl-medio-12m').textContent = plMedio12m != null ? fmtBrl0(plMedio12m) : '—';
+
     // Var cotistas 30d
     const rec30 = recs.find(r => r.dt_comptc >= iso(d30));
     const varCot = rec30 ? (last.nr_cotst || 0) - (rec30.nr_cotst || 0) : 0;

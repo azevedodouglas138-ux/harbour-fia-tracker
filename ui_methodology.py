@@ -181,6 +181,27 @@ UI_METHODOLOGY: dict = {
         ),
     },
 
+    "cvm_kpi_pl_medio_12m": {
+        "title": "PL Médio 12M",
+        "what": (
+            "Patrimônio líquido médio diário do fundo nos últimos 12 meses. "
+            "É a medida de porte exigida em informes, lâminas e materiais "
+            "regulatórios (padrão CVM/ANBIMA)."
+        ),
+        "formula": (
+            "Média aritmética simples do campo `vl_patrim_liq` de todos os "
+            "dias reportados nos últimos 365 dias corridos:\n\n"
+            "PL médio = Σ(vl_patrim_liq dos últimos 365d) ÷ nº de dias."
+        ),
+        "window": "Últimos 365 dias corridos (móvel).",
+        "source": "FI-DOC INF_DIARIO.",
+        "interpretation": (
+            "Suaviza oscilações pontuais do PL, refletindo o porte médio do "
+            "fundo ao longo do ano. Usado como base para comparações e "
+            "divulgações regulatórias."
+        ),
+    },
+
     "cvm_kpi_cotst": {
         "title": "Nº de Cotistas",
         "what": (
