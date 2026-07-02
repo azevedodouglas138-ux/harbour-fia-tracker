@@ -14,7 +14,7 @@
       "ticker": "MUTC34",
       "yahoo_ticker": "MUTC34.SA",
       "categoria": "BDR",
-      "quantidade": 6500.0,
+      "quantidade": 7000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": 1750.0,
@@ -43,7 +43,7 @@
       "ticker": "TEND3",
       "yahoo_ticker": "TEND3.SA",
       "categoria": "Acao",
-      "quantidade": 55000.0,
+      "quantidade": 50000.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": 650.0,
       "preco_alvo": 50.0
@@ -126,7 +126,7 @@
       "ticker": "M2RV34",
       "yahoo_ticker": "M2RV34.SA",
       "categoria": "Acao",
-      "quantidade": 2000.0,
+      "quantidade": 10.0,
       "liq_diaria_mm": null,
       "lucro_mi_26": null,
       "preco_alvo": null
