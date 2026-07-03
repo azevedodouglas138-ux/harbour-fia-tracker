@@ -401,5 +401,18 @@
       "crise": 72.98
     },
     "compliance_status": "ok"
+  },
+  {
+    "data": "2026-07-03",
+    "nav": 16530470.9,
+    "prazo_medio_zerar": 2.3,
+    "pct_alta_liquidez": 90.81,
+    "pct_baixa_liquidez": 0.0,
+    "indice_liquidez_5d": {
+      "neutro": 9938.0,
+      "stress": 4342.4658,
+      "crise": 76.0114
+    },
+    "compliance_status": "ok"
   }
 ]
