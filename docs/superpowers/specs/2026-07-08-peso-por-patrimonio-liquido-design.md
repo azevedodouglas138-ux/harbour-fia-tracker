@@ -102,14 +102,28 @@ tabela — "Caixa" e "Proventos a receber" — cada uma com seu %.
 
 ### C. Frontend + export
 
-- **`static/app.js` e `static/mobile.js`**: renderizar duas linhas ("Caixa",
-  "Proventos a receber") ao fim da tabela de posições, a partir de `cash_rows`. Sem
-  setor; com % e valor; estilo visual de subtotal (distinto das posições).
-- **Linha "Custos provisionados"** (negativa) só renderiza quando `custos != 0`
-  (hoje = 0). Garante que os % exibidos somem 100%.
+**Descoberta:** `static/mobile.js` (`renderCarteira`, ~l.114-151) **já** implementa a
+base PL (`base = equity + caixa + prov`, lê `caixa`/`proventos` de `p.quota`) e **já**
+renderiza as linhas "Caixa" e "Proventos a receber". É a referência. Único ajuste:
+descontar `custos_provisionados` da base (hoje = 0). `caixa`/`proventos`/`custos` já
+chegam ao cliente via `portfolioData.quota` (retornados por `calculate_quota`,
+`app.py:655-656, 688-689`).
+
+`static/app.js` (desktop) é o defasado e tem **duas** frentes:
+
+1. **Motor de recálculo intraday** (`onPriceUpdate`, ~l.609-689): hoje recomputa
+   `pct_total = valor_liquido / total(carteira)` (l.625-629) e usa `total` (carteira)
+   como NAV na provisão de performance (l.668, 684). Ambos passam a usar
+   `PL = total + quota.caixa + quota.proventos_a_receber − quota.custos_provisionados`.
+   O retorno da carteira (l.655, 672) herda a diluição via `pct_total` corrigido.
+2. **Render da tabela** (`renderTable`, ~l.221-281 + tfoot l.308): adicionar duas
+   linhas ("Caixa", "Proventos a receber") a partir de `cash_rows`, sem setor, com % e
+   valor, estilo de subtotal.
+
+- **Linha "Custos provisionados"** (negativa) só renderiza quando `custos != 0`.
 - **Validação obrigatória nos 2 temas** — Bloomberg dark + Harbour azul institucional.
-- **Export CSV** (`row_to_export`/`EXPORT_HEADERS`, `app.py:817-828`): **incluir** as
-  linhas de caixa/proventos para o CSV somar 100%.
+- **Export CSV/Excel** (`api_export_csv`/`api_export_excel`, `app.py:1037-1061`):
+  **incluir** as linhas de `cash_rows` para o export somar 100%.
 
 ### D. Testes / validação
 
