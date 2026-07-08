@@ -553,6 +553,9 @@ git commit -m "fix: mobile desconta custos provisionados na base do PL"
 
 **Consistência de tipos/nomes:** `compute_nav_total(total_value, fund_config)`, `build_portfolio_response(..., fund_config)`, `cash_rows[{label,valor,pct}]`, `cash_row_to_export(c)` usados de forma idêntica entre tasks. ✓
 
-## Ponto para o gestor decidir (fora do fluxo TDD)
+## Decisão do gestor (RESOLVIDA)
 
-**HHI de concentração:** o plano torna o HHI setorial **PL-based** (Task 3, Step 4), consistente com o resto. Isso **dilui** o HHI pelo caixa. Alternativa metodológica: manter o HHI sobre a carteira investida (pesos somando 100%), já que caixa não é "risco de concentração". Como caixa é ~2% hoje, o efeito é pequeno — mas se preferir HHI sobre investido, é só não trocar o denominador no Step 4. Confirmar na revisão.
+**HHI de concentração: PL-based** (Task 3, Step 4) — **decidido, manter como está.**
+Razão do gestor: o caixa faz parte do patrimônio do fundo e às vezes é representativo;
+excluí-lo apontaria uma concentração *maior* que a real. Não abrir de novo — implementar
+o Step 4 da Task 3 com denominador `nav` (PL) conforme escrito.
