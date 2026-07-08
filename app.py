@@ -621,6 +621,14 @@ def is_market_open():
 # Quota & Performance Fee calculation
 # ---------------------------------------------------------------------------
 
+def compute_nav_total(total_value, fund_config):
+    """Patrimônio líquido do fundo: carteira + caixa + proventos a receber − custos provisionados.
+    Fonte única da fórmula do PL (antes duplicada inline em vários endpoints)."""
+    caixa     = fund_config.get("caixa") or 0
+    proventos = fund_config.get("proventos_a_receber") or 0
+    custos    = fund_config.get("custos_provisionados") or 0
+    return (total_value or 0) + caixa + proventos - custos
+
 def calculate_quota(rows, fund_config, prices):
     quota_fech = fund_config.get("quota_fechamento") or 0
     caixa      = fund_config.get("caixa") or 0
@@ -629,7 +637,7 @@ def calculate_quota(rows, fund_config, prices):
     fee_rate   = (fund_config.get("performance_fee_rate") or 20) / 100
 
     nav_carteira = sum(r.get("valor_liquido") or 0 for r in rows)
-    nav_total    = nav_carteira + caixa + proventos - custos
+    nav_total    = compute_nav_total(nav_carteira, fund_config)
 
     brt_now    = datetime.utcnow() - timedelta(hours=3)
     today_str  = brt_now.strftime("%Y-%m-%d")
@@ -2080,7 +2088,7 @@ def api_risk_var():
     prices      = get_cached_prices(tickers)
     funds       = get_cached_fundamentals(tickers)
     pdata       = build_portfolio_response(portfolio, prices, funds)
-    nav = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+    nav = compute_nav_total(pdata.get("total_value"), fund_config)
 
     cotas   = [e["cota_fechamento"] for e in history]
     rets    = [(cotas[i] / cotas[i - 1] - 1) for i in range(1, len(cotas))]
@@ -2141,7 +2149,7 @@ def api_risk_stress():
     funds       = get_cached_fundamentals(tickers)
     pdata       = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
-    nav         = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+    nav         = compute_nav_total(pdata.get("total_value"), fund_config)
     total_value = pdata.get("total_value") or 0
 
     def run_scenario(ibov_shock, brl_shock, label, description):
@@ -2375,7 +2383,7 @@ def api_risk_liquidity():
     funds       = get_cached_fundamentals(tickers)
     pdata       = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
-    nav         = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+    nav         = compute_nav_total(pdata.get("total_value"), fund_config)
     total_value = pdata.get("total_value") or 0
 
     liq_1d = liq_5d = liq_10d = 0.0
@@ -2728,7 +2736,7 @@ def api_risk_fx_exposure():
     funds       = get_cached_fundamentals(tickers)
     pdata       = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
-    nav         = (pdata.get("total_value") or 0) + (fund_config.get("caixa") or 0) + (fund_config.get("proventos_a_receber") or 0)
+    nav         = compute_nav_total(pdata.get("total_value"), fund_config)
     total_value = pdata.get("total_value") or 0
     if not total_value:
         return jsonify({"error": "Sem dados de portfólio"}), 400
