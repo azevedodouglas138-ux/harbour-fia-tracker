@@ -287,9 +287,9 @@ function renderTable() {
     tr.className = 'cash-row';
     tr.innerHTML = `
       <td></td>
-      <td class="ticker-cell">${c.label}</td>
       <td></td>
       <td></td>
+      <td class="cash-desc">${c.label}</td>
       <td class="num">${c.pct!=null?fmt(c.pct,2)+'%':'—'}</td>
       <td class="num">${fmtBRL(c.valor)}</td>
       <td class="num"></td>

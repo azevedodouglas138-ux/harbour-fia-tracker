@@ -1145,10 +1145,11 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
 tr:not(.cash-row) + tr.cash-row td {
   border-top: 1px dashed var(--border);
 }
-.cash-row .ticker-cell {
+.cash-row .cash-desc {
   color: var(--text-muted);
   font-weight: 600;
   font-style: normal;
+  white-space: nowrap;
 }
 
 /* ══════════════ ATRIBUIÇÃO DE RETORNO ══════════════════════════ */
