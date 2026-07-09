@@ -2687,7 +2687,7 @@ def api_risk_concentration():
     pdata       = build_portfolio_response(portfolio, prices, funds, fund_config)
     total_value = pdata.get("total_value") or 0
     nav         = compute_nav_total(total_value, fund_config)
-    if not total_value:
+    if not total_value or nav <= 0:
         return jsonify({"error": "Sem dados de portfólio"}), 400
 
     sector_map = {}
