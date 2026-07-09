@@ -65,3 +65,12 @@ def test_concentracao_pretrade_usa_pl():
     pl = compute_nav_total(1500.0, fc)  # 1800
     conc = _calcular_concentracao_pretrade(rows, pl)
     assert conc["por_ativo"]["AAA3.SA"] == round(1000 / 1800 * 100, 4)  # 55.5556
+
+
+def test_cash_row_to_export_formata_colunas():
+    from app import cash_row_to_export, EXPORT_HEADERS
+    linha = cash_row_to_export({"label": "Caixa", "valor": 37293.5, "pct": 0.24})
+    assert len(linha) == len(EXPORT_HEADERS)
+    assert linha[0] == "Caixa"
+    assert linha[3] == 0.24        # % Total
+    assert linha[4] == 37293.5     # Valor Líquido

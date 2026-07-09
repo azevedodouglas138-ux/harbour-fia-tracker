@@ -851,6 +851,13 @@ def row_to_export(r):
             r["trailing_pe"],r["forward_pe"],r.get("enterprise_to_ebitda"),r.get("return_on_equity"),r.get("beta"),
             r["lucro_mi_26"],r["price_to_book"],r["dividend_yield"],r["market_cap_bi"],r["preco_alvo"],r["upside_pct"]]
 
+def cash_row_to_export(c):
+    row = [None] * len(EXPORT_HEADERS)
+    row[0] = c["label"]     # Ativo
+    row[3] = c["pct"]       # % Total
+    row[4] = c["valor"]     # Valor Líquido (R$)
+    return row
+
 def get_export_data():
     portfolio = load_portfolio()
     tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
@@ -1067,6 +1074,7 @@ def api_export_csv():
     w      = csv.writer(output)
     w.writerow(EXPORT_HEADERS)
     for r in data["rows"]: w.writerow(row_to_export(r))
+    for c in data.get("cash_rows", []): w.writerow(cash_row_to_export(c))
     output.seek(0)
     filename = f"harbour_fia_{_brt_now().strftime('%Y%m%d')}.csv"
     return Response("\ufeff" + output.getvalue(), mimetype="text/csv; charset=utf-8",
@@ -1084,6 +1092,7 @@ def api_export_excel():
     ws.append(EXPORT_HEADERS)
     for cell in ws[1]: cell.font = hf; cell.fill = hfill; cell.alignment = Alignment(horizontal="center")
     for r in data["rows"]: ws.append(row_to_export(r))
+    for c in data.get("cash_rows", []): ws.append(cash_row_to_export(c))
     for i, w_ in enumerate([8,9,18,8,16,10,9,12,15,11,11,9,7,7,11,11,7,10,13,14,9], 1):
         ws.column_dimensions[ws.cell(1,i).column_letter].width = w_
     ws.row_dimensions[1].height = 22
