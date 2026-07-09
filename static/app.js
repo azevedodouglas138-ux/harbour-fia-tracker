@@ -281,6 +281,38 @@ function renderTable() {
     tbody.appendChild(tr);
   });
 
+  // Cash/proventos rows (not part of portfolioData.rows, always appended last — never sorted)
+  (portfolioData.cash_rows || []).forEach(c => {
+    const tr = document.createElement('tr');
+    tr.className = 'cash-row';
+    tr.innerHTML = `
+      <td></td>
+      <td class="ticker-cell">${c.label}</td>
+      <td></td>
+      <td></td>
+      <td class="num">${c.pct!=null?fmt(c.pct,2)+'%':'—'}</td>
+      <td class="num">${fmtBRL(c.valor)}</td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td class="num"></td>
+      <td></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
   document.querySelectorAll('th[data-col]').forEach(th => {
     th.classList.remove('sorted-asc','sorted-desc');
     if (th.dataset.col === sortCol) th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
@@ -624,8 +656,11 @@ async function refreshPricesOnly() {
 
     const total = portfolioData.rows.reduce((s,r) => s + (r.valor_liquido||0), 0);
     portfolioData.total_value = Math.round(total * 100) / 100;
+    const q0 = portfolioData.quota || {};
+    const navPL = total + (q0.caixa||0) + (q0.proventos_a_receber||0) - (q0.custos_provisionados||0);
+    portfolioData.nav_total = Math.round(navPL * 100) / 100;
     portfolioData.rows.forEach(r => {
-      r.pct_total = total > 0 && r.valor_liquido ? Math.round(r.valor_liquido / total * 10000) / 100 : null;
+      r.pct_total = navPL > 0 && r.valor_liquido ? Math.round(r.valor_liquido / navPL * 10000) / 100 : null;
     });
     const ws = portfolioData.rows.filter(r => r.upside_pct != null && r.pct_total)
                                   .reduce((s,r) => s + r.upside_pct * r.pct_total / 100, 0);
@@ -665,7 +700,7 @@ async function refreshPricesOnly() {
           portfolioData.quota.variacao_rs_por_cota     = portfolioData.quota.cota_estimada
             ? parseFloat((portfolioData.quota.cota_estimada - qFech).toFixed(8)) : null;
           portfolioData.quota.provisao_performance_pct = Math.round(Math.max(0, alpha * feeRate) * 10000) / 100;
-          portfolioData.quota.provisao_performance_rs  = Math.round(Math.max(0, alpha * feeRate) * total * 100) / 100;
+          portfolioData.quota.provisao_performance_rs  = Math.round(Math.max(0, alpha * feeRate) * navPL * 100) / 100;
         }
       } else {
         const valid = portfolioData.rows.filter(r => r.pct_total && r.var_dia_pct != null);
@@ -681,7 +716,7 @@ async function refreshPricesOnly() {
         portfolioData.quota.variacao_rs_por_cota     = portfolioData.quota.cota_estimada ? parseFloat((portfolioData.quota.cota_estimada - qFech).toFixed(8)) : null;
         const alpha = retCart - ibovRet;
         portfolioData.quota.provisao_performance_pct = Math.round(Math.max(0, alpha * feeRate) * 10000) / 100;
-        portfolioData.quota.provisao_performance_rs  = Math.round(Math.max(0, alpha * feeRate) * total * 100) / 100;
+        portfolioData.quota.provisao_performance_rs  = Math.round(Math.max(0, alpha * feeRate) * navPL * 100) / 100;
       }
     }
 

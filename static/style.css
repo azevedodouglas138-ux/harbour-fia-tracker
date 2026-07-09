@@ -1135,6 +1135,22 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   letter-spacing: 0.06em;
 }
 
+/* ── Cash / Proventos Rows (desktop table) ───────────────────── */
+.cash-row td {
+  font-style: italic;
+  opacity: .85;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+.cash-row:first-of-type td {
+  border-top: 1px dashed var(--border);
+}
+.cash-row .ticker-cell {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-style: normal;
+}
+
 /* ══════════════ ATRIBUIÇÃO DE RETORNO ══════════════════════════ */
 .attrib-btn {
   background: var(--surface2); border: 1px solid var(--border2);
