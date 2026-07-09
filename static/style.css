@@ -1142,7 +1142,7 @@ tr.stock-expand-row:hover      { background: var(--surface) !important; }
   color: var(--text-muted);
   background: var(--surface);
 }
-.cash-row:first-of-type td {
+tr:not(.cash-row) + tr.cash-row td {
   border-top: 1px dashed var(--border);
 }
 .cash-row .ticker-cell {
