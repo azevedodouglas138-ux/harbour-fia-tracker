@@ -1,4 +1,4 @@
-from app import compute_nav_total
+from app import compute_nav_total, build_portfolio_response
 
 
 def test_compute_nav_total_soma_caixa_proventos_menos_custos():
@@ -13,3 +13,43 @@ def test_compute_nav_total_campos_ausentes_ou_none_sao_zero():
 
 def test_compute_nav_total_total_value_none():
     assert compute_nav_total(None, {"caixa": 200.0}) == 200.0
+
+
+def _portfolio():
+    return {
+        "fund_name": "TESTE FIA",
+        "positions": [
+            {"ticker": "AAA3", "yahoo_ticker": "AAA3.SA", "quantidade": 100, "categoria": "Acao"},
+            {"ticker": "BBB4", "yahoo_ticker": "BBB4.SA", "quantidade": 100, "categoria": "Acao"},
+        ],
+    }
+
+def _prices():
+    return {
+        "AAA3.SA": {"price": 10.0, "change_pct": 1.0},
+        "BBB4.SA": {"price": 5.0, "change_pct": -2.0},
+    }
+
+def test_pct_total_usa_pl_completo():
+    # carteira = 100*10 + 100*5 = 1500 ; PL = 1500 + 300 = 1800
+    fc = {"caixa": 300.0, "proventos_a_receber": 0.0, "custos_provisionados": 0.0}
+    data = build_portfolio_response(_portfolio(), _prices(), {}, fc)
+    aaa = next(r for r in data["rows"] if r["ticker"] == "AAA3")
+    assert aaa["pct_total"] == round(1000 / 1800 * 100, 2)   # 55.56
+    assert data["nav_total"] == 1800.0
+
+def test_cash_rows_presentes_e_soma_100():
+    fc = {"caixa": 300.0, "proventos_a_receber": 0.0, "custos_provisionados": 0.0}
+    data = build_portfolio_response(_portfolio(), _prices(), {}, fc)
+    labels = [c["label"] for c in data["cash_rows"]]
+    assert "Caixa" in labels and "Proventos a receber" in labels
+    caixa_row = next(c for c in data["cash_rows"] if c["label"] == "Caixa")
+    assert caixa_row["pct"] == round(300 / 1800 * 100, 2)    # 16.67
+    total = sum(r["pct_total"] for r in data["rows"]) + sum(c["pct"] for c in data["cash_rows"])
+    assert abs(total - 100.0) < 0.05
+
+def test_cash_rows_nao_poluem_rows_de_calculo():
+    fc = {"caixa": 300.0, "proventos_a_receber": 100.0, "custos_provisionados": 0.0}
+    data = build_portfolio_response(_portfolio(), _prices(), {}, fc)
+    assert all(r["ticker"] in ("AAA3", "BBB4") for r in data["rows"])
+    assert len(data["rows"]) == 2

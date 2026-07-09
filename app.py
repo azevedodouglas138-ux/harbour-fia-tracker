@@ -701,7 +701,7 @@ def calculate_quota(rows, fund_config, prices):
 # Portfolio response builder
 # ---------------------------------------------------------------------------
 
-def build_portfolio_response(portfolio, prices, fundamentals):
+def build_portfolio_response(portfolio, prices, fundamentals, fund_config):
     import math
     _PARTICIPATION_RATE = 0.20  # 20% do ADV — padrão de mercado para fundos
 
@@ -755,12 +755,13 @@ def build_portfolio_response(portfolio, prices, fundamentals):
             # o HHI setorial mostrando Ação/BDR como se fossem setores.
             "sector": fund.get("sector") or "Outros",
         })
+    nav_total = compute_nav_total(total_value, fund_config)
     for r in rows:
-        r["pct_total"] = round(r["valor_liquido"] / total_value * 100, 2) if r["valor_liquido"] and total_value > 0 else None
+        r["pct_total"] = round(r["valor_liquido"] / nav_total * 100, 2) if r["valor_liquido"] and nav_total > 0 else None
 
-    weighted_upside = round(sum(r["upside_pct"] * r["valor_liquido"] / total_value for r in rows if r["upside_pct"] and r["valor_liquido"]), 2) if total_value > 0 else None
+    weighted_upside = round(sum(r["upside_pct"] * r["valor_liquido"] / nav_total for r in rows if r["upside_pct"] and r["valor_liquido"]), 2) if nav_total > 0 else None
     beta_rows = [r for r in rows if r["beta"] is not None and r["valor_liquido"]]
-    weighted_beta = round(sum(r["beta"] * r["valor_liquido"] / total_value for r in beta_rows), 2) if beta_rows and total_value > 0 else None
+    weighted_beta = round(sum(r["beta"] * r["valor_liquido"] / nav_total for r in beta_rows), 2) if beta_rows and nav_total > 0 else None
 
     def _wavg(field):
         valid = [r for r in rows if r.get(field) is not None and r["valor_liquido"]]
@@ -782,8 +783,23 @@ def build_portfolio_response(portfolio, prices, fundamentals):
         "w_lucro_mi_26":          sum(r["lucro_mi_26"] for r in rows if r.get("lucro_mi_26")) or None,
     }
 
+    caixa     = fund_config.get("caixa") or 0
+    proventos = fund_config.get("proventos_a_receber") or 0
+    custos    = fund_config.get("custos_provisionados") or 0
+    _pl = nav_total if nav_total and nav_total > 0 else 1
+    cash_rows = [
+        {"label": "Caixa",               "valor": round(caixa, 2),     "pct": round(caixa / _pl * 100, 2)},
+        {"label": "Proventos a receber", "valor": round(proventos, 2), "pct": round(proventos / _pl * 100, 2)},
+    ]
+    if custos:
+        cash_rows.append({"label": "Custos provisionados", "valor": round(-custos, 2), "pct": round(-custos / _pl * 100, 2)})
+
     return {
         "fund_name": portfolio["fund_name"], "total_value": round(total_value, 2),
+        "nav_total": round(nav_total, 2),
+        "caixa": round(caixa, 2), "proventos_a_receber": round(proventos, 2),
+        "custos_provisionados": round(custos, 2),
+        "cash_rows": cash_rows,
         "weighted_upside": weighted_upside, "weighted_beta": weighted_beta,
         "weighted_stats": weighted_stats,
         "last_price_update": _brt_now().isoformat(), "rows": rows,
@@ -840,7 +856,8 @@ def get_export_data():
     tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices    = get_cached_prices(tickers)
     funds     = get_cached_fundamentals(tickers)
-    return build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    return build_portfolio_response(portfolio, prices, funds, fund_config)
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -959,9 +976,9 @@ def api_portfolio():
     tickers   = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices    = get_cached_prices(tickers)
     funds     = get_cached_fundamentals(tickers)
-    data      = build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    data      = build_portfolio_response(portfolio, prices, funds, fund_config)
     # Attach quota data — always uses last closing from history as base
-    fund_config  = get_effective_fund_config()
     data["quota"] = calculate_quota(data["rows"], fund_config, prices)
     return jsonify(data)
 
@@ -1402,8 +1419,8 @@ def api_auto_close():
     invalidate_price_cache()
     prices    = fetch_prices(tickers)           # fresh, no cache
     funds     = get_cached_fundamentals(tickers)
-    data      = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
+    data      = build_portfolio_response(portfolio, prices, funds, fund_config)
     quota     = calculate_quota(data["rows"], fund_config, prices)
 
     cota_est = quota.get("cota_estimada")
@@ -2087,7 +2104,7 @@ def api_risk_var():
     tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices      = get_cached_prices(tickers)
     funds       = get_cached_fundamentals(tickers)
-    pdata       = build_portfolio_response(portfolio, prices, funds)
+    pdata       = build_portfolio_response(portfolio, prices, funds, fund_config)
     nav = compute_nav_total(pdata.get("total_value"), fund_config)
 
     cotas   = [e["cota_fechamento"] for e in history]
@@ -2147,8 +2164,8 @@ def api_risk_stress():
     tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices      = get_cached_prices(tickers)
     funds       = get_cached_fundamentals(tickers)
-    pdata       = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
+    pdata       = build_portfolio_response(portfolio, prices, funds, fund_config)
     nav         = compute_nav_total(pdata.get("total_value"), fund_config)
     total_value = pdata.get("total_value") or 0
 
@@ -2381,8 +2398,8 @@ def api_risk_liquidity():
     tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices      = get_cached_prices(tickers)
     funds       = get_cached_fundamentals(tickers)
-    pdata       = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
+    pdata       = build_portfolio_response(portfolio, prices, funds, fund_config)
     nav         = compute_nav_total(pdata.get("total_value"), fund_config)
     total_value = pdata.get("total_value") or 0
 
@@ -2666,7 +2683,8 @@ def api_risk_concentration():
     tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices      = get_cached_prices(tickers)
     funds       = get_cached_fundamentals(tickers)
-    pdata       = build_portfolio_response(portfolio, prices, funds)
+    fund_config = get_effective_fund_config()
+    pdata       = build_portfolio_response(portfolio, prices, funds, fund_config)
     total_value = pdata.get("total_value") or 0
     if not total_value:
         return jsonify({"error": "Sem dados de portfólio"}), 400
@@ -2734,8 +2752,8 @@ def api_risk_fx_exposure():
     tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices      = get_cached_prices(tickers)
     funds       = get_cached_fundamentals(tickers)
-    pdata       = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
+    pdata       = build_portfolio_response(portfolio, prices, funds, fund_config)
     nav         = compute_nav_total(pdata.get("total_value"), fund_config)
     total_value = pdata.get("total_value") or 0
     if not total_value:
@@ -3069,7 +3087,7 @@ def api_pretrade_simulate():
     fundamentals = get_cached_fundamentals(tickers_all)
 
     # ── ESTADO ANTES ──
-    pdata_antes = build_portfolio_response(portfolio, prices, fundamentals)
+    pdata_antes = build_portfolio_response(portfolio, prices, fundamentals, fund_config)
     total_antes = pdata_antes.get("total_value") or 0
     quota_antes = calculate_quota(pdata_antes["rows"], fund_config, prices)
     conc_antes  = _calcular_concentracao_pretrade(pdata_antes["rows"], total_antes)
@@ -3094,7 +3112,7 @@ def api_pretrade_simulate():
     prices_sim.update(prices_overrides)
 
     # ── ESTADO DEPOIS ──
-    pdata_depois = build_portfolio_response(portfolio_sim, prices_sim, fundamentals)
+    pdata_depois = build_portfolio_response(portfolio_sim, prices_sim, fundamentals, fund_config_sim)
     total_depois = pdata_depois.get("total_value") or 0
     quota_depois = calculate_quota(pdata_depois["rows"], fund_config_sim, prices_sim)
     conc_depois  = _calcular_concentracao_pretrade(pdata_depois["rows"], total_depois) if total_depois else {"por_ativo": {}, "por_setor": {}, "hhi": 0}
@@ -3695,8 +3713,8 @@ def api_portfolio_history_save():
     tickers     = [p["yahoo_ticker"] for p in portfolio["positions"]]
     prices      = fetch_prices(tickers)
     funds       = get_cached_fundamentals(tickers)
-    data        = build_portfolio_response(portfolio, prices, funds)
     fund_config = get_effective_fund_config()
+    data        = build_portfolio_response(portfolio, prices, funds, fund_config)
     quota       = calculate_quota(data["rows"], fund_config, prices)
     if not quota.get("cota_estimada"):
         return jsonify({"error": "Cota estimada indisponível — preços não carregados"}), 500
