@@ -53,3 +53,15 @@ def test_cash_rows_nao_poluem_rows_de_calculo():
     data = build_portfolio_response(_portfolio(), _prices(), {}, fc)
     assert all(r["ticker"] in ("AAA3", "BBB4") for r in data["rows"])
     assert len(data["rows"]) == 2
+
+
+def test_concentracao_pretrade_usa_pl():
+    from app import _calcular_concentracao_pretrade, compute_nav_total
+    rows = [
+        {"ticker": "AAA3", "yahoo_ticker": "AAA3.SA", "valor_liquido": 1000.0, "sector": "Tecnologia"},
+        {"ticker": "BBB4", "yahoo_ticker": "BBB4.SA", "valor_liquido": 500.0,  "sector": "Financeiro"},
+    ]
+    fc = {"caixa": 300.0, "proventos_a_receber": 0.0, "custos_provisionados": 0.0}
+    pl = compute_nav_total(1500.0, fc)  # 1800
+    conc = _calcular_concentracao_pretrade(rows, pl)
+    assert conc["por_ativo"]["AAA3.SA"] == round(1000 / 1800 * 100, 4)  # 55.5556

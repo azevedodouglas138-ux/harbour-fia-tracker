@@ -2048,12 +2048,12 @@ def _compute_component_var_by_beta(rows, total_value, nav, portfolio_var_1d):
     rows_v = [r for r in rows if r.get("beta") is not None and r.get("valor_liquido")]
     if not rows_v:
         return []
-    w_beta = sum(r["beta"] * r["valor_liquido"] / total_value for r in rows_v)
+    w_beta = sum(r["beta"] * r["valor_liquido"] / nav for r in rows_v)
     if not w_beta:
         return []
     out = []
     for r in rows:
-        w           = (r.get("valor_liquido") or 0) / total_value
+        w           = (r.get("valor_liquido") or 0) / nav
         beta        = r.get("beta") or 0
         contrib_pct = (w * beta / w_beta * 100) if w_beta else 0
         var_rs      = (w * beta / w_beta * portfolio_var_1d * nav) if w_beta else 0
@@ -2686,6 +2686,7 @@ def api_risk_concentration():
     fund_config = get_effective_fund_config()
     pdata       = build_portfolio_response(portfolio, prices, funds, fund_config)
     total_value = pdata.get("total_value") or 0
+    nav         = compute_nav_total(total_value, fund_config)
     if not total_value:
         return jsonify({"error": "Sem dados de portfólio"}), 400
 
@@ -2701,7 +2702,7 @@ def api_risk_concentration():
     setores = []
     hhi     = 0.0
     for setor, data in sector_map.items():
-        peso = data["valor"] / total_value
+        peso = data["valor"] / nav
         hhi += peso ** 2
         setores.append({
             "setor":    setor,
@@ -3090,7 +3091,7 @@ def api_pretrade_simulate():
     pdata_antes = build_portfolio_response(portfolio, prices, fundamentals, fund_config)
     total_antes = pdata_antes.get("total_value") or 0
     quota_antes = calculate_quota(pdata_antes["rows"], fund_config, prices)
-    conc_antes  = _calcular_concentracao_pretrade(pdata_antes["rows"], total_antes)
+    conc_antes  = _calcular_concentracao_pretrade(pdata_antes["rows"], compute_nav_total(total_antes, fund_config))
 
     # Grupo I antes (ações + BDRs — Res. CVM 175)
     _GRUPO1_CATS = {"Acao", "BDR", "Acao BDR"}
@@ -3115,7 +3116,7 @@ def api_pretrade_simulate():
     pdata_depois = build_portfolio_response(portfolio_sim, prices_sim, fundamentals, fund_config_sim)
     total_depois = pdata_depois.get("total_value") or 0
     quota_depois = calculate_quota(pdata_depois["rows"], fund_config_sim, prices_sim)
-    conc_depois  = _calcular_concentracao_pretrade(pdata_depois["rows"], total_depois) if total_depois else {"por_ativo": {}, "por_setor": {}, "hhi": 0}
+    conc_depois  = _calcular_concentracao_pretrade(pdata_depois["rows"], compute_nav_total(total_depois, fund_config_sim)) if total_depois else {"por_ativo": {}, "por_setor": {}, "hhi": 0}
 
     nav_depois = quota_depois.get("nav_total") or total_depois
     valor_g1_depois = sum(
