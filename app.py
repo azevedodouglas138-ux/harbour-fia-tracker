@@ -832,6 +832,7 @@ def _build_portfolio_snapshot(data, quota, source="auto"):
             "w_lucro_mi_26":          ws.get("w_lucro_mi_26"),
         },
         "rows": data.get("rows", []),
+        "cash_rows": data.get("cash_rows", []),
     }
 
 # ---------------------------------------------------------------------------
@@ -2052,7 +2053,7 @@ def _liq_days_from_score(score):
 
 
 def _compute_component_var_by_beta(rows, total_value, nav, portfolio_var_1d):
-    if not total_value or not nav:
+    if not total_value or nav <= 0:
         return []
     rows_v = [r for r in rows if r.get("beta") is not None and r.get("valor_liquido")]
     if not rows_v:
@@ -2182,7 +2183,7 @@ def api_risk_stress():
         rows_out   = []
         port_impact = 0.0
         for r in pdata["rows"]:
-            w        = (r.get("valor_liquido") or 0) / total_value if total_value else 0
+            w        = (r.get("valor_liquido") or 0) / nav if nav else 0
             beta     = r.get("beta") or 1.0
             is_bdr   = r.get("categoria", "").upper() == "BDR"
             # BRL depreciation (positive brl_shock) → BDR gains in BRL terms

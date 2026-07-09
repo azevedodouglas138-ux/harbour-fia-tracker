@@ -74,3 +74,44 @@ def test_cash_row_to_export_formata_colunas():
     assert linha[0] == "Caixa"
     assert linha[3] == 0.24        # % Total
     assert linha[4] == 37293.5     # Valor Líquido
+
+
+def test_weighted_beta_upside_usa_pl_como_denominador():
+    # carteira: AAA3 = 100*10 = 1000 ; BBB4 = 100*5 = 500 ; total_value (carteira) = 1500
+    # caixa=300 => nav_total (PL) = 1800, diferente de total_value
+    portfolio = _portfolio()
+    portfolio["positions"][0]["preco_alvo"] = 12.0   # AAA3: upside = (12/10-1)*100 = 20.0
+    portfolio["positions"][1]["preco_alvo"] = 4.5     # BBB4: upside = (4.5/5-1)*100 = -10.0
+    fundamentals = {
+        "AAA3.SA": {"beta": 1.2},
+        "BBB4.SA": {"beta": 0.8},
+    }
+    fc = {"caixa": 300.0, "proventos_a_receber": 0.0, "custos_provisionados": 0.0}
+    data = build_portfolio_response(portfolio, _prices(), fundamentals, fc)
+
+    nav_total = data["nav_total"]
+    total_value = data["total_value"]
+    assert nav_total == 1800.0
+    assert total_value == 1500.0
+
+    expected_beta    = round((1.2 * 1000 + 0.8 * 500) / nav_total, 2)
+    expected_upside  = round((20.0 * 1000 + (-10.0) * 500) / nav_total, 2)
+    assert data["weighted_beta"] == expected_beta
+    assert data["weighted_upside"] == expected_upside
+
+    # confirma que NÃO está ponderado pela carteira (total_value, sem caixa)
+    wrong_beta_by_total_value = round((1.2 * 1000 + 0.8 * 500) / total_value, 2)
+    assert data["weighted_beta"] != wrong_beta_by_total_value
+
+
+def test_custos_provisionados_negativo_gera_cash_row():
+    fc = {"caixa": 100.0, "proventos_a_receber": 0.0, "custos_provisionados": 50.0}
+    data = build_portfolio_response(_portfolio(), _prices(), {}, fc)
+    custos_row = next((c for c in data["cash_rows"] if c["label"] == "Custos provisionados"), None)
+    assert custos_row is not None
+    assert custos_row["valor"] == -50.0
+    assert custos_row["valor"] < 0
+
+    fc_sem_custos = {"caixa": 100.0, "proventos_a_receber": 0.0, "custos_provisionados": 0.0}
+    data_sem = build_portfolio_response(_portfolio(), _prices(), {}, fc_sem_custos)
+    assert not any(c["label"] == "Custos provisionados" for c in data_sem["cash_rows"])

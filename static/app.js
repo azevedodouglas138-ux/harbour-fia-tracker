@@ -582,7 +582,6 @@ async function loadStockChart(ticker, yahooTicker, shortName, range) {
 function recalcWeightedStats() {
   if (!portfolioData) return;
   const rows = portfolioData.rows;
-  const total = portfolioData.total_value || 0;
   function wavg(field) {
     const valid = rows.filter(r => r[field] != null && r.valor_liquido);
     const wt = valid.reduce((s,r) => s + r.valor_liquido, 0);
@@ -4122,6 +4121,7 @@ async function _phLoadSnapshot(recordId, dateLabel) {
     if (!res.ok) { alert('Erro ao carregar snapshot.'); return; }
     const snap = await res.json();
     portfolioData.rows            = snap.rows;
+    portfolioData.cash_rows       = snap.cash_rows || [];
     portfolioData.total_value     = snap.summary.total_value;
     portfolioData.weighted_upside = snap.summary.w_upside_pct;
     portfolioData.weighted_beta   = snap.summary.w_beta;
