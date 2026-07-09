@@ -123,9 +123,10 @@
     const q = p.quota || {};
     const caixa = q.caixa || 0;
     const prov = q.proventos_a_receber || 0;
+    const custos = q.custos_provisionados || 0;
     const equity = p.total_value || 0;
-    // PL do fundo = ativos + caixa + proventos a receber (base dos percentuais).
-    const base = (equity + caixa + prov) || 1;
+    // PL do fundo = ativos + caixa + proventos a receber − custos provisionados (base dos percentuais).
+    const base = (equity + caixa + prov - custos) || 1;
     const pctFund = (v) => (v != null ? (v / base) * 100 : null);
 
     const rows = p.rows.slice().sort((a, b) => (b.valor_liquido || 0) - (a.valor_liquido || 0));
